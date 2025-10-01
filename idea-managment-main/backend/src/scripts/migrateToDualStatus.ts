@@ -52,10 +52,10 @@ const migrateToDualStatus = async () => {
         await Idea.findByIdAndUpdate(idea._id, {
           $set: {
             status: newStatus,
-            implementationStatus: newImplementationStatus,
-            // Xóa trường implementationDirection cũ
-            $unset: { implementationDirection: 1 }
-          }
+            implementationStatus: newImplementationStatus
+          },
+          // Xóa trường implementationDirection cũ
+          $unset: { implementationDirection: 1 }
         });
 
         console.log(`Đã cập nhật ý tưởng ${idea.ideaCode}: status=${newStatus}, implementationStatus=${newImplementationStatus}`);

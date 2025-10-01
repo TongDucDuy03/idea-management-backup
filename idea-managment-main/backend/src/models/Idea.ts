@@ -12,6 +12,8 @@ export interface IIdea extends Document {
   status: 'pending' | 'rejected' | 'noted' | 'approved'; // Quyết định phê duyệt (cũ)
   implementationStatus: 'Đề xuất mới' | 'Xem xét' | 'Phê duyệt' | 'Phản hồi phê duyệt' | 'Đang triển khai' | 'Lập báo cáo A3' | 'Phê duyệt khen thưởng' | 'Đã khen thưởng' | 'Không đạt'; // Trạng thái triển khai (mới)
   implementationDepartment?: string;
+  // Legacy field used only by migration scripts
+  implementationDirection?: string;
   note?: string;
   benefitValue?: number; // Giá trị làm lợi (VND)
   rewardAmount?: number; // Tiền thưởng (VND)
