@@ -11,6 +11,7 @@ const ideaRoutes_1 = __importDefault(require("./routes/ideaRoutes"));
 const authRoutes_1 = __importDefault(require("./routes/authRoutes"));
 const a3ReportRoutes_1 = __importDefault(require("./routes/a3ReportRoutes"));
 dotenv_1.default.config();
+console.log(">>> ENV MONGODB_URI:", process.env.MONGODB_URI);
 const app = (0, express_1.default)();
 const port = process.env.PORT || 5000;
 // Middleware

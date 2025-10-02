@@ -56,10 +56,10 @@ const migrateToDualStatus = () => __awaiter(void 0, void 0, void 0, function* ()
                 yield Idea_1.default.findByIdAndUpdate(idea._id, {
                     $set: {
                         status: newStatus,
-                        implementationStatus: newImplementationStatus,
-                        // Xóa trường implementationDirection cũ
-                        $unset: { implementationDirection: 1 }
-                    }
+                        implementationStatus: newImplementationStatus
+                    },
+                    // Xóa trường implementationDirection cũ
+                    $unset: { implementationDirection: 1 }
                 });
                 console.log(`Đã cập nhật ý tưởng ${idea.ideaCode}: status=${newStatus}, implementationStatus=${newImplementationStatus}`);
                 updatedCount++;

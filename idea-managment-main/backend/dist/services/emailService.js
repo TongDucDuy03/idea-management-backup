@@ -1,4 +1,13 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -29,7 +38,7 @@ const transporter = (() => {
         auth: user && pass ? { user, pass } : undefined
     });
 })();
-const sendIdeaSubmittedEmail = async (idea) => {
+const sendIdeaSubmittedEmail = (idea) => __awaiter(void 0, void 0, void 0, function* () {
     const fromAddress = process.env.EMAIL_FROM || process.env.SMTP_USER || 'no-reply@example.com';
     const toAddress = process.env.EMAIL_TO || process.env.SMTP_USER;
     if (!toAddress) {
@@ -54,14 +63,14 @@ const sendIdeaSubmittedEmail = async (idea) => {
 ${idea.fullName ? `- Họ và tên: ${idea.fullName}\n` : ''}- Phòng ban: ${idea.department}
 ${idea.idea ? `- Nội dung ý tưởng: ${idea.idea}\n` : ''}- Thời gian gửi: ${submittedAt.toLocaleString()}
   `.trim();
-    await transporter.sendMail({
+    yield transporter.sendMail({
         from: fromAddress,
         to: toAddress,
         subject,
         text,
         html
     });
-};
+});
 exports.sendIdeaSubmittedEmail = sendIdeaSubmittedEmail;
 const escapeHtml = (unsafe) => {
     return unsafe

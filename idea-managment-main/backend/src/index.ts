@@ -7,7 +7,7 @@ import authRoutes from './routes/authRoutes';
 import a3ReportRoutes from './routes/a3ReportRoutes';
 
 dotenv.config();
-
+console.log(">>> ENV MONGODB_URI:", process.env.MONGODB_URI);
 const app = express();
 const port = process.env.PORT || 5000;
 

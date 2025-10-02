@@ -54,10 +54,10 @@ const migrateToNewStatus = () => __awaiter(void 0, void 0, void 0, function* () 
                 // Cập nhật ý tưởng
                 yield Idea_1.default.findByIdAndUpdate(idea._id, {
                     $set: {
-                        status: newStatus,
-                        // Xóa trường implementationDirection cũ
-                        $unset: { implementationDirection: 1 }
-                    }
+                        status: newStatus
+                    },
+                    // Xóa trường implementationDirection cũ
+                    $unset: { implementationDirection: 1 }
                 });
                 console.log(`Đã cập nhật ý tưởng ${idea.ideaCode}: ${idea.status || idea.implementationDirection} -> ${newStatus}`);
                 updatedCount++;

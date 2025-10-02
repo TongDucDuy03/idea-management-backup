@@ -1,34 +1,37 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importDefault(require("mongoose"));
 const Idea_1 = __importDefault(require("../models/Idea"));
-
 // Script để thêm các trường beforeImage và afterImage vào database
-const addImageFields = async () => {
+const addImageFields = () => __awaiter(void 0, void 0, void 0, function* () {
     try {
         // Kết nối database
-        await mongoose_1.default.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/idea-management');
+        yield mongoose_1.default.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/idea-management');
         console.log('Connected to MongoDB');
-
         // Thêm các trường mới vào tất cả documents hiện có
-        const result = await Idea_1.default.updateMany(
-            {}, // Tìm tất cả documents
-            {
-                $set: {
-                    beforeImage: null,
-                    afterImage: null
-                }
+        const result = yield Idea_1.default.updateMany({}, // Tìm tất cả documents
+        {
+            $set: {
+                beforeImage: null,
+                afterImage: null
             }
-        );
-
+        });
         console.log(`Updated ${result.modifiedCount} documents with new image fields`);
         console.log('Image fields added successfully!');
-        
         // Kiểm tra một document để xác nhận
-        const sampleIdea = await Idea_1.default.findOne();
+        const sampleIdea = yield Idea_1.default.findOne();
         if (sampleIdea) {
             console.log('Sample document structure:', {
                 _id: sampleIdea._id,
@@ -37,14 +40,14 @@ const addImageFields = async () => {
                 hasAfterImage: 'afterImage' in sampleIdea
             });
         }
-
-    } catch (error) {
+    }
+    catch (error) {
         console.error('Error adding image fields:', error);
-    } finally {
-        await mongoose_1.default.disconnect();
+    }
+    finally {
+        yield mongoose_1.default.disconnect();
         console.log('Disconnected from MongoDB');
     }
-};
-
+});
 // Chạy script
 addImageFields();
