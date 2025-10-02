@@ -93,7 +93,7 @@ const StatisticsDashboard: React.FC = () => {
         return;
       }
 
-      const response = await axios.get('https://idea-managment.onrender.com/api/ideas', {
+      const response = await api.get('/ideas', {
         headers: {
           Authorization: `Bearer ${token}`
         }

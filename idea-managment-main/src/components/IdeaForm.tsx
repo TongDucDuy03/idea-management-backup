@@ -111,7 +111,7 @@ const IdeaForm: React.FC = () => {
     if (!validateForm()) return;
 
     try {
-      const response = await axios.post('https://idea-managment.onrender.com/api/ideas', {
+      const response = await api.post('/ideas', {
         ...formData
       });
       setSuccess(true);

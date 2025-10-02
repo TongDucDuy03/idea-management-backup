@@ -1,7 +1,7 @@
 import axios from "axios";
 
-// Base URL cho API (ưu tiên lấy từ biến môi trường khi build)
-const BASE_URL = "http://172.104.39.94:5000/api";
+// Base URL cho API - sử dụng relative path để Nginx proxy tự động xử lý
+const BASE_URL = "/api";
 
 // Khởi tạo instance axios
 const api = axios.create({
