@@ -561,17 +561,17 @@ const ExportReportDialog: React.FC<ExportReportDialogProps> = ({
                 <!-- Bottom Row -->
                 <div class="bottom-row">
                     <div class="content-section">
-                        <div class="section-title">LỢI ÍCH</div>
+                        <div class="section-title">ĐÁNH GIÁ HIỆU QUẢ CẢI TIẾN</div>
                         <div class="section-content content-loi-ich ${(idea.benefitOutcome || '').length > 500 ? 'long-content' : ''}">${idea.benefitOutcome || 'Lợi ích đạt được...'}</div>
                     </div>
                     
                     <div class="content-section">
-                        <div class="section-title">ĐÁNH GIÁ</div>
-                        <div class="section-content content-danh-gia ${(idea.scalingOpportunity || '').length > 500 ? 'long-content' : ''}">${idea.scalingOpportunity || 'Đánh giá kết quả...'}</div>
+                        <div class="section-title">CƠ HỘI NHÂN RỘNG PHÁT TRIỂN</div>
+                        <div class="section-content content-danh-gia ${(idea.scalingOpportunity || '').length > 500 ? 'long-content' : ''}">${idea.scalingOpportunity || 'Đánh giá cơ hội nhân rộng...'}</div>
                     </div>
                     
                     <div class="content-section">
-                        <div class="section-title">CHI PHÍ</div>
+                        <div class="section-title">NGUỒN LỰC SỬ DỤNG & CHI PHÍ</div>
                         <div class="section-content content-chi-phi ${(idea.resourcesUsed || '').length > 500 ? 'long-content' : ''}">${idea.resourcesUsed || 'Chi phí thực hiện...'}</div>
                     </div>
                     
