@@ -1660,7 +1660,7 @@ const StatisticsDashboard: React.FC = () => {
             <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
               Top 10 Người có nhiều ý tưởng nhất
             </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, maxHeight: 300, overflowY: 'auto' }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, maxHeight: 470, overflowY: 'auto' }}>
               {topUsers.slice(0, 10).map((user, index) => (
                 <Box 
                   key={user.name} 

@@ -166,7 +166,7 @@ const ExportReportDialog: React.FC<ExportReportDialogProps> = ({
             width: 400px;
             border-left: 2px solid #000;
             display: flex;
-            height: 80px;
+tiền thì đã đag k có pải đi ứng xong sáng ra đã mất 50k xong vẫn chả ra sao.            height: 80px;
             border-right: 2px solid #000;
         }
         
@@ -491,7 +491,7 @@ const ExportReportDialog: React.FC<ExportReportDialogProps> = ({
                         
                     </div>
                     <div class="info-row">
-                        <span class="info-label">Người lâp:  ${idea.fullName || 'N/A'}</span>
+                        <span class="info-label">Người đề xuất:  ${idea.fullName || 'N/A'}</span>
                         
                     </div>
                     <div class="info-row">
