@@ -1,7 +1,11 @@
 import axios from "axios";
 
-// Base URL cho API - sử dụng relative path để Nginx proxy tự động xử lý
-const BASE_URL = "/api";
+// Base URL cho API
+// Trong development, kết nối trực tiếp đến backend local
+// Trong production, sử dụng relative path để Nginx proxy tự động xử lý
+const BASE_URL = process.env.NODE_ENV === 'development' 
+  ? 'http://localhost:5000/api' 
+  : '/api';
 
 // Khởi tạo instance axios
 const api = axios.create({
