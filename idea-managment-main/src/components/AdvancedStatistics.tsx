@@ -1161,7 +1161,7 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
                     tooltip: {
                       callbacks: {
                         label: function(context) {
-                          return `${context.dataset.label}: ${(context.parsed.y * 1000000).toLocaleString('vi-VN')} VND`;
+                          return `${context.dataset.label}: ${((context.parsed.y ?? 0) * 1000000).toLocaleString('vi-VN')} VND`;
                         }
                       }
                     }
@@ -1210,7 +1210,7 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
                     tooltip: {
                       callbacks: {
                         label: function(context) {
-                          return `${context.dataset.label}: ${(context.parsed.y * 1000000).toLocaleString('vi-VN')} VND`;
+                          return `${context.dataset.label}: ${((context.parsed.y ?? 0) * 1000000).toLocaleString('vi-VN')} VND`;
                         }
                       }
                     }
@@ -1259,7 +1259,7 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
                     tooltip: {
                       callbacks: {
                         label: function(context) {
-                          return `${context.dataset.label}: ${(context.parsed.y * 1000000).toLocaleString('vi-VN')} VND`;
+                          return `${context.dataset.label}: ${((context.parsed.y ?? 0) * 1000000).toLocaleString('vi-VN')} VND`;
                         }
                       }
                     }
@@ -1308,7 +1308,7 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
                     tooltip: {
                       callbacks: {
                         label: function(context) {
-                          return `${context.dataset.label}: ${(context.parsed.y * 1000000).toLocaleString('vi-VN')} VND`;
+                          return `${context.dataset.label}: ${((context.parsed.y ?? 0) * 1000000).toLocaleString('vi-VN')} VND`;
                         }
                       }
                     }
