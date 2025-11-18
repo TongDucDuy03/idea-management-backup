@@ -23,7 +23,6 @@ import {
 } from '@mui/material';
 import { DataGrid, GridColDef, GridRowHeightParams } from '@mui/x-data-grid';
 import { Edit as EditIcon, Delete as DeleteIcon, FileDownload as FileDownloadIcon, BarChart as BarChartIcon } from '@mui/icons-material';
-import axios from 'axios';
 import * as XLSX from 'xlsx';
 import { Idea } from '../types';
 import IdeaDialog from './IdeaDialog';
@@ -159,7 +158,7 @@ const AdminDashboard: React.FC = () => {
         return;
       }
 
-      const response = await axios.get('https://idea-managment.onrender.com/api/ideas', {
+      const response = await api.get('/ideas', {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -310,7 +309,7 @@ const AdminDashboard: React.FC = () => {
         return;
       }
 
-      await axios.put(`https://idea-managment.onrender.com/api/ideas/${id}`, {
+      await api.put(`/ideas/${id}`, {
         status
       }, {
         headers: {
@@ -339,7 +338,7 @@ const AdminDashboard: React.FC = () => {
         return;
       }
 
-      await axios.put(`https://idea-managment.onrender.com/api/ideas/${id}`, {
+      await api.put(`/ideas/${id}`, {
         implementationStatus
       }, {
         headers: {
@@ -366,7 +365,7 @@ const AdminDashboard: React.FC = () => {
           return;
         }
 
-        await axios.delete(`https://idea-managment.onrender.com/api/ideas/${id}`, {
+        await api.delete(`/ideas/${id}`, {
           headers: {
             Authorization: `Bearer ${token}`
           }
@@ -404,13 +403,13 @@ const AdminDashboard: React.FC = () => {
       }
 
       if (isEditMode && selectedIdea) {
-        await axios.put(`https://idea-managment.onrender.com/api/ideas/${selectedIdea._id}`, ideaData, {
+        await api.put(`/ideas/${selectedIdea._id}`, ideaData, {
           headers: {
             Authorization: `Bearer ${token}`
           }
         });
       } else {
-        await axios.post('https://idea-managment.onrender.com/api/ideas', ideaData, {
+        await api.post('/ideas', ideaData, {
           headers: {
             Authorization: `Bearer ${token}`
           }

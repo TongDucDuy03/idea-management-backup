@@ -41,7 +41,6 @@ import {
   CompareArrows as CompareArrowsIcon,
   BarChart as BarChartIcon
 } from '@mui/icons-material';
-import axios from 'axios';
 import api from '../api/config';
 import { Idea } from '../types';
 import AdvancedStatistics from './AdvancedStatistics';
@@ -93,7 +92,7 @@ const StatisticsDashboard: React.FC = () => {
         return;
       }
 
-      const response = await axios.get('https://idea-managment.onrender.com/api/ideas', {
+      const response = await api.get('/ideas', {
         headers: {
           Authorization: `Bearer ${token}`
         }

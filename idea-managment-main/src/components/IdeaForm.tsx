@@ -16,7 +16,6 @@ import {
   Card,
   CardContent
 } from '@mui/material';
-import axios from 'axios';
 import api from '../api/config';
 
 const departments = [
@@ -208,7 +207,7 @@ const IdeaForm: React.FC = () => {
         afterImageLength: formData.afterImage ? formData.afterImage.length : 0
       });
       
-      const response = await axios.post('https://idea-managment.onrender.com/api/ideas', submitData);
+      const response = await api.post('/ideas', submitData);
       setSuccess(true);
       setIdeaCode(response.data.ideaCode);
       setFormData({

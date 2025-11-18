@@ -15,7 +15,6 @@ import {
   Snackbar
 } from '@mui/material';
 import { FileDownload as FileDownloadIcon, CheckCircle as CheckCircleIcon } from '@mui/icons-material';
-import axios from 'axios';
 import api from '../api/config';
 import { Idea } from '../types';
 import jsPDF from 'jspdf';

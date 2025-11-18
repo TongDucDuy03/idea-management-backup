@@ -9,7 +9,6 @@ import {
   Box,
   Alert
 } from '@mui/material';
-import axios from 'axios';
 import api from '../api/config';
 
 const Login: React.FC = () => {
