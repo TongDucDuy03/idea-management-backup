@@ -57,15 +57,33 @@ interface AdvancedStatisticsProps {
   ideas: Idea[];
   timeRange: string;
   departmentFilter: string;
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({ 
   ideas, 
   timeRange, 
-  departmentFilter 
+  departmentFilter,
+  dateFrom,
+  dateTo
 }) => {
   const navigate = useNavigate();
   const [selectedMetric, setSelectedMetric] = useState('ideas');
+
+  // Helper function to build query string with date filters
+  const buildQuery = (additionalParams?: Record<string, string>) => {
+    const params = new URLSearchParams();
+    if (dateFrom) params.append('dateFrom', dateFrom);
+    if (dateTo) params.append('dateTo', dateTo);
+    if (dateFrom || dateTo) params.append('filterType', 'dateRange');
+    if (additionalParams) {
+      Object.entries(additionalParams).forEach(([key, value]) => {
+        params.append(key, value);
+      });
+    }
+    return params.toString();
+  };
   
   // Refs for charts to detect clicked elements
   const monthlyCountBarRef = useRef<any>(null);
@@ -84,20 +102,31 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
   const getFilteredIdeas = () => {
     let filtered = [...ideas];
 
-    // Filter by time range
-    const now = new Date();
-    if (timeRange === 'week') {
-      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      filtered = filtered.filter(idea => new Date(idea.submissionDate) >= weekAgo);
-    } else if (timeRange === 'month') {
-      const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      filtered = filtered.filter(idea => new Date(idea.submissionDate) >= monthAgo);
-    } else if (timeRange === 'quarter') {
-      const quarterAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-      filtered = filtered.filter(idea => new Date(idea.submissionDate) >= quarterAgo);
-    } else if (timeRange === 'year') {
-      const yearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-      filtered = filtered.filter(idea => new Date(idea.submissionDate) >= yearAgo);
+    // Filter by custom date range first (if provided)
+    if (dateFrom && dateTo) {
+      const from = new Date(dateFrom);
+      const to = new Date(dateTo);
+      to.setHours(23, 59, 59, 999); // Include entire end date
+      filtered = filtered.filter(idea => {
+        const ideaDate = new Date(idea.submissionDate);
+        return ideaDate >= from && ideaDate <= to;
+      });
+    } else {
+      // Filter by time range
+      const now = new Date();
+      if (timeRange === 'week') {
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        filtered = filtered.filter(idea => new Date(idea.submissionDate) >= weekAgo);
+      } else if (timeRange === 'month') {
+        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        filtered = filtered.filter(idea => new Date(idea.submissionDate) >= monthAgo);
+      } else if (timeRange === 'quarter') {
+        const quarterAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        filtered = filtered.filter(idea => new Date(idea.submissionDate) >= quarterAgo);
+      } else if (timeRange === 'year') {
+        const yearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+        filtered = filtered.filter(idea => new Date(idea.submissionDate) >= yearAgo);
+      }
     }
 
     // Filter by department
@@ -128,8 +157,8 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
   const isImplementedFinal = (status?: string) => status === 'Lập báo cáo A3' || status === 'Phê duyệt khen thưởng' || status === 'Đã khen thưởng' || status === 'Không đạt';
   const isDeploying = (status?: string) => status === 'Đang triển khai';
 
-  // Department performance analysis (quality-focused) - based on implementation success
-  const departmentPerformance = filteredIdeas.reduce((acc, idea) => {
+  // Department performance analysis (quality-focused) - based on ALL ideas (not filtered by time)
+  const departmentPerformance = ideas.reduce((acc, idea) => {
     const dept = idea.department || 'Khác';
     if (!acc[dept]) {
       acc[dept] = {
@@ -212,10 +241,10 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
     return denominator > 0 ? (numerator / denominator) * 100 : 0;
   });
 
-  // Derived implementation aggregates for rankings and rates
+  // Derived implementation aggregates for rankings and rates (using ALL ideas, not filtered by time)
   type ImplStats = { total: number; approved: number; deploying: number; implemented: number; implementedFinal: number; successful: number };
 
-  const deptImplStats: Record<string, ImplStats> = filteredIdeas.reduce((acc, idea) => {
+  const deptImplStats: Record<string, ImplStats> = ideas.reduce((acc, idea) => {
     const key = idea.department || 'Khác';
     if (!acc[key]) acc[key] = { total: 0, approved: 0, deploying: 0, implemented: 0, implementedFinal: 0, successful: 0 } as ImplStats;
     acc[key].total += 1;
@@ -229,6 +258,19 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
 
   const userImplStats: Record<string, ImplStats> = filteredIdeas.reduce((acc, idea) => {
     const key = idea.fullName || 'Không rõ';
+    if (!acc[key]) acc[key] = { total: 0, approved: 0, deploying: 0, implemented: 0, implementedFinal: 0, successful: 0 } as ImplStats;
+    acc[key].total += 1;
+    if (idea.status === 'approved') acc[key].approved += 1;
+    if (isDeploying((idea as any).implementationStatus)) acc[key].deploying += 1;
+    if (isImplemented((idea as any).implementationStatus)) acc[key].implemented += 1;
+    if (isImplementedFinal((idea as any).implementationStatus)) acc[key].implementedFinal += 1;
+    if (isSuccessful((idea as any).implementationStatus)) acc[key].successful += 1;
+    return acc;
+  }, {} as Record<string, ImplStats>);
+
+  // Department implementation stats for ranking table (using filtered ideas - affected by time filter)
+  const deptImplStatsFiltered: Record<string, ImplStats> = filteredIdeas.reduce((acc, idea) => {
+    const key = idea.department || 'Khác';
     if (!acc[key]) acc[key] = { total: 0, approved: 0, deploying: 0, implemented: 0, implementedFinal: 0, successful: 0 } as ImplStats;
     acc[key].total += 1;
     if (idea.status === 'approved') acc[key].approved += 1;
@@ -299,8 +341,24 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
     ]
   };
 
-  // Department total counts (quantity-focused)
-  const sortedDepartmentsByTotal = Object.entries(departmentPerformance)
+  // Department total counts (quantity-focused) - using FILTERED ideas (affected by time filter)
+  const departmentPerformanceFiltered = filteredIdeas.reduce((acc, idea) => {
+    const dept = idea.department || 'Khác';
+    if (!acc[dept]) {
+      acc[dept] = {
+        total: 0,
+        implemented: 0,
+        successful: 0,
+        successRate: 0
+      } as any;
+    }
+    acc[dept].total++;
+    if (isImplemented((idea as any).implementationStatus)) acc[dept].implemented++;
+    if (isSuccessful((idea as any).implementationStatus)) acc[dept].successful++;
+    return acc;
+  }, {} as Record<string, { total: number; implemented: number; successful: number; successRate: number }>);
+
+  const sortedDepartmentsByTotal = Object.entries(departmentPerformanceFiltered)
     .sort(([,a], [,b]) => b.total - a.total);
 
   const departmentTotalCountData = {
@@ -402,10 +460,10 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
     ]
   };
 
-  // Yearly distribution and monthly counts (current year)
+  // Yearly distribution and monthly counts (current year ONLY - always filter by current year, not time range)
   const now = new Date();
   const currentYear = now.getFullYear();
-  const ideasThisYear = filteredIdeas.filter(i => {
+  const ideasThisYear = ideas.filter(i => {
     const d = new Date(i.submissionDate);
     return d.getFullYear() === currentYear;
   });
@@ -591,9 +649,9 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
     },
   };
 
-  // Sort state for Department Ranking Table (default: by success rate desc)
+  // Sort state for Department Ranking Table (default: by total desc)
   type DeptSortKey = 'department' | 'total' | 'approved' | 'deploying' | 'implemented' | 'successful' | 'rate';
-  const [deptOrderBy, setDeptOrderBy] = useState<DeptSortKey>('rate');
+  const [deptOrderBy, setDeptOrderBy] = useState<DeptSortKey>('total');
   const [deptOrder, setDeptOrder] = useState<'asc' | 'desc'>('desc');
 
   const handleDeptSort = (key: DeptSortKey) => {
@@ -682,7 +740,7 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
         <Grid item xs={12} md={6}>
           <Card elevation={3} sx={{ p: 3, height: 400 }}>
             <Typography variant="h6" gutterBottom align="center" sx={{ fontWeight: 'bold' }}>
-              Số ý tưởng theo từng tháng (năm {currentYear})
+              Số ý tưởng theo từng tháng
             </Typography>
             <Box sx={{ height: 300, mt: 2 }}>
               <Bar 
@@ -825,7 +883,7 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
           </Card>
         </Grid> */}
         
-        {/* Department Performance Table (sorted ascending by implementation rate) */}
+        {/* Department Performance Table (sorted by total ideas desc) */}
         <Grid item xs={12}>
           <Card elevation={3} sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
@@ -890,20 +948,10 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
                         <strong>Triển khai thành công</strong>
                       </TableSortLabel>
                     </TableCell>
-                    <TableCell align="center" sortDirection={deptOrderBy === 'rate' ? deptOrder : false as any}>
-                      <TableSortLabel
-                        active={deptOrderBy === 'rate'}
-                        direction={deptOrderBy === 'rate' ? deptOrder : 'asc'}
-                        onClick={() => handleDeptSort('rate')}
-                      >
-                        <strong>Tỷ lệ triển khai </strong>
-                      </TableSortLabel>
-                    </TableCell>
-                    <TableCell align="center"><strong>Thanh tiến độ</strong></TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {(Object.entries(deptImplStats) as Array<[string, ImplStats]>)
+                  {(Object.entries(deptImplStatsFiltered) as Array<[string, ImplStats]>)
                     .sort((a,b) => {
                       const cmp = getDeptComparator(deptOrderBy)(a,b);
                       return deptOrder === 'asc' ? cmp : -cmp;
@@ -915,7 +963,10 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
                         cursor: 'pointer',
                         '&:hover': { backgroundColor: '#f5f5f5' }
                       }}
-                      onClick={() => navigate(`/admin?department=${encodeURIComponent(dept)}`)}
+                      onClick={() => {
+                        const query = buildQuery({ 'department': dept });
+                        navigate(`/admin?${query}`);
+                      }}
                     >
                       <TableCell>
                         <Chip 
@@ -943,27 +994,6 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
                       </TableCell>
                       <TableCell align="center">
                         <Chip label={data.successful} color="success" size="small" />
-                      </TableCell>
-                      <TableCell align="center">
-                        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                          {(((data.approved > 0 ? data.implementedFinal / data.approved : 0) * 100)).toFixed(1)}%
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                      </TableCell>
-                      <TableCell align="center" sx={{ minWidth: 150 }}>
-                        <LinearProgress 
-                          variant="determinate" 
-                          value={(data.approved > 0 ? (data.implementedFinal / data.approved) * 100 : 0)} 
-                          sx={{ 
-                            height: 8, 
-                            borderRadius: 4,
-                            backgroundColor: '#e0e0e0',
-                            '& .MuiLinearProgress-bar': {
-                              backgroundColor: ((data.approved > 0 ? (data.implementedFinal / data.approved) * 100 : 0) > 50) ? '#4CAF50' : ((data.approved > 0 ? (data.implementedFinal / data.approved) * 100 : 0) > 25 ? '#FF9800' : '#F44336')
-                            }
-                          }} 
-                        />
                       </TableCell>
                     </TableRow>
                   ))}

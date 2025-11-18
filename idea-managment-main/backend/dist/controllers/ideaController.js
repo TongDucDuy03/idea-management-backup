@@ -17,7 +17,7 @@ const Idea_1 = __importDefault(require("../models/Idea"));
 const emailService_1 = require("../services/emailService");
 const createIdea = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { fullName, department, idea, solution, benefit, status, implementationStatus, implementationDepartment, note, benefitValue, rewardAmount } = req.body;
+        const { fullName, department, idea, solution, benefit, status, implementationStatus, implementationDepartment, note, benefitValue, rewardAmount, rewardApprovalDate, beforeImage, afterImage } = req.body;
         // Generate idea code (without name prefix)
         const timestamp = new Date().getTime();
         const randomNum = Math.floor(Math.random() * 1000);
@@ -35,7 +35,10 @@ const createIdea = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
             implementationDepartment,
             note,
             benefitValue: benefitValue || 0,
-            rewardAmount: rewardAmount || 0
+            rewardAmount: rewardAmount || 0,
+            rewardApprovalDate: rewardApprovalDate ? new Date(rewardApprovalDate) : undefined,
+            beforeImage: beforeImage || undefined,
+            afterImage: afterImage || undefined
         });
         const savedIdea = yield newIdea.save();
         // Fire-and-forget email (do not block response)
@@ -91,16 +94,38 @@ const updateIdea = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
             id: req.params.id,
             beforeImage: req.body.beforeImage ? 'Present' : 'Missing',
             afterImage: req.body.afterImage ? 'Present' : 'Missing',
+            rewardApprovalDate: req.body.rewardApprovalDate ? 'Present' : 'Missing',
             bodyKeys: Object.keys(req.body)
         });
-        const idea = yield Idea_1.default.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        // Prepare update data
+        const updateData = Object.assign({}, req.body);
+        // Convert rewardApprovalDate to Date if it's a string
+        if (updateData.rewardApprovalDate) {
+            updateData.rewardApprovalDate = new Date(updateData.rewardApprovalDate);
+        }
+        else if (updateData.rewardApprovalDate === null || updateData.rewardApprovalDate === '') {
+            // Allow clearing the date
+            updateData.rewardApprovalDate = null;
+        }
+        // Handle beforeImage - allow null to clear, or keep string value
+        if (updateData.beforeImage === null || updateData.beforeImage === '') {
+            updateData.beforeImage = null;
+        }
+        // If it's a string (base64), keep it as is
+        // Handle afterImage - allow null to clear, or keep string value
+        if (updateData.afterImage === null || updateData.afterImage === '') {
+            updateData.afterImage = null;
+        }
+        // If it's a string (base64), keep it as is
+        const idea = yield Idea_1.default.findByIdAndUpdate(req.params.id, updateData, { new: true });
         if (!idea) {
             return res.status(404).json({ message: 'Không tìm thấy ý tưởng' });
         }
         console.log('Updated idea:', {
             id: idea._id,
             beforeImage: idea.beforeImage ? 'Present' : 'Missing',
-            afterImage: idea.afterImage ? 'Present' : 'Missing'
+            afterImage: idea.afterImage ? 'Present' : 'Missing',
+            rewardApprovalDate: idea.rewardApprovalDate ? 'Present' : 'Missing'
         });
         res.json(idea);
     }

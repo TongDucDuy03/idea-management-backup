@@ -93,7 +93,7 @@ const StatisticsDashboard: React.FC = () => {
         return;
       }
 
-      const response = await api.get('/ideas', {
+      const response = await axios.get('https://idea-managment.onrender.com/api/ideas', {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -175,8 +175,8 @@ const StatisticsDashboard: React.FC = () => {
     return new Date(dateFrom) <= new Date(dateTo);
   };
 
-  // Filter data based on time range, department, and custom date range
-  const getFilteredIdeas = () => {
+  // Helper to filter by submission date (thời gian nộp) – dùng chung cho hầu hết thống kê
+  const getFilteredIdeasBySubmissionDate = () => {
     let filtered = [...ideas];
 
     // Filter by custom date range (priority over timeRange)
@@ -219,17 +219,94 @@ const StatisticsDashboard: React.FC = () => {
     return filtered;
   };
 
-  const filteredIdeas = getFilteredIdeas();
+  // Helper để lọc theo ngày duyệt khen thưởng (rewardApprovalDate)
+  // Dùng chung UI date filter, nhưng áp dụng trên rewardApprovalDate thay vì submissionDate
+  const getFilteredIdeasByRewardDate = () => {
+    // Chỉ quan tâm các ý tưởng có ngày duyệt khen thưởng
+    let filtered = ideas.filter(idea => (idea as any).rewardApprovalDate);
+
+    // Filter by custom date range trên rewardApprovalDate
+    if (dateFrom && dateTo) {
+      const fromMs = new Date(dateFrom).setHours(0, 0, 0, 0);
+      const toMs = new Date(dateTo).setHours(23, 59, 59, 999);
+      filtered = filtered.filter(idea => {
+        const rewardDate = (idea as any).rewardApprovalDate;
+        if (!rewardDate) return false;
+        const rewardMs = new Date(rewardDate).getTime();
+        return rewardMs >= fromMs && rewardMs <= toMs;
+      });
+    } else if (dateFrom) {
+      const fromMs = new Date(dateFrom).setHours(0, 0, 0, 0);
+      filtered = filtered.filter(idea => {
+        const rewardDate = (idea as any).rewardApprovalDate;
+        if (!rewardDate) return false;
+        return new Date(rewardDate).getTime() >= fromMs;
+      });
+    } else if (dateTo) {
+      const toMs = new Date(dateTo).setHours(23, 59, 59, 999);
+      filtered = filtered.filter(idea => {
+        const rewardDate = (idea as any).rewardApprovalDate;
+        if (!rewardDate) return false;
+        return new Date(rewardDate).getTime() <= toMs;
+      });
+    } else {
+      // Nếu không chọn khoảng ngày cụ thể, áp dụng timeRange lên rewardApprovalDate
+      const now = new Date();
+      if (timeRange === 'week') {
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        filtered = filtered.filter(idea => {
+          const rewardDate = (idea as any).rewardApprovalDate;
+          if (!rewardDate) return false;
+          return new Date(rewardDate) >= weekAgo;
+        });
+      } else if (timeRange === 'month') {
+        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        filtered = filtered.filter(idea => {
+          const rewardDate = (idea as any).rewardApprovalDate;
+          if (!rewardDate) return false;
+          return new Date(rewardDate) >= monthAgo;
+        });
+      } else if (timeRange === 'quarter') {
+        const quarterAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        filtered = filtered.filter(idea => {
+          const rewardDate = (idea as any).rewardApprovalDate;
+          if (!rewardDate) return false;
+          return new Date(rewardDate) >= quarterAgo;
+        });
+      } else if (timeRange === 'year') {
+        const yearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+        filtered = filtered.filter(idea => {
+          const rewardDate = (idea as any).rewardApprovalDate;
+          if (!rewardDate) return false;
+          return new Date(rewardDate) >= yearAgo;
+        });
+      }
+    }
+
+    // Filter by department (giống nhau)
+    if (departmentFilter !== 'all') {
+      filtered = filtered.filter(idea => idea.department === departmentFilter);
+    }
+
+    return filtered;
+  };
+
+  const filteredIdeas = getFilteredIdeasBySubmissionDate();
+  const rewardDateFilteredIdeas = getFilteredIdeasByRewardDate();
 
   // Comparison calculation functions
+  // Các hàm dưới đây dùng cho phần so sánh (comparison) và các thẻ giá trị.
+  // Theo yêu cầu mới: lọc theo rewardApprovalDate thay vì submissionDate.
   const getCurrentMonthData = () => {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
     
     return ideas.filter(idea => {
-      const submissionDate = new Date(idea.submissionDate);
-      return submissionDate >= startOfMonth && submissionDate <= endOfMonth;
+      const rewardDate = (idea as any).rewardApprovalDate;
+      if (!rewardDate) return false;
+      const d = new Date(rewardDate);
+      return d >= startOfMonth && d <= endOfMonth;
     });
   };
 
@@ -239,8 +316,10 @@ const StatisticsDashboard: React.FC = () => {
     const endOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
     
     return ideas.filter(idea => {
-      const submissionDate = new Date(idea.submissionDate);
-      return submissionDate >= startOfPrevMonth && submissionDate <= endOfPrevMonth;
+      const rewardDate = (idea as any).rewardApprovalDate;
+      if (!rewardDate) return false;
+      const d = new Date(rewardDate);
+      return d >= startOfPrevMonth && d <= endOfPrevMonth;
     });
   };
 
@@ -250,8 +329,10 @@ const StatisticsDashboard: React.FC = () => {
     const endOfYear = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
     
     return ideas.filter(idea => {
-      const submissionDate = new Date(idea.submissionDate);
-      return submissionDate >= startOfYear && submissionDate <= endOfYear;
+      const rewardDate = (idea as any).rewardApprovalDate;
+      if (!rewardDate) return false;
+      const d = new Date(rewardDate);
+      return d >= startOfYear && d <= endOfYear;
     });
   };
 
@@ -261,24 +342,33 @@ const StatisticsDashboard: React.FC = () => {
     const endOfPrevYear = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
     
     return ideas.filter(idea => {
-      const submissionDate = new Date(idea.submissionDate);
-      return submissionDate >= startOfPrevYear && submissionDate <= endOfPrevYear;
+      const rewardDate = (idea as any).rewardApprovalDate;
+      if (!rewardDate) return false;
+      const d = new Date(rewardDate);
+      return d >= startOfPrevYear && d <= endOfPrevYear;
     });
   };
 
   // Helpers for period filtering based on selections
+  // DÙNG rewardApprovalDate để phục vụ so sánh & giá trị
   const filterByYear = (list: Idea[], y: number) => list.filter(i => {
-    const d = new Date(i.submissionDate);
+    const rewardDate = (i as any).rewardApprovalDate;
+    if (!rewardDate) return false;
+    const d = new Date(rewardDate);
     return d.getFullYear() === y;
   });
   const filterByQuarter = (list: Idea[], y: number, q: number) => list.filter(i => {
-    const d = new Date(i.submissionDate);
+    const rewardDate = (i as any).rewardApprovalDate;
+    if (!rewardDate) return false;
+    const d = new Date(rewardDate);
     const year = d.getFullYear();
     const quarter = Math.floor(d.getMonth() / 3) + 1;
     return year === y && quarter === q;
   });
   const filterByMonth = (list: Idea[], y: number, m: number) => list.filter(i => {
-    const d = new Date(i.submissionDate);
+    const rewardDate = (i as any).rewardApprovalDate;
+    if (!rewardDate) return false;
+    const d = new Date(rewardDate);
     const year = d.getFullYear();
     const month = d.getMonth() + 1;
     return year === y && month === m;
@@ -404,13 +494,59 @@ const StatisticsDashboard: React.FC = () => {
     }
   };
 
+  // Helper: build date filter query string từ bộ lọc hiện tại
+  const buildDateFilterQuery = (additionalParams?: Record<string, string>) => {
+    const params = new URLSearchParams(additionalParams || {});
+    
+    // Nếu đang dùng custom date range, ưu tiên dùng
+    if (dateFrom) params.set('dateFrom', dateFrom);
+    if (dateTo) params.set('dateTo', dateTo);
+
+    // Nếu chưa chọn custom date mà có timeRange, chuyển thành khoảng ngày tương ứng
+    if (!dateFrom && !dateTo && timeRange !== 'all') {
+      const today = new Date();
+      let from: string | null = null;
+      let to: string | null = today.toISOString().split('T')[0];
+
+      if (timeRange === 'week') {
+        const weekStart = new Date(today);
+        weekStart.setDate(today.getDate() - 7);
+        from = weekStart.toISOString().split('T')[0];
+      } else if (timeRange === 'month') {
+        const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+        from = monthStart.toISOString().split('T')[0];
+      } else if (timeRange === 'quarter') {
+        const quarterStart = new Date(today.getFullYear(), Math.floor(today.getMonth() / 3) * 3, 1);
+        from = quarterStart.toISOString().split('T')[0];
+      } else if (timeRange === 'year') {
+        const yearStart = new Date(today.getFullYear(), 0, 1);
+        from = yearStart.toISOString().split('T')[0];
+      }
+
+      if (from) params.set('dateFrom', from);
+      if (to) params.set('dateTo', to);
+    }
+
+    return params.toString();
+  };
+
+  // Helper: build query string để điều hướng sang Admin, giữ nguyên logic lọc theo rewardApprovalDate
+  const buildRewardFilterQueryForAdmin = () => {
+    const additionalParams = {
+      'implementationStatus': 'Đã khen thưởng',
+      'filterType': 'reward'
+    };
+    return buildDateFilterQuery(additionalParams);
+  };
+
   // Calculate statistics (updated per requirements)
   const totalIdeas = filteredIdeas.length;
   const approvedForImplementation = filteredIdeas.filter(idea => idea.status === 'approved').length; // Quyết định phê duyệt = Phê duyệt triển khai
   const deployingIdeas = filteredIdeas.filter(idea => idea.implementationStatus === 'Đang triển khai').length; // Trạng thái triển khai = Đang triển khai
   const a3Ideas = filteredIdeas.filter(idea => idea.implementationStatus === 'Lập báo cáo A3').length; // Trạng thái triển khai = Lập báo cáo A3
   const rewardDecisionIdeas = filteredIdeas.filter(idea => idea.implementationStatus === 'Phê duyệt khen thưởng').length; // Phê duyệt khen thưởng
-  const rewardedIdeas = filteredIdeas.filter(idea => idea.implementationStatus === 'Đã khen thưởng').length; // Đã khen thưởng
+  // Ý tưởng đã khen thưởng: lọc theo rewardApprovalDate (rewardDateFilteredIdeas) thay vì submissionDate
+  const rewardedIdeas = rewardDateFilteredIdeas.filter(idea => idea.implementationStatus === 'Đã khen thưởng').length; // Đã khen thưởng (lọc theo ngày duyệt khen thưởng)
   const a3SuccessIdeas = a3Ideas; // Lập báo cáo A3
   const waitingDeployIdeas = filteredIdeas.filter(idea => idea.implementationStatus === 'Phản hồi phê duyệt').length; // Chờ triển khai
   const waitingApprovalIdeas = filteredIdeas.filter(idea => idea.status === 'pending').length; // Chờ phê duyệt (quyết định phê duyệt = chưa phê duyệt)
@@ -435,7 +571,9 @@ const StatisticsDashboard: React.FC = () => {
     return acc;
   }, {} as Record<string, number>);
 
+  // Chỉ giữ các phòng ban có ít nhất 2 ý tưởng
   const topDepartments = Object.entries(departmentStats)
+    .filter(([, count]) => count > 1)
     .sort(([,a], [,b]) => b - a)
     .slice(0, 10);
 
@@ -462,13 +600,14 @@ const StatisticsDashboard: React.FC = () => {
     acc[userName][idea.implementationStatus as keyof typeof acc[typeof userName]]++;
     return acc;
   }, {} as Record<string, { name: string; total: number; 'Đề xuất mới': number; 'Xem xét': number; 'Phê duyệt': number; 'Phản hồi phê duyệt': number; 'Đang triển khai': number; 'Lập báo cáo A3': number; 'Phê duyệt khen thưởng': number; 'Đã khen thưởng': number; 'Không đạt': number; department: string }>);
-
+  // Chỉ giữ những người có ít nhất 2 ý tưởng
   const topUsers = Object.values(userStats)
+    .filter(user => user.total > 1)
     .sort((a, b) => b.total - a.total)
     .slice(0, 15); // Top 15 users
 
-  // Monthly trend data
-  const monthlyData = filteredIdeas.reduce((acc, idea) => {
+  // Monthly trend data (ALL ideas, not filtered by time - shows complete history)
+  const monthlyData = ideas.reduce((acc, idea) => {
     const date = new Date(idea.submissionDate);
     const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
     if (!acc[monthKey]) {
@@ -1303,7 +1442,10 @@ const StatisticsDashboard: React.FC = () => {
               },
               transition: 'all 0.2s'
             }}
-            onClick={() => navigate('/admin')}
+            onClick={() => {
+              const query = buildDateFilterQuery();
+              navigate(`/admin?${query}`);
+            }}
           >
             <CardContent>
               <Typography variant="h3" color="primary" sx={{ fontWeight: 'bold' }}>{totalIdeas}</Typography>
@@ -1317,7 +1459,10 @@ const StatisticsDashboard: React.FC = () => {
           <Card 
             elevation={3} 
             sx={{ textAlign: 'center', p: 2, cursor: 'pointer', '&:hover': { backgroundColor: '#f5f5f5', transform: 'translateY(-2px)', boxShadow: 6 }, transition: 'all 0.2s' }}
-            onClick={() => navigate('/admin?status=pending')}
+            onClick={() => {
+              const query = buildDateFilterQuery({ 'status': 'pending' });
+              navigate(`/admin?${query}`);
+            }}
           >
             <CardContent>
               <Typography variant="h3" color="warning.main" sx={{ fontWeight: 'bold' }}>{waitingApprovalIdeas}</Typography>
@@ -1341,7 +1486,10 @@ const StatisticsDashboard: React.FC = () => {
               },
               transition: 'all 0.2s'
             }}
-            onClick={() => navigate('/admin?status=approved')}
+            onClick={() => {
+              const query = buildDateFilterQuery({ 'status': 'approved' });
+              navigate(`/admin?${query}`);
+            }}
           >
             <CardContent>
               <Typography variant="h3" color="success.main" sx={{ fontWeight: 'bold' }}>{approvedForImplementation}</Typography>
@@ -1356,7 +1504,10 @@ const StatisticsDashboard: React.FC = () => {
           <Card 
             elevation={3} 
             sx={{ textAlign: 'center', p: 2, cursor: 'pointer', '&:hover': { backgroundColor: '#f5f5f5', transform: 'translateY(-2px)', boxShadow: 6 }, transition: 'all 0.2s' }}
-            onClick={() => navigate('/admin?implementationStatus=Phản hồi phê duyệt')}
+            onClick={() => {
+              const query = buildDateFilterQuery({ 'implementationStatus': 'Phản hồi phê duyệt' });
+              navigate(`/admin?${query}`);
+            }}
           >
             <CardContent>
               <Typography variant="h3" color="info.main" sx={{ fontWeight: 'bold' }}>{waitingDeployIdeas}</Typography>
@@ -1380,7 +1531,10 @@ const StatisticsDashboard: React.FC = () => {
               },
               transition: 'all 0.2s'
             }}
-            onClick={() => navigate('/admin?implementationStatus=Đang triển khai')}
+            onClick={() => {
+              const query = buildDateFilterQuery({ 'implementationStatus': 'Đang triển khai' });
+              navigate(`/admin?${query}`);
+            }}
           >
             <CardContent>
               <Typography variant="h3" color="info.main" sx={{ fontWeight: 'bold' }}>{deployingIdeas}</Typography>
@@ -1404,7 +1558,10 @@ const StatisticsDashboard: React.FC = () => {
               },
               transition: 'all 0.2s'
             }}
-            onClick={() => navigate('/admin?implementationStatus=Lập báo cáo A3')}
+            onClick={() => {
+              const query = buildDateFilterQuery({ 'implementationStatus': 'Lập báo cáo A3' });
+              navigate(`/admin?${query}`);
+            }}
           >
             <CardContent>
               <Typography variant="h3" color="warning.main" sx={{ fontWeight: 'bold' }}>{a3Ideas}</Typography>
@@ -1414,7 +1571,7 @@ const StatisticsDashboard: React.FC = () => {
         </Grid>
 
 
-        {/* Số ý tưởng đã khen thưởng (implementationStatus=Đã khen thưởng) */}
+        {/* Số ý tưởng đã khen thưởng (implementationStatus=Đã khen thưởng) - lọc theo rewardApprovalDate */}
         <Grid item xs={12} sm={6} md={3}>
           <Card 
             elevation={3} 
@@ -1429,7 +1586,10 @@ const StatisticsDashboard: React.FC = () => {
               },
               transition: 'all 0.2s'
             }}
-            onClick={() => navigate('/admin?implementationStatus=Đã khen thưởng')}
+            onClick={() => {
+              const query = buildRewardFilterQueryForAdmin();
+              navigate(`/admin?${query}`);
+            }}
           >
             <CardContent>
               <Typography variant="h3" color="secondary" sx={{ fontWeight: 'bold' }}>{rewardedIdeas}</Typography>
@@ -1479,13 +1639,19 @@ const StatisticsDashboard: React.FC = () => {
             </Typography>
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6}>
-                <Card elevation={1} sx={{ p: 2, textAlign: 'center', cursor: 'pointer' }} onClick={() => navigate('/admin?implementationStatus=Phản hồi phê duyệt')}>
+                <Card elevation={1} sx={{ p: 2, textAlign: 'center', cursor: 'pointer' }} onClick={() => {
+                  const query = buildDateFilterQuery({ 'implementationStatus': 'Phản hồi phê duyệt' });
+                  navigate(`/admin?${query}`);
+                }}>
                   <Typography variant="h4" color="info.main" sx={{ fontWeight: 'bold' }}>{waitingDeployIdeas}</Typography>
                   <Typography variant="body1" color="text.secondary">Ý tưởng chờ triển khai</Typography>
                 </Card>
               </Grid>
               <Grid item xs={12} sm={6}>
-                <Card elevation={1} sx={{ p: 2, textAlign: 'center', cursor: 'pointer' }} onClick={() => navigate('/admin?implementationStatus=Phê duyệt')}>
+                <Card elevation={1} sx={{ p: 2, textAlign: 'center', cursor: 'pointer' }} onClick={() => {
+                  const query = buildDateFilterQuery({ 'implementationStatus': 'Phê duyệt' });
+                  navigate(`/admin?${query}`);
+                }}>
                   <Typography variant="h4" color="warning.main" sx={{ fontWeight: 'bold' }}>{waitingApprovalIdeas}</Typography>
                   <Typography variant="body1" color="text.secondary">Số ý tưởng chờ phê duyệt triển khai</Typography>
                 </Card>
@@ -1513,7 +1679,8 @@ const StatisticsDashboard: React.FC = () => {
                   const statusMap = ['Đề xuất mới', 'Xem xét', 'Phê duyệt', 'Phản hồi phê duyệt', 'Đang triển khai', 'Lập báo cáo A3', 'Phê duyệt khen thưởng', 'Đã khen thưởng', 'Không đạt'];
                   const status = statusMap[index];
                   if (status) {
-                    navigate(`/admin?status=${encodeURIComponent(status)}`);
+                    const query = buildDateFilterQuery({ 'implementationStatus': status });
+                    navigate(`/admin?${query}`);
                   }
                 }}
               />
@@ -1540,7 +1707,8 @@ const StatisticsDashboard: React.FC = () => {
                   const index = (elements[0] as any).index as number;
                   const dept = topDepartments[index]?.[0];
                   if (dept) {
-                    navigate(`/admin?department=${encodeURIComponent(dept)}`);
+                    const query = buildDateFilterQuery({ 'department': dept });
+                    navigate(`/admin?${query}`);
                   }
                 }}
               />
@@ -1570,7 +1738,8 @@ const StatisticsDashboard: React.FC = () => {
                     const [year, month] = monthLabel.split('-');
                     const startDate = `${year}-${month}-01`;
                     const endDate = new Date(parseInt(year), parseInt(month), 0).toISOString().split('T')[0];
-                    navigate(`/admin?dateFrom=${startDate}&dateTo=${endDate}`);
+                    const query = buildDateFilterQuery({ 'filterType': 'dateRange' });
+                    navigate(`/admin?${query}&dateFrom=${startDate}&dateTo=${endDate}`);
                   }
                 }}
               />
@@ -1643,7 +1812,10 @@ const StatisticsDashboard: React.FC = () => {
                       backgroundColor: '#f5f5f5'
                     }
                   }}
-                  onClick={() => navigate(`/admin?department=${encodeURIComponent(dept)}`)}
+                  onClick={() => {
+                    const query = buildDateFilterQuery({ 'department': dept });
+                    navigate(`/admin?${query}`);
+                  }}
                 >
                   <Typography variant="body2" sx={{ flex: 1, mr: 1 }}>
                     {index + 1}. {dept.length > 30 ? dept.substring(0, 30) + '...' : dept}
@@ -1677,7 +1849,10 @@ const StatisticsDashboard: React.FC = () => {
                       backgroundColor: index < 3 ? '#eeeeee' : '#f5f5f5'
                     }
                   }}
-                  onClick={() => navigate(`/admin?fullName=${encodeURIComponent(user.name)}`)}
+                  onClick={() => {
+                    const query = buildDateFilterQuery({ 'fullName': user.name });
+                    navigate(`/admin?${query}`);
+                  }}
                 >
                   <Box sx={{ flex: 1, mr: 1 }}>
                     <Typography variant="body2" sx={{ fontWeight: index < 3 ? 'bold' : 'normal' }}>
@@ -1702,6 +1877,8 @@ const StatisticsDashboard: React.FC = () => {
             ideas={ideas}
             timeRange={timeRange}
             departmentFilter={departmentFilter}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
           />
         </Box>
       )}

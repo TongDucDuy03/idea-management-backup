@@ -13,6 +13,7 @@ export interface Idea {
   note?: string;
   benefitValue?: number; // Giá trị làm lợi (VND)
   rewardAmount?: number; // Tiền thưởng (VND)
+  rewardApprovalDate?: Date; // Ngày duyệt khen thưởng
   // New fields
   benefitOutcome?: string; // Lợi ích mang lại (mô tả)
   resourcesUsed?: string; // Nguồn lực sử dụng

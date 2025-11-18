@@ -15,7 +15,10 @@ export const createIdea = async (req: Request, res: Response) => {
       implementationDepartment, 
       note,
       benefitValue,
-      rewardAmount
+      rewardAmount,
+      rewardApprovalDate,
+      beforeImage,
+      afterImage
     } = req.body;
     
     // Generate idea code (without name prefix)
@@ -36,7 +39,10 @@ export const createIdea = async (req: Request, res: Response) => {
       implementationDepartment,
       note,
       benefitValue: benefitValue || 0,
-      rewardAmount: rewardAmount || 0
+      rewardAmount: rewardAmount || 0,
+      rewardApprovalDate: rewardApprovalDate ? new Date(rewardApprovalDate) : undefined,
+      beforeImage: beforeImage || undefined,
+      afterImage: afterImage || undefined
     });
 
     const savedIdea = await newIdea.save();
@@ -102,12 +108,36 @@ export const updateIdea = async (req: Request, res: Response) => {
       id: req.params.id,
       beforeImage: req.body.beforeImage ? 'Present' : 'Missing',
       afterImage: req.body.afterImage ? 'Present' : 'Missing',
+      rewardApprovalDate: req.body.rewardApprovalDate ? 'Present' : 'Missing',
       bodyKeys: Object.keys(req.body)
     });
 
+    // Prepare update data
+    const updateData: any = { ...req.body };
+    
+    // Convert rewardApprovalDate to Date if it's a string
+    if (updateData.rewardApprovalDate) {
+      updateData.rewardApprovalDate = new Date(updateData.rewardApprovalDate);
+    } else if (updateData.rewardApprovalDate === null || updateData.rewardApprovalDate === '') {
+      // Allow clearing the date
+      updateData.rewardApprovalDate = null;
+    }
+    
+    // Handle beforeImage - allow null to clear, or keep string value
+    if (updateData.beforeImage === null || updateData.beforeImage === '') {
+      updateData.beforeImage = null;
+    }
+    // If it's a string (base64), keep it as is
+    
+    // Handle afterImage - allow null to clear, or keep string value
+    if (updateData.afterImage === null || updateData.afterImage === '') {
+      updateData.afterImage = null;
+    }
+    // If it's a string (base64), keep it as is
+
     const idea = await Idea.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      updateData,
       { new: true }
     );
     if (!idea) {
@@ -117,7 +147,8 @@ export const updateIdea = async (req: Request, res: Response) => {
     console.log('Updated idea:', {
       id: idea._id,
       beforeImage: (idea as any).beforeImage ? 'Present' : 'Missing',
-      afterImage: (idea as any).afterImage ? 'Present' : 'Missing'
+      afterImage: (idea as any).afterImage ? 'Present' : 'Missing',
+      rewardApprovalDate: (idea as any).rewardApprovalDate ? 'Present' : 'Missing'
     });
     
     res.json(idea);

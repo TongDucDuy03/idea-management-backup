@@ -93,6 +93,7 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
   };
 
   const [formData, setFormData] = useState<Partial<Idea>>({
+    ideaCode: '',
     fullName: '',
     department: '',
     idea: '',
@@ -104,6 +105,7 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
     implementationStatus: 'Đề xuất mới',
     benefitValue: 0,
     rewardAmount: 0,
+    rewardApprovalDate: undefined,
     benefitOutcome: '',
     resourcesUsed: '',
     calculationDescription: '',
@@ -129,6 +131,11 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
         implementationStatus: idea.implementationStatus || 'Đề xuất mới',
         benefitValue: idea.benefitValue || 0,
         rewardAmount: idea.rewardAmount || 0,
+        rewardApprovalDate: (idea as any).rewardApprovalDate ? (() => {
+          // Adjust for GMT+7 timezone when loading
+          const date = new Date((idea as any).rewardApprovalDate);
+          return date;
+        })() : undefined,
         benefitOutcome: (idea as any).benefitOutcome || '',
         resourcesUsed: (idea as any).resourcesUsed || '',
         calculationDescription: (idea as any).calculationDescription || '',
@@ -139,6 +146,7 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
       });
     } else {
       setFormData({
+        ideaCode: '',
         fullName: '',
         department: '',
         idea: '',
@@ -150,6 +158,7 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
         implementationStatus: 'Đề xuất mới',
         benefitValue: 0,
         rewardAmount: 0,
+        rewardApprovalDate: undefined,
         benefitOutcome: '',
         resourcesUsed: '',
         calculationDescription: '',
@@ -259,7 +268,39 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await onSave(formData);
+      // Prepare data with proper formatting
+      const submitData: any = { ...formData };
+      
+      // Convert rewardApprovalDate to ISO string if it exists
+      if (submitData.rewardApprovalDate) {
+        if (submitData.rewardApprovalDate instanceof Date) {
+          // Convert to ISO string (will be in UTC)
+          submitData.rewardApprovalDate = submitData.rewardApprovalDate.toISOString();
+        } else if (typeof submitData.rewardApprovalDate === 'string') {
+          // If it's already a string (from input), convert to Date then to ISO
+          const dateObj = new Date(submitData.rewardApprovalDate);
+          submitData.rewardApprovalDate = dateObj.toISOString();
+        }
+      } else {
+        // Explicitly set to null if it was cleared
+        submitData.rewardApprovalDate = null;
+      }
+      
+      // Handle images - always include them (null or base64)
+      if (submitData.beforeImage === '') {
+        submitData.beforeImage = null;
+      }
+      if (submitData.afterImage === '') {
+        submitData.afterImage = null;
+      }
+      
+      console.log('Submitting dialog data:', {
+        rewardApprovalDate: submitData.rewardApprovalDate,
+        hasBeforeImage: !!submitData.beforeImage,
+        hasAfterImage: !!submitData.afterImage
+      });
+      
+      await onSave(submitData);
       onClose();
     } catch (error: any) {
       setError(error.response?.data?.message || 'Có lỗi xảy ra');
@@ -281,12 +322,13 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <TextField
               name="ideaCode"
-              label="mã ý tưởng"
-              value={formData.ideaCode}
+              label="Mã ý tưởng"
+              value={formData.ideaCode || ''}
               onChange={handleTextChange}
-              required
+              disabled={isEdit}
               fullWidth
               sx={textFieldStyle}
+              helperText={isEdit ? 'Mã ý tưởng không thể thay đổi' : ''}
             />
             <TextField
               name="fullName"
@@ -312,7 +354,6 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
                 ))}
               </Select>
             </FormControl>
-            {/* Mã ý tưởng được tạo tự động ở backend; không cần nhập ở đây */}
             <TextField
               name="idea"
               label="Ý tưởng"
@@ -413,6 +454,15 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
                         border: '1px solid #e0e0e0'
                       }} 
                     />
+                    <Button 
+                      size="small" 
+                      color="error" 
+                      fullWidth 
+                      sx={{ mt: 1 }}
+                      onClick={() => setFormData(prev => ({ ...prev, beforeImage: '' }))}
+                    >
+                      Xóa hình ảnh trước
+                    </Button>
                   </Box>
                 )}
               </Box>
@@ -438,6 +488,15 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
                         border: '1px solid #e0e0e0'
                       }} 
                     />
+                    <Button 
+                      size="small" 
+                      color="error" 
+                      fullWidth 
+                      sx={{ mt: 1 }}
+                      onClick={() => setFormData(prev => ({ ...prev, afterImage: '' }))}
+                    >
+                      Xóa hình ảnh sau
+                    </Button>
                   </Box>
                 )}
               </Box>
@@ -519,6 +578,50 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
               fullWidth
               inputProps={{ min: 0, step: 1 }}
               helperText="Ví dụ: 1.000.000"
+            />
+            <TextField
+              name="rewardApprovalDate"
+              label="Ngày duyệt khen thưởng"
+              type="datetime-local"
+              value={formData.rewardApprovalDate ? (() => {
+                let date: Date;
+                if (formData.rewardApprovalDate instanceof Date) {
+                  date = new Date(formData.rewardApprovalDate);
+                } else if (typeof formData.rewardApprovalDate === 'string') {
+                  date = new Date(formData.rewardApprovalDate);
+                } else {
+                  return '';
+                }
+                
+                // Format as datetime-local (YYYY-MM-DDTHH:mm)
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                return `${year}-${month}-${day}T${hours}:${minutes}`;
+              })() : ''}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value) {
+                  // datetime-local input gives local time, convert to Date
+                  const date = new Date(value);
+                  setFormData(prev => ({
+                    ...prev,
+                    rewardApprovalDate: date
+                  }));
+                } else {
+                  setFormData(prev => ({
+                    ...prev,
+                    rewardApprovalDate: undefined
+                  }));
+                }
+              }}
+              fullWidth
+              InputLabelProps={{
+                shrink: true,
+              }}
+              sx={textFieldStyle}
             />
             {isEdit && (
               <FormControl fullWidth>

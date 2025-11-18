@@ -54,9 +54,12 @@ const IdeaSchema = new mongoose_1.Schema({
         default: 'Đề xuất mới'
     },
     implementationDepartment: { type: String, required: false },
+    // Legacy field giữ lại để phục vụ các script migrate cũ
+    implementationDirection: { type: String, required: false },
     note: { type: String, required: false },
     benefitValue: { type: Number, required: false, default: 0 },
     rewardAmount: { type: Number, required: false, default: 0 },
+    rewardApprovalDate: { type: Date, required: false },
     // New fields
     benefitOutcome: { type: String, required: false },
     resourcesUsed: { type: String, required: false },

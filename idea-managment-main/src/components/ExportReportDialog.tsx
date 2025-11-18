@@ -166,7 +166,7 @@ const ExportReportDialog: React.FC<ExportReportDialogProps> = ({
             width: 400px;
             border-left: 2px solid #000;
             display: flex;
-tiền thì đã đag k có pải đi ứng xong sáng ra đã mất 50k xong vẫn chả ra sao.            height: 80px;
+            height: 80px;
             border-right: 2px solid #000;
         }
         
@@ -491,7 +491,7 @@ tiền thì đã đag k có pải đi ứng xong sáng ra đã mất 50k xong v�
                         
                     </div>
                     <div class="info-row">
-                        <span class="info-label">Người đề xuất:  ${idea.fullName || 'N/A'}</span>
+                        <span class="info-label">Người lâp:  ${idea.fullName || 'N/A'}</span>
                         
                     </div>
                     <div class="info-row">
@@ -561,17 +561,17 @@ tiền thì đã đag k có pải đi ứng xong sáng ra đã mất 50k xong v�
                 <!-- Bottom Row -->
                 <div class="bottom-row">
                     <div class="content-section">
-                        <div class="section-title">ĐÁNH GIÁ HIỆU QUẢ CẢI TIẾN</div>
+                        <div class="section-title">LỢI ÍCH</div>
                         <div class="section-content content-loi-ich ${(idea.benefitOutcome || '').length > 500 ? 'long-content' : ''}">${idea.benefitOutcome || 'Lợi ích đạt được...'}</div>
                     </div>
                     
                     <div class="content-section">
-                        <div class="section-title">CƠ HỘI NHÂN RỘNG PHÁT TRIỂN</div>
-                        <div class="section-content content-danh-gia ${(idea.scalingOpportunity || '').length > 500 ? 'long-content' : ''}">${idea.scalingOpportunity || 'Đánh giá cơ hội nhân rộng...'}</div>
+                        <div class="section-title">ĐÁNH GIÁ</div>
+                        <div class="section-content content-danh-gia ${(idea.scalingOpportunity || '').length > 500 ? 'long-content' : ''}">${idea.scalingOpportunity || 'Đánh giá kết quả...'}</div>
                     </div>
                     
                     <div class="content-section">
-                        <div class="section-title">NGUỒN LỰC SỬ DỤNG & CHI PHÍ</div>
+                        <div class="section-title">CHI PHÍ</div>
                         <div class="section-content content-chi-phi ${(idea.resourcesUsed || '').length > 500 ? 'long-content' : ''}">${idea.resourcesUsed || 'Chi phí thực hiện...'}</div>
                     </div>
                     
@@ -720,12 +720,12 @@ tiền thì đã đag k có pải đi ứng xong sáng ra đã mất 50k xong v�
       if (selectedIdeasData.length === 1) {
         const idea = selectedIdeasData[0];
         const htmlContent = generateHTMLReport(idea);
-        const filename = `Bao_Cao_Cai_Tien_A3_${idea.ideaCode || idea._id}.pdf`;
+        const filename = `Bao_Cao_A3_${idea.fullName || idea._id}.pdf`;
         await createPdfFromHtml(htmlContent, filename);
       } else {
         for (const idea of selectedIdeasData) {
           const htmlContent = generateHTMLReport(idea);
-          const filename = `Bao_Cao_Cai_Tien_A3_${idea.ideaCode || idea._id}.pdf`;
+          const filename = `Bao_Cao_A3_${idea.fullName || idea._id}.pdf`;
           await createPdfFromHtml(htmlContent, filename);
           // Delay giữa các file để tránh lỗi
           await new Promise(resolve => setTimeout(resolve, 1000));

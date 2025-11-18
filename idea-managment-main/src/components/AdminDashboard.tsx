@@ -46,6 +46,10 @@ const AdminDashboard: React.FC = () => {
   const [ideaCodeFilter, setIdeaCodeFilter] = useState('');
   const [fullNameFilter, setFullNameFilter] = useState('');
   const [ideaTextFilter, setIdeaTextFilter] = useState('');
+  const [submissionDateFromFilter, setSubmissionDateFromFilter] = useState('');
+  const [submissionDateToFilter, setSubmissionDateToFilter] = useState('');
+  const [rewardApprovalDateFromFilter, setRewardApprovalDateFromFilter] = useState('');
+  const [rewardApprovalDateToFilter, setRewardApprovalDateToFilter] = useState('');
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   
   const [paginationModel, setPaginationModel] = useState({
@@ -78,6 +82,7 @@ const AdminDashboard: React.FC = () => {
     'note',
     'benefitValue',
     'rewardAmount',
+    'rewardApprovalDate',
     'actions'
   ] as const;
 
@@ -154,7 +159,7 @@ const AdminDashboard: React.FC = () => {
         return;
       }
 
-      const response = await api.get('/ideas', {
+      const response = await axios.get('https://idea-managment.onrender.com/api/ideas', {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -196,6 +201,23 @@ const AdminDashboard: React.FC = () => {
     const implStatus = params.get('implementationStatus');
     if (implStatus && ['Đề xuất mới', 'Xem xét', 'Phê duyệt', 'Phản hồi phê duyệt', 'Đang triển khai', 'Lập báo cáo A3', 'Phê duyệt khen thưởng', 'Đã khen thưởng', 'Không đạt'].includes(implStatus)) {
       setImplementationStatusFilter([implStatus as 'Đề xuất mới' | 'Xem xét' | 'Phê duyệt' | 'Phản hồi phê duyệt' | 'Đang triển khai' | 'Lập báo cáo A3' | 'Phê duyệt khen thưởng' | 'Đã khen thưởng' | 'Không đạt']);
+    }
+    
+    // Date filters from query params
+    const dateFrom = params.get('dateFrom');
+    const dateTo = params.get('dateTo');
+    const filterType = params.get('filterType'); // 'reward' => lọc theo rewardApprovalDate, mặc định: submissionDate
+
+    if (dateFrom || dateTo) {
+      if (filterType === 'reward') {
+        // Lọc theo ngày duyệt khen thưởng
+        if (dateFrom) setRewardApprovalDateFromFilter(dateFrom);
+        if (dateTo) setRewardApprovalDateToFilter(dateTo);
+      } else {
+        // Mặc định: lọc theo thời gian nộp
+        if (dateFrom) setSubmissionDateFromFilter(dateFrom);
+        if (dateTo) setSubmissionDateToFilter(dateTo);
+      }
     }
     
     
@@ -243,6 +265,26 @@ const AdminDashboard: React.FC = () => {
     setPaginationModel(prev => ({ ...prev, page: 0 }));
   };
 
+  const handleSubmissionDateFromFilter = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSubmissionDateFromFilter(event.target.value);
+    setPaginationModel(prev => ({ ...prev, page: 0 }));
+  };
+
+  const handleSubmissionDateToFilter = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSubmissionDateToFilter(event.target.value);
+    setPaginationModel(prev => ({ ...prev, page: 0 }));
+  };
+
+  const handleRewardApprovalDateFromFilter = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRewardApprovalDateFromFilter(event.target.value);
+    setPaginationModel(prev => ({ ...prev, page: 0 }));
+  };
+
+  const handleRewardApprovalDateToFilter = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRewardApprovalDateToFilter(event.target.value);
+    setPaginationModel(prev => ({ ...prev, page: 0 }));
+  };
+
   
   const handleClearAllFilters = () => {
     setStatusFilter([]);
@@ -252,6 +294,10 @@ const AdminDashboard: React.FC = () => {
     setIdeaCodeFilter('');
     setFullNameFilter('');
     setIdeaTextFilter('');
+    setSubmissionDateFromFilter('');
+    setSubmissionDateToFilter('');
+    setRewardApprovalDateFromFilter('');
+    setRewardApprovalDateToFilter('');
     setPaginationModel(prev => ({ ...prev, page: 0 }));
   };
 
@@ -264,7 +310,7 @@ const AdminDashboard: React.FC = () => {
         return;
       }
 
-      await api.put(`/ideas/${id}`, {
+      await axios.put(`https://idea-managment.onrender.com/api/ideas/${id}`, {
         status
       }, {
         headers: {
@@ -293,7 +339,7 @@ const AdminDashboard: React.FC = () => {
         return;
       }
 
-      await api.put(`/ideas/${id}`, {
+      await axios.put(`https://idea-managment.onrender.com/api/ideas/${id}`, {
         implementationStatus
       }, {
         headers: {
@@ -320,7 +366,7 @@ const AdminDashboard: React.FC = () => {
           return;
         }
 
-        await api.delete(`/ideas/${id}`, {
+        await axios.delete(`https://idea-managment.onrender.com/api/ideas/${id}`, {
           headers: {
             Authorization: `Bearer ${token}`
           }
@@ -358,13 +404,13 @@ const AdminDashboard: React.FC = () => {
       }
 
       if (isEditMode && selectedIdea) {
-        await api.put(`/ideas/${selectedIdea._id}`, ideaData, {
+        await axios.put(`https://idea-managment.onrender.com/api/ideas/${selectedIdea._id}`, ideaData, {
           headers: {
             Authorization: `Bearer ${token}`
           }
         });
       } else {
-        await api.post('/ideas', ideaData, {
+        await axios.post('https://idea-managment.onrender.com/api/ideas', ideaData, {
           headers: {
             Authorization: `Bearer ${token}`
           }
@@ -392,26 +438,63 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleExportExcel = () => {
-    const exportData = ideas.map(idea => ({
-      'Mã ý tưởng': idea.ideaCode,
-      'Họ và tên': idea.fullName,
-      'Đơn vị': idea.department,
-      'Ý tưởng': idea.idea,
-      'Thực trạng': idea.solution,
-      'Giải pháp': idea.benefit ,
-      'Lợi ích mang lại': (idea as any).benefitOutcome || '',
-      'Nguồn lực sử dụng': (idea as any).resourcesUsed || '',
-      'Mô tả cách tính': (idea as any).calculationDescription || '',
-      'Tên đề tài': (idea as any).topicTitle || '',
-      'Cơ hội nhân rộng phát triển': (idea as any).scalingOpportunity || '',
-      'Quyết định phê duyệt': idea.status,
-      'Trạng thái triển khai': (idea as any).implementationStatus || 'Đề xuất mới',
-      'Phòng ban triển khai': (idea as any).implementationDepartment || '',
-      'Ghi chú': (idea as any).note || '',
-      'Giá trị làm lợi (VND)': (idea as any).benefitValue ? (idea as any).benefitValue.toLocaleString('vi-VN') : '0',
-      'Tiền thưởng (VND)': (idea as any).rewardAmount ? (idea as any).rewardAmount.toLocaleString('vi-VN') : '0',
-      'Ngày gửi': new Date(idea.submissionDate).toLocaleDateString('vi-VN')
-    }));
+    // Map field names to display names
+    const fieldDisplayNames: Record<string, string> = {
+      'ideaCode': 'Mã ý tưởng',
+      'beforeImage': 'Hình trước',
+      'afterImage': 'Hình sau',
+      'fullName': 'Họ và tên',
+      'department': 'Đơn vị',
+      'topicTitle': 'Tên đề tài',
+      'idea': 'Ý tưởng',
+      'solution': 'Thực trạng',
+      'benefit': 'Giải pháp',
+      'benefitOutcome': 'Lợi ích mang lại',
+      'resourcesUsed': 'Nguồn lực sử dụng',
+      'calculationDescription': 'Mô tả cách tính',
+      'scalingOpportunity': 'Cơ hội nhân rộng phát triển',
+      'status': 'Quyết định phê duyệt',
+      'implementationStatus': 'Trạng thái triển khai',
+      'implementationDepartment': 'Phòng ban triển khai',
+      'note': 'Ghi chú',
+      'benefitValue': 'Giá trị làm lợi (VND)',
+      'rewardAmount': 'Tiền thưởng (VND)',
+      'rewardApprovalDate': 'Ngày duyệt khen thưởng',
+      'submissionDate': 'Ngày gửi'
+    };
+
+    // Get visible columns (default true if not explicitly hidden)
+    const visibleFields = columns.filter(col => {
+      const isVisible = columnVisibilityModel[col.field];
+      // Default to true if not in visibility model (meaning column is visible by default)
+      return isVisible !== false;
+    }).map(col => col.field);
+
+    const exportData = filteredIdeas.map(idea => {
+      const row: Record<string, any> = {};
+      
+      visibleFields.forEach(field => {
+        const displayName = fieldDisplayNames[field] || field;
+        
+        if (field === 'beforeImage' || field === 'afterImage') {
+          row[displayName] = (idea as any)[field] ? 'Có' : 'Không';
+        } else if (field === 'benefitValue' || field === 'rewardAmount') {
+          const value = (idea as any)[field];
+          row[displayName] = value ? value.toLocaleString('vi-VN') : '0';
+        } else if (field === 'rewardApprovalDate') {
+          const date = (idea as any)[field];
+          row[displayName] = date ? new Date(date).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '';
+        } else if (field === 'submissionDate') {
+          row[displayName] = new Date((idea as any)[field]).toLocaleDateString('vi-VN');
+        } else if (field === 'idea') {
+          row[displayName] = (idea as any)[field] || '-';
+        } else {
+          row[displayName] = (idea as any)[field] || '-';
+        }
+      });
+      
+      return row;
+    });
 
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
@@ -437,6 +520,60 @@ const AdminDashboard: React.FC = () => {
     const matchesDepartment = departmentFilter.length === 0 || departmentFilter.includes((idea as any).department);
     const matchesImplementationDepartment = implementationDepartmentFilter.length === 0 || implementationDepartmentFilter.includes(((idea as any).implementationDepartment || ''));
 
+    // Filter by submission date
+    let matchesSubmissionDate = true;
+    if (submissionDateFromFilter || submissionDateToFilter) {
+      const submissionDate = new Date(idea.submissionDate);
+      const submissionDateOnly = new Date(submissionDate.getFullYear(), submissionDate.getMonth(), submissionDate.getDate());
+      
+      if (submissionDateFromFilter) {
+        const fromDate = new Date(submissionDateFromFilter);
+        fromDate.setHours(0, 0, 0, 0);
+        if (submissionDateOnly < fromDate) {
+          matchesSubmissionDate = false;
+        }
+      }
+      
+      if (submissionDateToFilter && matchesSubmissionDate) {
+        const toDate = new Date(submissionDateToFilter);
+        toDate.setHours(23, 59, 59, 999);
+        if (submissionDateOnly > toDate) {
+          matchesSubmissionDate = false;
+        }
+      }
+    }
+
+    // Filter by reward approval date
+    let matchesRewardApprovalDate = true;
+    if (rewardApprovalDateFromFilter || rewardApprovalDateToFilter) {
+      const rewardDate = (idea as any).rewardApprovalDate;
+      if (!rewardDate) {
+        // If filter is set but idea has no reward approval date, exclude it
+        matchesRewardApprovalDate = false;
+      } else {
+        const rewardDateObj = new Date(rewardDate);
+        // Adjust for timezone (GMT+7)
+        const adjustedDate = new Date(rewardDateObj.getTime() + (7 * 60 * 60 * 1000));
+        const rewardDateOnly = new Date(adjustedDate.getFullYear(), adjustedDate.getMonth(), adjustedDate.getDate());
+        
+        if (rewardApprovalDateFromFilter) {
+          const fromDate = new Date(rewardApprovalDateFromFilter);
+          fromDate.setHours(0, 0, 0, 0);
+          if (rewardDateOnly < fromDate) {
+            matchesRewardApprovalDate = false;
+          }
+        }
+        
+        if (rewardApprovalDateToFilter && matchesRewardApprovalDate) {
+          const toDate = new Date(rewardApprovalDateToFilter);
+          toDate.setHours(23, 59, 59, 999);
+          if (rewardDateOnly > toDate) {
+            matchesRewardApprovalDate = false;
+          }
+        }
+      }
+    }
+
     return (
       matchesIdeaCode &&
       matchesFullName &&
@@ -444,7 +581,9 @@ const AdminDashboard: React.FC = () => {
       matchesStatus &&
       matchesImplementationStatus &&
       matchesDepartment &&
-      matchesImplementationDepartment
+      matchesImplementationDepartment &&
+      matchesSubmissionDate &&
+      matchesRewardApprovalDate
     );
   });
 
@@ -1014,6 +1153,33 @@ const AdminDashboard: React.FC = () => {
       )
     },
     {
+      field: 'rewardApprovalDate',
+      headerName: 'Ngày duyệt khen thưởng',
+      width: 200,
+      align: 'center',
+      headerAlign: 'center',
+      valueGetter: (params) => {
+        if (!params.value) return '';
+        // Date is stored in UTC, toLocaleString will convert to local timezone
+        const date = new Date(params.value);
+        return date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+      },
+      renderCell: (params) => (
+        <div style={{
+          width: '100%',
+          textAlign: 'center'
+        }}>
+          {(params.row as any).rewardApprovalDate 
+            ? (() => {
+                // Date is stored in UTC, convert to Vietnam timezone (GMT+7)
+                const date = new Date((params.row as any).rewardApprovalDate);
+                return date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+              })()
+            : '-'}
+        </div>
+      )
+    },
+    {
       field: 'actions',
       headerName: 'Thao tác',
       width: 120,
@@ -1043,9 +1209,9 @@ const AdminDashboard: React.FC = () => {
   ];
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
+    <Container maxWidth={false} sx={{ py: 2, px: 1, width: '100%' }}>
       <Card elevation={3} sx={{ mb: 4, borderRadius: 2 }}>
-        <CardContent>
+        <CardContent sx={{ p: 2 }}>
           <Typography variant="h4" component="h1" gutterBottom align="center" sx={{ color: '#1976d2', fontWeight: 'bold' }}>
             Quản lý Ý tưởng Cải tiến
           </Typography>
@@ -1076,7 +1242,60 @@ const AdminDashboard: React.FC = () => {
                     onChange={handleIdeaTextFilter}
                     sx={{ minWidth: 200, flex: '1 1 200px' }}
                   />
-                  
+                </Box>
+
+                {/* Hàng 1.5 - Date Filters */}
+                <Box sx={{ display: 'flex', columnGap: 2, rowGap: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#666', minWidth: 'fit-content' }}>
+                    Lọc theo thời gian nộp:
+                  </Typography>
+                  <TextField
+                    label="Từ ngày"
+                    type="date"
+                    size="small"
+                    value={submissionDateFromFilter}
+                    onChange={handleSubmissionDateFromFilter}
+                    InputLabelProps={{
+                      shrink: true,
+                    }}
+                    sx={{ minWidth: 180 }}
+                  />
+                  <TextField
+                    label="Đến ngày"
+                    type="date"
+                    size="small"
+                    value={submissionDateToFilter}
+                    onChange={handleSubmissionDateToFilter}
+                    InputLabelProps={{
+                      shrink: true,
+                    }}
+                    sx={{ minWidth: 180 }}
+                  />
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#666', minWidth: 'fit-content', ml: 2 }}>
+                    Lọc theo ngày duyệt khen thưởng:
+                  </Typography>
+                  <TextField
+                    label="Từ ngày"
+                    type="date"
+                    size="small"
+                    value={rewardApprovalDateFromFilter}
+                    onChange={handleRewardApprovalDateFromFilter}
+                    InputLabelProps={{
+                      shrink: true,
+                    }}
+                    sx={{ minWidth: 180 }}
+                  />
+                  <TextField
+                    label="Đến ngày"
+                    type="date"
+                    size="small"
+                    value={rewardApprovalDateToFilter}
+                    onChange={handleRewardApprovalDateToFilter}
+                    InputLabelProps={{
+                      shrink: true,
+                    }}
+                    sx={{ minWidth: 180 }}
+                  />
                 </Box>
 
                 {/* Hàng 2 */}
@@ -1250,6 +1469,7 @@ const AdminDashboard: React.FC = () => {
                                 note: 'Ghi chú',
                                 benefitValue: 'Giá trị làm lợi (VND)',
                                 rewardAmount: 'Tiền thưởng (VND)',
+                                rewardApprovalDate: 'Ngày duyệt khen thưởng',
                                 actions: 'Thao tác'
                               } as Record<string, string>
                             )[field]
@@ -1466,7 +1686,7 @@ const AdminDashboard: React.FC = () => {
           </Typography>
         </Box>
         
-        <Box ref={dataGridRef}>
+        <Box ref={dataGridRef} sx={{ width: '100%', overflow: 'auto' }}>
           <DataGrid
             rows={filteredIdeas}
             columns={columns}
@@ -1478,7 +1698,22 @@ const AdminDashboard: React.FC = () => {
             pageSizeOptions={[10, 25, 50]}
             disableRowSelectionOnClick
             loading={loading}
-            getRowHeight={() => 200} 
+            getRowHeight={() => 200}
+            sx={{
+              width: '100%',
+              '& .MuiDataGrid-columnHeader': {
+                backgroundColor: '#f5f5f5',
+              },
+              '& .MuiDataGrid-cell': {
+                overflow: 'hidden',
+                whiteSpace: 'normal',
+                wordWrap: 'break-word'
+              },
+              '& .MuiDataGrid-columnHeaderTitle': {
+                whiteSpace: 'normal',
+                wordWrap: 'break-word'
+              }
+            }}
           />
         </Box>
 
