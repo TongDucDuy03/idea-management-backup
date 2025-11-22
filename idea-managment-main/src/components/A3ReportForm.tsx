@@ -160,9 +160,9 @@ const A3ReportForm: React.FC<A3ReportFormProps> = ({ idea, onClose }) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
     
-    // Kiểm tra kích thước file (giới hạn 3MB)
-    if (file.size > 3 * 1024 * 1024) {
-      setError(`File ${field} quá lớn. Vui lòng chọn file nhỏ hơn 3MB.`);
+    // Kiểm tra kích thước file (giới hạn 15MB)
+    if (file.size > 15 * 1024 * 1024) {
+      setError(`File ${field} quá lớn. Vui lòng chọn file nhỏ hơn 15MB.`);
       return;
     }
     
@@ -943,7 +943,7 @@ const A3ReportForm: React.FC<A3ReportFormProps> = ({ idea, onClose }) => {
                 <input type="file" accept="image/*" hidden onChange={(e) => handleImageChange(e, 'beforeImage')} />
               </Button>
               <Box sx={{ mt: 0.5, color: '#777', fontSize: 12 }}>
-                Gợi ý: ảnh ngang ~800×600px, dung lượng nhỏ hơn 3MB (sẽ được tối ưu hóa tự động)
+                Gợi ý: ảnh ngang ~800×600px, dung lượng nhỏ hơn 15MB (sẽ được tối ưu hóa tự động)
               </Box>
               {(reportData as any).beforeImage && (
                 <Box sx={{ mt: 1, width: '100%', flex: '0 0 auto' }}>
@@ -968,7 +968,7 @@ const A3ReportForm: React.FC<A3ReportFormProps> = ({ idea, onClose }) => {
                 <input type="file" accept="image/*" hidden onChange={(e) => handleImageChange(e, 'afterImage')} />
               </Button>
               <Box sx={{ mt: 0.5, color: '#777', fontSize: 12 }}>
-                Gợi ý: ảnh ngang ~800×600px, dung lượng nhỏ hơn 3MB (sẽ được tối ưu hóa tự động)
+                Gợi ý: ảnh ngang ~800×600px, dung lượng nhỏ hơn 15MB (sẽ được tối ưu hóa tự động)
               </Box>
               {(reportData as any).afterImage && (
                 <Box sx={{ mt: 1, width: '100%', flex: '0 0 auto' }}>

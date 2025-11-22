@@ -169,9 +169,9 @@ const IdeaForm: React.FC = () => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
     
-    // Kiểm tra kích thước file (giới hạn 3MB)
-    if (file.size > 3 * 1024 * 1024) {
-      setError(`File ${field === 'beforeImage' ? 'hình trước' : 'hình sau'} quá lớn. Vui lòng chọn file nhỏ hơn 3MB.`);
+    // Kiểm tra kích thước file (giới hạn 15MB)
+    if (file.size > 15 * 1024 * 1024) {
+      setError(`File ${field === 'beforeImage' ? 'hình trước' : 'hình sau'} quá lớn. Vui lòng chọn file nhỏ hơn 15MB.`);
       return;
     }
     
@@ -370,7 +370,7 @@ const IdeaForm: React.FC = () => {
                   />
                 </Button>
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                  Gợi ý: ảnh ngang ~800×600px, dung lượng nhỏ hơn 3MB (sẽ được tối ưu hóa tự động)
+                  Gợi ý: ảnh ngang ~800×600px, dung lượng nhỏ hơn 15MB (sẽ được tối ưu hóa tự động)
                 </Typography>
                 {formData.beforeImage && (
                   <Box sx={{ mt: 1, width: '100%' }}>
@@ -421,7 +421,7 @@ const IdeaForm: React.FC = () => {
                   />
                 </Button>
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                  Gợi ý: ảnh ngang ~800×600px, dung lượng nhỏ hơn 3MB (sẽ được tối ưu hóa tự động)
+                  Gợi ý: ảnh ngang ~800×600px, dung lượng nhỏ hơn 15MB (sẽ được tối ưu hóa tự động)
                 </Typography>
                 {formData.afterImage && (
                   <Box sx={{ mt: 1, width: '100%' }}>
