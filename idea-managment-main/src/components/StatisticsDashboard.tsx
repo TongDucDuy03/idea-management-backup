@@ -1513,7 +1513,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
             sx={{ textAlign: 'center', p: 2, cursor: 'pointer', '&:hover': { backgroundColor: '#f5f5f5', transform: 'translateY(-2px)', boxShadow: 6 }, transition: 'all 0.2s' }}
             onClick={() => {
               const query = buildDateFilterQuery({ 'status': 'pending' });
-              navigate(`/admin?${query}`);
+              handleNavigateToAdmin(query);
             }}
           >
             <CardContent>
@@ -1540,7 +1540,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
             }}
             onClick={() => {
               const query = buildDateFilterQuery({ 'status': 'approved' });
-              navigate(`/admin?${query}`);
+              handleNavigateToAdmin(query);
             }}
           >
             <CardContent>
@@ -1558,7 +1558,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
             sx={{ textAlign: 'center', p: 2, cursor: 'pointer', '&:hover': { backgroundColor: '#f5f5f5', transform: 'translateY(-2px)', boxShadow: 6 }, transition: 'all 0.2s' }}
             onClick={() => {
               const query = buildDateFilterQuery({ 'implementationStatus': 'Phản hồi phê duyệt' });
-              navigate(`/admin?${query}`);
+              handleNavigateToAdmin(query);
             }}
           >
             <CardContent>
@@ -1585,7 +1585,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
             }}
             onClick={() => {
               const query = buildDateFilterQuery({ 'implementationStatus': 'Đang triển khai' });
-              navigate(`/admin?${query}`);
+              handleNavigateToAdmin(query);
             }}
           >
             <CardContent>
@@ -1612,7 +1612,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
             }}
             onClick={() => {
               const query = buildDateFilterQuery({ 'implementationStatus': 'Lập báo cáo A3' });
-              navigate(`/admin?${query}`);
+              handleNavigateToAdmin(query);
             }}
           >
             <CardContent>
@@ -1640,7 +1640,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
             }}
             onClick={() => {
               const query = buildRewardFilterQueryForAdmin();
-              navigate(`/admin?${query}`);
+              handleNavigateToAdmin(query);
             }}
           >
             <CardContent>
@@ -1693,7 +1693,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
               <Grid item xs={12} sm={6}>
                 <Card elevation={1} sx={{ p: 2, textAlign: 'center', cursor: 'pointer' }} onClick={() => {
                   const query = buildDateFilterQuery({ 'implementationStatus': 'Phản hồi phê duyệt' });
-                  navigate(`/admin?${query}`);
+                  handleNavigateToAdmin(query);
                 }}>
                   <Typography variant="h4" color="info.main" sx={{ fontWeight: 'bold' }}>{waitingDeployIdeas}</Typography>
                   <Typography variant="body1" color="text.secondary">Ý tưởng chờ triển khai</Typography>
@@ -1702,7 +1702,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
               <Grid item xs={12} sm={6}>
                 <Card elevation={1} sx={{ p: 2, textAlign: 'center', cursor: 'pointer' }} onClick={() => {
                   const query = buildDateFilterQuery({ 'implementationStatus': 'Phê duyệt' });
-                  navigate(`/admin?${query}`);
+                  handleNavigateToAdmin(query);
                 }}>
                   <Typography variant="h4" color="warning.main" sx={{ fontWeight: 'bold' }}>{waitingApprovalIdeas}</Typography>
                   <Typography variant="body1" color="text.secondary">Số ý tưởng chờ phê duyệt triển khai</Typography>
@@ -1790,8 +1790,12 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
                     const [year, month] = monthLabel.split('-');
                     const startDate = `${year}-${month}-01`;
                     const endDate = new Date(parseInt(year), parseInt(month), 0).toISOString().split('T')[0];
-                    const query = buildDateFilterQuery({ 'filterType': 'dateRange' });
-                    navigate(`/admin?${query}&dateFrom=${startDate}&dateTo=${endDate}`);
+                    const query = buildDateFilterQuery({ 
+                      'filterType': 'dateRange',
+                      'dateFrom': startDate,
+                      'dateTo': endDate
+                    });
+                    handleNavigateToAdmin(query);
                   }
                 }}
               />
@@ -1947,7 +1951,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
           severity="info" 
           sx={{ width: '100%' }}
         >
-          Vui lòng truy cập Admin và đăng nhập để xem chi tiết
+          Bạn không phải admin nên không có quyền xem chi tiết danh sách
         </Alert>
       </Snackbar>
     </Container>
