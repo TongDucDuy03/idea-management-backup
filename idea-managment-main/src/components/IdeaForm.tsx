@@ -14,8 +14,10 @@ import {
   Container,
   Grid,
   Card,
-  CardContent
+  CardContent,
+  Link
 } from '@mui/material';
+import { ContactSupport, Phone } from '@mui/icons-material';
 import api from '../api/config';
 import ImageLightbox from './ImageLightbox';
 
@@ -267,6 +269,89 @@ const IdeaForm: React.FC = () => {
         >
           Đề xuất ý tưởng Cải tiến
         </Typography>
+        
+        {/* Thông tin người hỗ trợ */}
+        <Card 
+          sx={{ 
+            mb: 3, 
+            bgcolor: '#e3f2fd',
+            border: '1px solid #90caf9',
+            borderRadius: 2,
+            '&:hover': {
+              boxShadow: 3
+            }
+          }}
+        >
+          <CardContent>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <ContactSupport sx={{ color: '#1976d2', fontSize: 32 }} />
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="h6" color="primary" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                    Cần hỗ trợ?
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    Liên hệ người hỗ trợ qua Zalo:
+                  </Typography>
+                  
+                  {/* Link 1 - Dòng 1 */}
+                  <Box sx={{ mb: 1 }}>
+                    <Link
+                      href="https://zalo.me/0943490500"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      sx={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        color: '#0068ff',
+                        textDecoration: 'none',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        '&:hover': {
+                          textDecoration: 'underline',
+                          color: '#0052cc'
+                        }
+                      }}
+                    >
+                      <Phone sx={{ fontSize: 18 }} />
+                      <Typography component="span" variant="body1">
+                        0943490500 (Hà - Cải tiến)
+                      </Typography>
+                    </Link>
+                  </Box>
+                  
+                  {/* Link 2 - Dòng 2 */}
+                  <Box>
+                    <Link
+                      href="https://zalo.me/0947969358"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      sx={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        color: '#0068ff',
+                        textDecoration: 'none',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        '&:hover': {
+                          textDecoration: 'underline',
+                          color: '#0052cc'
+                        }
+                      }}
+                    >
+                      <Phone sx={{ fontSize: 18 }} />
+                      <Typography component="span" variant="body1">
+                        0947969358 (Bằng - Cải tiến)
+                      </Typography>
+                    </Link>
+                  </Box>
+                  
+                </Box>
+            </Box>
+          </CardContent>
+        </Card>
+
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
