@@ -386,3 +386,4 @@ if (idea.beforeImage) {
 - Có thể migrate dễ dàng lên Cloudinary sau này
 - Đáp ứng được nhu cầu hiện tại và tương lai gần
 
+

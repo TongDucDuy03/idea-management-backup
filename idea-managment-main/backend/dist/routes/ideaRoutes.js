@@ -63,7 +63,18 @@ router.get('/search', (req, res) => __awaiter(void 0, void 0, void 0, function* 
         return res.status(500).json({ message: 'Lỗi server', error });
     }
 }));
-// 4. Public: Cập nhật ý tưởng theo code (chỉ các trường A3)
+// 4. Public: Lấy tất cả ý tưởng cho Statistics (chỉ đọc)
+router.get('/public', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const ideas = yield Idea_1.default.find({}).sort({ submissionDate: -1 });
+        res.json(ideas);
+    }
+    catch (error) {
+        console.error('[PUBLIC] Error fetching ideas for statistics:', error);
+        res.status(500).json({ message: 'Lỗi server', error });
+    }
+}));
+// 5. Public: Cập nhật ý tưởng theo code (chỉ các trường A3)
 router.put('/code/:ideaCode', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { ideaCode } = req.params;

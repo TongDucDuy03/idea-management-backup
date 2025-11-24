@@ -14,8 +14,18 @@ dotenv_1.default.config();
 console.log(">>> ENV MONGODB_URI:", process.env.MONGODB_URI);
 const app = (0, express_1.default)();
 const port = process.env.PORT || 5000;
-// Middleware
-app.use((0, cors_1.default)());
+// Middleware - CORS configuration
+// Cho phép credentials và origin cụ thể (không được dùng wildcard * khi có credentials)
+const corsOptions = {
+    origin: process.env.NODE_ENV === 'production'
+        ? process.env.FRONTEND_URL || 'http://172.104.39.94'
+        : 'http://localhost:3000', // Development origin
+    credentials: true, // Cho phép gửi cookies và credentials
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    exposedHeaders: ['Content-Range', 'X-Content-Range'],
+};
+app.use((0, cors_1.default)(corsOptions));
 // Tăng giới hạn kích thước body để hỗ trợ upload ảnh dạng data URL
 app.use(express_1.default.json({ limit: '20mb' }));
 app.use(express_1.default.urlencoded({ extended: true, limit: '20mb' }));

@@ -19,7 +19,8 @@ import {
   CircularProgress,
   ToggleButton,
   ToggleButtonGroup,
-  TextField
+  TextField,
+  Snackbar
 } from '@mui/material';
 import {
   Chart as ChartJS,
@@ -60,8 +61,13 @@ ChartJS.register(
   Filler
 );
 
-const StatisticsDashboard: React.FC = () => {
+interface StatisticsDashboardProps {
+  isViewOnly?: boolean;
+}
+
+const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = false }) => {
   const navigate = useNavigate();
+  const [showLoginMessage, setShowLoginMessage] = React.useState(false);
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -86,21 +92,29 @@ const StatisticsDashboard: React.FC = () => {
 
   const fetchIdeas = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        navigate('/login');
-        return;
-      }
-
-      const response = await api.get('/ideas', {
-        headers: {
-          Authorization: `Bearer ${token}`
+      if (isViewOnly) {
+        // Public endpoint không cần authentication
+        const response = await api.get('/ideas/public');
+        setIdeas(response.data);
+        setLoading(false);
+      } else {
+        // Protected endpoint yêu cầu authentication
+        const token = localStorage.getItem('token');
+        if (!token) {
+          navigate('/login');
+          return;
         }
-      });
-      setIdeas(response.data);
-      setLoading(false);
+
+        const response = await api.get('/ideas', {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        setIdeas(response.data);
+        setLoading(false);
+      }
     } catch (error: any) {
-      if (error.response?.status === 401) {
+      if (!isViewOnly && error.response?.status === 401) {
         localStorage.removeItem('token');
         navigate('/login');
       } else {
@@ -108,7 +122,7 @@ const StatisticsDashboard: React.FC = () => {
       }
       setLoading(false);
     }
-  }, [navigate]);
+  }, [navigate, isViewOnly]);
 
   useEffect(() => {
     fetchIdeas();
@@ -120,7 +134,21 @@ const StatisticsDashboard: React.FC = () => {
   };
 
   const handleBackToAdmin = () => {
+    if (isViewOnly) {
+      setShowLoginMessage(true);
+      setTimeout(() => setShowLoginMessage(false), 3000);
+      return;
+    }
     navigate('/admin');
+  };
+
+  const handleNavigateToAdmin = (query?: string) => {
+    if (isViewOnly) {
+      setShowLoginMessage(true);
+      setTimeout(() => setShowLoginMessage(false), 3000);
+      return;
+    }
+    navigate(`/admin${query ? `?${query}` : ''}`);
   };
 
   const handleDateFromChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -903,13 +931,15 @@ const StatisticsDashboard: React.FC = () => {
               Dashboard Thống kê Ý tưởng Cải tiến
             </Typography>
             <Box sx={{ display: 'flex', gap: 2 }}>
-              <Button
-                variant="outlined"
-                onClick={handleBackToAdmin}
-                sx={{ textTransform: 'none' }}
-              >
-                Quay lại Admin
-              </Button>
+              {!isViewOnly && (
+                <Button
+                  variant="outlined"
+                  onClick={handleBackToAdmin}
+                  sx={{ textTransform: 'none' }}
+                >
+                  Quay lại Admin
+                </Button>
+              )}
               <Button
                 variant={showAdvanced ? "contained" : "outlined"}
                 onClick={() => setShowAdvanced(!showAdvanced)}
@@ -917,19 +947,23 @@ const StatisticsDashboard: React.FC = () => {
               >
                 {showAdvanced ? 'Ẩn Thống kê Nâng cao' : 'Hiện Thống kê Nâng cao'}
               </Button>
-              <ReportGenerator 
-                ideas={ideas}
-                timeRange={timeRange}
-                departmentFilter={departmentFilter}
-              />
-              <Button
-                variant="outlined"
-                color="error"
-                onClick={handleLogout}
-                sx={{ textTransform: 'none' }}
-              >
-                Đăng xuất
-              </Button>
+              {!isViewOnly && (
+                <>
+                  <ReportGenerator 
+                    ideas={ideas}
+                    timeRange={timeRange}
+                    departmentFilter={departmentFilter}
+                  />
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    onClick={handleLogout}
+                    sx={{ textTransform: 'none' }}
+                  >
+                    Đăng xuất
+                  </Button>
+                </>
+              )}
             </Box>
           </Box>
           <Divider />
@@ -1443,7 +1477,7 @@ const StatisticsDashboard: React.FC = () => {
             }}
             onClick={() => {
               const query = buildDateFilterQuery();
-              navigate(`/admin?${query}`);
+              handleNavigateToAdmin(query);
             }}
           >
             <CardContent>
@@ -1679,7 +1713,7 @@ const StatisticsDashboard: React.FC = () => {
                   const status = statusMap[index];
                   if (status) {
                     const query = buildDateFilterQuery({ 'implementationStatus': status });
-                    navigate(`/admin?${query}`);
+                    handleNavigateToAdmin(query);
                   }
                 }}
               />
@@ -1707,7 +1741,7 @@ const StatisticsDashboard: React.FC = () => {
                   const dept = topDepartments[index]?.[0];
                   if (dept) {
                     const query = buildDateFilterQuery({ 'department': dept });
-                    navigate(`/admin?${query}`);
+                    handleNavigateToAdmin(query);
                   }
                 }}
               />
@@ -1813,7 +1847,7 @@ const StatisticsDashboard: React.FC = () => {
                   }}
                   onClick={() => {
                     const query = buildDateFilterQuery({ 'department': dept });
-                    navigate(`/admin?${query}`);
+                    handleNavigateToAdmin(query);
                   }}
                 >
                   <Typography variant="body2" sx={{ flex: 1, mr: 1 }}>
@@ -1850,7 +1884,7 @@ const StatisticsDashboard: React.FC = () => {
                   }}
                   onClick={() => {
                     const query = buildDateFilterQuery({ 'fullName': user.name });
-                    navigate(`/admin?${query}`);
+                    handleNavigateToAdmin(query);
                   }}
                 >
                   <Box sx={{ flex: 1, mr: 1 }}>
@@ -1881,6 +1915,22 @@ const StatisticsDashboard: React.FC = () => {
           />
         </Box>
       )}
+      
+      {/* Snackbar for login message */}
+      <Snackbar
+        open={showLoginMessage}
+        autoHideDuration={3000}
+        onClose={() => setShowLoginMessage(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={() => setShowLoginMessage(false)} 
+          severity="info" 
+          sx={{ width: '100%' }}
+        >
+          Vui lòng truy cập Admin và đăng nhập để xem chi tiết
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };

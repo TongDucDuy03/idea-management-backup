@@ -27,6 +27,7 @@ import * as XLSX from 'xlsx';
 import { Idea } from '../types';
 import IdeaDialog from './IdeaDialog';
 import ExportReportDialog from './ExportReportDialog';
+import ImageLightbox from './ImageLightbox';
 import api from '../api/config';
 
 const AdminDashboard: React.FC = () => {
@@ -50,6 +51,11 @@ const AdminDashboard: React.FC = () => {
   const [rewardApprovalDateFromFilter, setRewardApprovalDateFromFilter] = useState('');
   const [rewardApprovalDateToFilter, setRewardApprovalDateToFilter] = useState('');
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  
+  // Lightbox state
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [lightboxTitle, setLightboxTitle] = useState<string>('');
   
   const [paginationModel, setPaginationModel] = useState({
     pageSize: 10,
@@ -757,6 +763,18 @@ const AdminDashboard: React.FC = () => {
     return filtered.join('\n').trim();
   };
 
+  // Handler for opening lightbox
+  const handleImageClick = (imageUrl: string, title: string) => {
+    setLightboxImage(imageUrl);
+    setLightboxTitle(title);
+    setLightboxOpen(true);
+  };
+
+  const handleCloseLightbox = () => {
+    setLightboxOpen(false);
+    setLightboxImage(null);
+    setLightboxTitle('');
+  };
 
   const columns: GridColDef[] = [
     { 
@@ -791,7 +809,26 @@ const AdminDashboard: React.FC = () => {
             <img
               src={(params.row as any).beforeImage}
               alt="Trước"
-              style={{ maxWidth: 160, maxHeight: 100, objectFit: 'contain', borderRadius: 6 }}
+              onClick={() => handleImageClick(
+                (params.row as any).beforeImage,
+                `Hình trước - ${(params.row as any).ideaCode || 'N/A'}`
+              )}
+              style={{
+                maxWidth: 160,
+                maxHeight: 100,
+                objectFit: 'contain',
+                borderRadius: 6,
+                cursor: 'pointer',
+                transition: 'transform 0.2s, box-shadow 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.05)';
+                e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             />
           ) : (
             <span style={{ color: '#999' }}>—</span>
@@ -811,7 +848,26 @@ const AdminDashboard: React.FC = () => {
             <img
               src={(params.row as any).afterImage}
               alt="Sau"
-              style={{ maxWidth: 160, maxHeight: 100, objectFit: 'contain', borderRadius: 6 }}
+              onClick={() => handleImageClick(
+                (params.row as any).afterImage,
+                `Hình sau - ${(params.row as any).ideaCode || 'N/A'}`
+              )}
+              style={{
+                maxWidth: 160,
+                maxHeight: 100,
+                objectFit: 'contain',
+                borderRadius: 6,
+                cursor: 'pointer',
+                transition: 'transform 0.2s, box-shadow 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.05)';
+                e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             />
           ) : (
             <span style={{ color: '#999' }}>—</span>
@@ -1729,6 +1785,12 @@ const AdminDashboard: React.FC = () => {
         open={isExportDialogOpen}
         onClose={() => setIsExportDialogOpen(false)}
         ideas={filteredIdeas}
+      />
+      <ImageLightbox
+        open={lightboxOpen}
+        imageUrl={lightboxImage}
+        title={lightboxTitle}
+        onClose={handleCloseLightbox}
       />
     </Container>
   );

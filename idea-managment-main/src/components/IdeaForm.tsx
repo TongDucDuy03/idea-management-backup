@@ -17,6 +17,7 @@ import {
   CardContent
 } from '@mui/material';
 import api from '../api/config';
+import ImageLightbox from './ImageLightbox';
 
 const departments = [
   'Phòng Hành chính nhân sự',
@@ -56,6 +57,23 @@ const IdeaForm: React.FC = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [ideaCode, setIdeaCode] = useState('');
+  
+  // Lightbox state
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [lightboxTitle, setLightboxTitle] = useState<string>('');
+
+  const handleImageClick = (imageUrl: string, title: string) => {
+    setLightboxImage(imageUrl);
+    setLightboxTitle(title);
+    setLightboxOpen(true);
+  };
+
+  const handleCloseLightbox = () => {
+    setLightboxOpen(false);
+    setLightboxImage(null);
+    setLightboxTitle('');
+  };
 
   const validateForm = () => {
     const newErrors = {
@@ -377,14 +395,25 @@ const IdeaForm: React.FC = () => {
                     <img 
                       src={formData.beforeImage} 
                       alt="Hình ảnh trước" 
+                      onClick={() => handleImageClick(formData.beforeImage, 'Hình ảnh trước cải tiến')}
                       style={{ 
                         width: '100%', 
                         height: 'auto', 
                         maxHeight: '250px',
                         objectFit: 'contain',
                         borderRadius: 8,
-                        border: '1px solid #e0e0e0'
-                      }} 
+                        border: '1px solid #e0e0e0',
+                        cursor: 'pointer',
+                        transition: 'transform 0.2s, box-shadow 0.2s',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'scale(1.02)';
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'scale(1)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                     />
                     <Button 
                       size="small" 
@@ -428,14 +457,25 @@ const IdeaForm: React.FC = () => {
                     <img 
                       src={formData.afterImage} 
                       alt="Hình ảnh sau" 
+                      onClick={() => handleImageClick(formData.afterImage, 'Hình ảnh sau cải tiến')}
                       style={{ 
                         width: '100%', 
                         height: 'auto', 
                         maxHeight: '250px',
                         objectFit: 'contain',
                         borderRadius: 8,
-                        border: '1px solid #e0e0e0'
-                      }} 
+                        border: '1px solid #e0e0e0',
+                        cursor: 'pointer',
+                        transition: 'transform 0.2s, box-shadow 0.2s',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'scale(1.02)';
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'scale(1)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                     />
                     <Button 
                       size="small" 
@@ -474,6 +514,12 @@ const IdeaForm: React.FC = () => {
           </Button>
         </Box>
       </Paper>
+      <ImageLightbox
+        open={lightboxOpen}
+        imageUrl={lightboxImage}
+        title={lightboxTitle}
+        onClose={handleCloseLightbox}
+      />
     </Container>
   );
 };

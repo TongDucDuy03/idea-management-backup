@@ -61,7 +61,18 @@ router.get('/search', async (req, res) => {
   }
 });
 
-// 4. Public: Cập nhật ý tưởng theo code (chỉ các trường A3)
+// 4. Public: Lấy tất cả ý tưởng cho Statistics (chỉ đọc)
+router.get('/public', async (req, res) => {
+  try {
+    const ideas = await Idea.find({}).sort({ submissionDate: -1 });
+    res.json(ideas);
+  } catch (error) {
+    console.error('[PUBLIC] Error fetching ideas for statistics:', error);
+    res.status(500).json({ message: 'Lỗi server', error });
+  }
+});
+
+// 5. Public: Cập nhật ý tưởng theo code (chỉ các trường A3)
 router.put('/code/:ideaCode', async (req, res) => {
   try {
     const { ideaCode } = req.params;

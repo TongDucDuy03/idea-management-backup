@@ -15,6 +15,7 @@ import {
   SelectChangeEvent
 } from '@mui/material';
 import { Idea } from '../types';
+import ImageLightbox from './ImageLightbox';
 
 // Helpers to parse legacy records where "idea" may include lines like
 // "Giải pháp: ..." and "Lợi ích: ..."
@@ -115,6 +116,23 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
     afterImage: ''
   });
   const [error, setError] = useState('');
+  
+  // Lightbox state
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [lightboxTitle, setLightboxTitle] = useState<string>('');
+
+  const handleImageClick = (imageUrl: string, title: string) => {
+    setLightboxImage(imageUrl);
+    setLightboxTitle(title);
+    setLightboxOpen(true);
+  };
+
+  const handleCloseLightbox = () => {
+    setLightboxOpen(false);
+    setLightboxImage(null);
+    setLightboxTitle('');
+  };
 
   useEffect(() => {
     if (idea) {
@@ -445,14 +463,25 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
                     <img 
                       src={(formData as any).beforeImage} 
                       alt="Hình ảnh trước" 
+                      onClick={() => handleImageClick((formData as any).beforeImage, 'Hình ảnh trước cải tiến')}
                       style={{ 
                         width: '100%', 
                         height: 'auto', 
                         maxHeight: '250px',
                         objectFit: 'contain',
                         borderRadius: 8,
-                        border: '1px solid #e0e0e0'
-                      }} 
+                        border: '1px solid #e0e0e0',
+                        cursor: 'pointer',
+                        transition: 'transform 0.2s, box-shadow 0.2s',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'scale(1.02)';
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'scale(1)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                     />
                     <Button 
                       size="small" 
@@ -479,14 +508,25 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
                     <img 
                       src={(formData as any).afterImage} 
                       alt="Hình ảnh sau" 
+                      onClick={() => handleImageClick((formData as any).afterImage, 'Hình ảnh sau cải tiến')}
                       style={{ 
                         width: '100%', 
                         height: 'auto', 
                         maxHeight: '250px',
                         objectFit: 'contain',
                         borderRadius: 8,
-                        border: '1px solid #e0e0e0'
-                      }} 
+                        border: '1px solid #e0e0e0',
+                        cursor: 'pointer',
+                        transition: 'transform 0.2s, box-shadow 0.2s',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'scale(1.02)';
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'scale(1)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
                     />
                     <Button 
                       size="small" 
@@ -637,6 +677,12 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
           </Button>
         </DialogActions>
       </form>
+      <ImageLightbox
+        open={lightboxOpen}
+        imageUrl={lightboxImage}
+        title={lightboxTitle}
+        onClose={handleCloseLightbox}
+      />
     </Dialog>
   );
 };

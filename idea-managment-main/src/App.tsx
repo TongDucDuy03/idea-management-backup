@@ -44,6 +44,10 @@ function App() {
               </PrivateRoute>
             }
           />
+          <Route
+            path="/statistics-view"
+            element={<StatisticsDashboard isViewOnly={true} />}
+          />
         </Routes>
       </Router>
     </ThemeProvider>
