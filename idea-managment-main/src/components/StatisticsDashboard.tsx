@@ -82,7 +82,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
   const now = new Date();
   const currentYearInit = now.getFullYear();
   const currentMonthInit = now.getMonth() + 1; // 1-12
-  const currentQuarterInit = Math.floor((now.getMonth()) / 3) + 1; // 1-4
+  const currentQuarterInit = Math.floor(now.getMonth() / 3) + 1; // 1-4 (tháng 0-2=Q1, 3-5=Q2, 6-8=Q3, 9-11=Q4)
   const [yearA, setYearA] = useState<number>(currentYearInit);
   const [yearB, setYearB] = useState<number>(currentYearInit - 1);
   const [quarterA, setQuarterA] = useState<number>(currentQuarterInit);
@@ -151,6 +151,14 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
     navigate(`/admin${query ? `?${query}` : ''}`);
   };
 
+  // Helper function để format date theo local timezone (không bị ảnh hưởng bởi UTC)
+  const formatLocalDate = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // getMonth() trả về 0-11
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const handleDateFromChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setDateFrom(event.target.value);
   };
@@ -161,7 +169,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
 
   const handleQuickDateFilter = (type: 'today' | 'week' | 'month' | 'quarter' | 'year') => {
     const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = formatLocalDate(today); // Sử dụng local timezone
     
     switch (type) {
       case 'today':
@@ -169,24 +177,36 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
         setDateTo(todayStr);
         break;
       case 'week':
+        // Tuần này bắt đầu từ Thứ 2 (Monday = 1)
         const weekStart = new Date(today);
-        weekStart.setDate(today.getDate() - today.getDay());
-        setDateFrom(weekStart.toISOString().split('T')[0]);
+        const dayOfWeek = today.getDay(); // 0 = Chủ nhật, 1 = Thứ 2, ..., 6 = Thứ 7
+        // Nếu là Chủ nhật (0), lùi 6 ngày về Thứ 2 tuần này
+        // Nếu là Thứ 2 (1), lùi 0 ngày
+        // Nếu là Thứ 3 (2), lùi 1 ngày, v.v.
+        const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        weekStart.setDate(today.getDate() - daysToMonday);
+        setDateFrom(formatLocalDate(weekStart)); // Sử dụng local timezone
         setDateTo(todayStr);
         break;
       case 'month':
+        // Tháng này bắt đầu từ ngày 1
         const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-        setDateFrom(monthStart.toISOString().split('T')[0]);
+        setDateFrom(formatLocalDate(monthStart)); // Sử dụng local timezone
         setDateTo(todayStr);
         break;
       case 'quarter':
-        const quarterStart = new Date(today.getFullYear(), Math.floor(today.getMonth() / 3) * 3, 1);
-        setDateFrom(quarterStart.toISOString().split('T')[0]);
+        // Quý này bắt đầu từ ngày 1 của tháng đầu quý
+        // Quý 1: tháng 0-2, Quý 2: tháng 3-5, Quý 3: tháng 6-8, Quý 4: tháng 9-11
+        const currentMonth = today.getMonth(); // 0-11
+        const quarterStartMonth = Math.floor(currentMonth / 3) * 3; // 0, 3, 6, hoặc 9
+        const quarterStart = new Date(today.getFullYear(), quarterStartMonth, 1);
+        setDateFrom(formatLocalDate(quarterStart)); // Sử dụng local timezone
         setDateTo(todayStr);
         break;
       case 'year':
+        // Năm này bắt đầu từ ngày 1/1
         const yearStart = new Date(today.getFullYear(), 0, 1);
-        setDateFrom(yearStart.toISOString().split('T')[0]);
+        setDateFrom(formatLocalDate(yearStart)); // Sử dụng local timezone
         setDateTo(todayStr);
         break;
     }
@@ -323,16 +343,14 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
 
   // Comparison calculation functions
   // Các hàm dưới đây dùng cho phần so sánh (comparison) và các thẻ giá trị.
-  // Theo yêu cầu mới: lọc theo rewardApprovalDate thay vì submissionDate.
+  // So sánh theo thời gian nộp (submissionDate) thay vì ngày duyệt khen thưởng.
   const getCurrentMonthData = () => {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
     
     return ideas.filter(idea => {
-      const rewardDate = (idea as any).rewardApprovalDate;
-      if (!rewardDate) return false;
-      const d = new Date(rewardDate);
+      const d = new Date(idea.submissionDate);
       return d >= startOfMonth && d <= endOfMonth;
     });
   };
@@ -343,9 +361,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
     const endOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
     
     return ideas.filter(idea => {
-      const rewardDate = (idea as any).rewardApprovalDate;
-      if (!rewardDate) return false;
-      const d = new Date(rewardDate);
+      const d = new Date(idea.submissionDate);
       return d >= startOfPrevMonth && d <= endOfPrevMonth;
     });
   };
@@ -356,9 +372,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
     const endOfYear = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
     
     return ideas.filter(idea => {
-      const rewardDate = (idea as any).rewardApprovalDate;
-      if (!rewardDate) return false;
-      const d = new Date(rewardDate);
+      const d = new Date(idea.submissionDate);
       return d >= startOfYear && d <= endOfYear;
     });
   };
@@ -369,33 +383,25 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
     const endOfPrevYear = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
     
     return ideas.filter(idea => {
-      const rewardDate = (idea as any).rewardApprovalDate;
-      if (!rewardDate) return false;
-      const d = new Date(rewardDate);
+      const d = new Date(idea.submissionDate);
       return d >= startOfPrevYear && d <= endOfPrevYear;
     });
   };
 
   // Helpers for period filtering based on selections
-  // DÙNG rewardApprovalDate để phục vụ so sánh & giá trị
+  // DÙNG submissionDate để phục vụ so sánh & giá trị
   const filterByYear = (list: Idea[], y: number) => list.filter(i => {
-    const rewardDate = (i as any).rewardApprovalDate;
-    if (!rewardDate) return false;
-    const d = new Date(rewardDate);
+    const d = new Date(i.submissionDate);
     return d.getFullYear() === y;
   });
   const filterByQuarter = (list: Idea[], y: number, q: number) => list.filter(i => {
-    const rewardDate = (i as any).rewardApprovalDate;
-    if (!rewardDate) return false;
-    const d = new Date(rewardDate);
+    const d = new Date(i.submissionDate);
     const year = d.getFullYear();
     const quarter = Math.floor(d.getMonth() / 3) + 1;
     return year === y && quarter === q;
   });
   const filterByMonth = (list: Idea[], y: number, m: number) => list.filter(i => {
-    const rewardDate = (i as any).rewardApprovalDate;
-    if (!rewardDate) return false;
-    const d = new Date(rewardDate);
+    const d = new Date(i.submissionDate);
     const year = d.getFullYear();
     const month = d.getMonth() + 1;
     return year === y && month === m;
@@ -442,10 +448,11 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
 
     const { current, previous, period, currentLabel, previousLabel } = comparisonData;
 
+    // Tổng số ý tưởng trong kỳ (có rewardApprovalDate)
     const currentTotal = current.length;
     const previousTotal = previous.length;
     const totalChange = currentTotal - previousTotal;
-    const totalChangePercent = previousTotal > 0 ? ((totalChange / previousTotal) * 100) : 0;
+    const totalChangePercent = previousTotal > 0 ? ((totalChange / previousTotal) * 100) : (currentTotal > 0 ? 100 : 0);
 
     // Implemented ideas: A3, Reward Approved, Rewarded, Failed (per requirement)
     const implementedStatuses: Array<'Lập báo cáo A3' | 'Phê duyệt khen thưởng' | 'Đã khen thưởng' | 'Không đạt'> = [
@@ -454,9 +461,9 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
     const currentImplemented = current.filter(i => implementedStatuses.includes((i as any).implementationStatus)).length;
     const previousImplemented = previous.filter(i => implementedStatuses.includes((i as any).implementationStatus)).length;
     const implementedChange = currentImplemented - previousImplemented;
-    const implementedChangePercent = previousImplemented > 0 ? ((implementedChange / previousImplemented) * 100) : 0;
+    const implementedChangePercent = previousImplemented > 0 ? ((implementedChange / previousImplemented) * 100) : (currentImplemented > 0 ? 100 : 0);
 
-    // Success rate: Reward decision / (Reward decision + Failed)
+    // Success rate: Phê duyệt khen thưởng / (Phê duyệt khen thưởng + Không đạt)
     const currentSuccessNumerator = current.filter(i => (i as any).implementationStatus === 'Phê duyệt khen thưởng').length;
     const currentFailCount = current.filter(i => (i as any).implementationStatus === 'Không đạt').length;
     const previousSuccessNumerator = previous.filter(i => (i as any).implementationStatus === 'Phê duyệt khen thưởng').length;
@@ -467,16 +474,28 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
     const previousImplSuccessRate = previousDenom > 0 ? (previousSuccessNumerator / previousDenom) * 100 : 0;
     const implSuccessRateChange = currentImplSuccessRate - previousImplSuccessRate;
 
-    // Calculate benefit value and reward amount
-    const currentBenefitValue = current.reduce((sum, idea) => sum + ((idea as any).benefitValue || 0), 0);
-    const previousBenefitValue = previous.reduce((sum, idea) => sum + ((idea as any).benefitValue || 0), 0);
+    // Calculate benefit value and reward amount (chỉ tính các idea có giá trị)
+    const currentBenefitValue = current.reduce((sum, idea) => {
+      const value = Number((idea as any).benefitValue) || 0;
+      return sum + value;
+    }, 0);
+    const previousBenefitValue = previous.reduce((sum, idea) => {
+      const value = Number((idea as any).benefitValue) || 0;
+      return sum + value;
+    }, 0);
     const benefitValueChange = currentBenefitValue - previousBenefitValue;
-    const benefitValueChangePercent = previousBenefitValue > 0 ? ((benefitValueChange / previousBenefitValue) * 100) : 0;
+    const benefitValueChangePercent = previousBenefitValue > 0 ? ((benefitValueChange / previousBenefitValue) * 100) : (currentBenefitValue > 0 ? 100 : 0);
 
-    const currentRewardAmount = current.reduce((sum, idea) => sum + ((idea as any).rewardAmount || 0), 0);
-    const previousRewardAmount = previous.reduce((sum, idea) => sum + ((idea as any).rewardAmount || 0), 0);
+    const currentRewardAmount = current.reduce((sum, idea) => {
+      const value = Number((idea as any).rewardAmount) || 0;
+      return sum + value;
+    }, 0);
+    const previousRewardAmount = previous.reduce((sum, idea) => {
+      const value = Number((idea as any).rewardAmount) || 0;
+      return sum + value;
+    }, 0);
     const rewardAmountChange = currentRewardAmount - previousRewardAmount;
-    const rewardAmountChangePercent = previousRewardAmount > 0 ? ((rewardAmountChange / previousRewardAmount) * 100) : 0;
+    const rewardAmountChangePercent = previousRewardAmount > 0 ? ((rewardAmountChange / previousRewardAmount) * 100) : (currentRewardAmount > 0 ? 100 : 0);
 
     return {
       currentLabel,
