@@ -36,6 +36,11 @@ function App() {
               </PrivateRoute>
             }
           />
+          {/* Admin chỉ xem, dùng cho điều hướng từ statistics-view */}
+          <Route
+            path="/admin-view"
+            element={<AdminDashboard isViewOnly={true} />}
+          />
           <Route
             path="/statistics"
             element={

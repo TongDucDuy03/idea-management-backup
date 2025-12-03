@@ -134,18 +134,18 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
   };
 
   const handleBackToAdmin = () => {
+    // Nếu đang ở chế độ viewOnly (statistics-view) thì chuyển sang admin-view (chỉ xem)
     if (isViewOnly) {
-      setShowLoginMessage(true);
-      setTimeout(() => setShowLoginMessage(false), 3000);
+      navigate('/admin-view');
       return;
     }
     navigate('/admin');
   };
 
   const handleNavigateToAdmin = (query?: string) => {
+    // Nếu đang ở chế độ viewOnly (statistics-view) thì chuyển sang admin-view (chỉ xem)
     if (isViewOnly) {
-      setShowLoginMessage(true);
-      setTimeout(() => setShowLoginMessage(false), 3000);
+      navigate(`/admin-view${query ? `?${query}` : ''}`);
       return;
     }
     navigate(`/admin${query ? `?${query}` : ''}`);
@@ -1940,20 +1940,8 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
       )}
       
       {/* Snackbar for login message */}
-      <Snackbar
-        open={showLoginMessage}
-        autoHideDuration={3000}
-        onClose={() => setShowLoginMessage(false)}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert 
-          onClose={() => setShowLoginMessage(false)} 
-          severity="info" 
-          sx={{ width: '100%' }}
-        >
-          Bạn không phải admin nên không có quyền xem chi tiết danh sách
-        </Alert>
-      </Snackbar>
+      {/* Snackbar này hiện không còn dùng để chặn vào Admin khi ở viewOnly,
+          nên có thể giữ lại cho mục đích thông báo khác nếu cần */}
     </Container>
   );
 };

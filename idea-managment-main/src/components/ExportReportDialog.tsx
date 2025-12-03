@@ -720,12 +720,14 @@ const ExportReportDialog: React.FC<ExportReportDialogProps> = ({
       if (selectedIdeasData.length === 1) {
         const idea = selectedIdeasData[0];
         const htmlContent = generateHTMLReport(idea);
-        const filename = `Bao_Cao_A3_${idea.fullName || idea._id}.pdf`;
+        // Đặt tên file: Mã ý tưởng + Tên người gửi ý tưởng
+        const filename = `${idea.ideaCode }_${idea.fullName}.pdf`;
         await createPdfFromHtml(htmlContent, filename);
       } else {
         for (const idea of selectedIdeasData) {
           const htmlContent = generateHTMLReport(idea);
-          const filename = `Bao_Cao_A3_${idea.fullName || idea._id}.pdf`;
+          // Đặt tên file: Mã ý tưởng + Tên người gửi ý tưởng
+          const filename = `${idea.ideaCode }_${idea.fullName}.pdf`;
           await createPdfFromHtml(htmlContent, filename);
           // Delay giữa các file để tránh lỗi
           await new Promise(resolve => setTimeout(resolve, 1000));

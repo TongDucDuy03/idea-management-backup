@@ -30,7 +30,12 @@ import ExportReportDialog from './ExportReportDialog';
 import ImageLightbox from './ImageLightbox';
 import api from '../api/config';
 
-const AdminDashboard: React.FC = () => {
+interface AdminDashboardProps {
+  // Chế độ chỉ xem (dùng cho /admin-view từ statistics-view)
+  isViewOnly?: boolean;
+}
+
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [ideas, setIdeas] = useState<Idea[]>([]);
@@ -91,21 +96,46 @@ const AdminDashboard: React.FC = () => {
     'actions'
   ] as const;
 
-  const defaultVisibleFields = new Set<string>([
-    'ideaCode',
-    'idea',
-    'solution',
-    'benefit',
-    'topicTitle',
-    'beforeImage',
-    'afterImage',
-    'status',
-    'implementationStatus',
-    'note',
-    'actions'
+  // Các cột được phép hiển thị trong chế độ chỉ xem (admin-view)
+  const viewOnlyFields = new Set<string>([
+    'ideaCode',          // Mã ý tưởng
+    'fullName',          // Tên người đề nghị
+    'department',        // Phòng ban
+    'idea',              // Ý tưởng
+    'status',            // Quyết định phê duyệt
+    'implementationStatus', // Trạng thái
+    'beforeImage',       // Ảnh trước
+    'afterImage'         // Ảnh sau
   ]);
 
+  const defaultVisibleFields = new Set<string>(
+    isViewOnly
+      ? Array.from(viewOnlyFields)
+      : [
+          'ideaCode',
+          'idea',
+          'solution',
+          'benefit',
+          'topicTitle',
+          'beforeImage',
+          'afterImage',
+          'status',
+          'implementationStatus',
+          'note',
+          'actions'
+        ]
+  );
+
   const [columnVisibilityModel, setColumnVisibilityModel] = useState<Record<string, boolean>>(() => {
+    // Với chế độ chỉ xem, luôn cố định bộ cột, không dùng cấu hình lưu trong localStorage
+    if (isViewOnly) {
+      const model: Record<string, boolean> = {};
+      allColumnFields.forEach(f => {
+        model[f] = viewOnlyFields.has(f);
+      });
+      return model;
+    }
+
     try {
       const saved = localStorage.getItem('admin_column_visibility');
       if (saved) return JSON.parse(saved);
@@ -116,10 +146,11 @@ const AdminDashboard: React.FC = () => {
   });
 
   useEffect(() => {
+    if (isViewOnly) return;
     try {
       localStorage.setItem('admin_column_visibility', JSON.stringify(columnVisibilityModel));
     } catch {}
-  }, [columnVisibilityModel]);
+  }, [columnVisibilityModel, isViewOnly]);
 
   const [colMenuAnchor, setColMenuAnchor] = useState<null | HTMLElement>(null);
   const isColMenuOpen = Boolean(colMenuAnchor);
@@ -158,6 +189,14 @@ const AdminDashboard: React.FC = () => {
 
   const fetchIdeas = useCallback(async () => {
     try {
+      if (isViewOnly) {
+        // Chế độ chỉ xem: dùng endpoint public, không cần token
+        const response = await api.get('/ideas/public');
+        setIdeas(response.data);
+        setLoading(false);
+        return;
+      }
+
       const token = localStorage.getItem('token');
       if (!token) {
         navigate('/login');
@@ -172,7 +211,7 @@ const AdminDashboard: React.FC = () => {
       setIdeas(response.data);
       setLoading(false);
     } catch (error: any) {
-      if (error.response?.status === 401) {
+      if (!isViewOnly && error.response?.status === 401) {
         localStorage.removeItem('token');
         navigate('/login');
       } else {
@@ -180,7 +219,7 @@ const AdminDashboard: React.FC = () => {
       }
       setLoading(false);
     }
-  }, [navigate]);
+  }, [navigate, isViewOnly]);
 
   useEffect(() => {
     fetchIdeas();
@@ -308,6 +347,7 @@ const AdminDashboard: React.FC = () => {
 
 
   const handleStatusChange = async (id: string, status: 'pending' | 'rejected' | 'noted' | 'approved') => {
+    if (isViewOnly) return; // Không cho sửa ở chế độ chỉ xem
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -337,6 +377,7 @@ const AdminDashboard: React.FC = () => {
     id: string,
     implementationStatus: 'Đề xuất mới' | 'Xem xét' | 'Phê duyệt' | 'Phản hồi phê duyệt' | 'Đang triển khai' | 'Lập báo cáo A3' | 'Phê duyệt khen thưởng' | 'Đã khen thưởng' | 'Không đạt'
   ) => {
+    if (isViewOnly) return; // Không cho sửa ở chế độ chỉ xem
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -363,6 +404,7 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
+    if (isViewOnly) return; // Không cho xóa ở chế độ chỉ xem
     if (window.confirm('Bạn có chắc chắn muốn xóa ý tưởng này?')) {
       try {
         const token = localStorage.getItem('token');
@@ -389,18 +431,21 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleEdit = (idea: Idea) => {
+    if (isViewOnly) return; // Không cho sửa ở chế độ chỉ xem
     setSelectedIdea(idea);
     setIsEditMode(true);
     setIsDialogOpen(true);
   };
 
   const handleAdd = () => {
+    if (isViewOnly) return; // Không cho thêm mới ở chế độ chỉ xem
     setSelectedIdea(null);
     setIsEditMode(false);
     setIsDialogOpen(true);
   };
 
   const handleSave = async (ideaData: Partial<Idea>) => {
+    if (isViewOnly) return; // Không lưu ở chế độ chỉ xem
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -439,7 +484,13 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleGoToStatistics = () => {
-    navigate('/statistics');
+    // Nếu đang ở admin-view (chỉ xem) thì quay về statistics-view,
+    // còn admin thường quay về dashboard thống kê chuẩn
+    if (isViewOnly) {
+      navigate('/statistics-view');
+    } else {
+      navigate('/statistics');
+    }
   };
 
   const handleExportExcel = () => {
@@ -668,6 +719,18 @@ const AdminDashboard: React.FC = () => {
       handleClose();
     };
 
+    // Ở chế độ chỉ xem: chỉ hiển thị chip, không mở menu
+    if (isViewOnly) {
+      return (
+        <Chip
+          label={getStatusLabel(row.status || 'pending')}
+          color={color}
+          size="small"
+          sx={{ fontWeight: 'bold' }}
+        />
+      );
+    }
+
     return (
       <>
         <Chip
@@ -716,6 +779,22 @@ const AdminDashboard: React.FC = () => {
     };
 
     const current = (row as any).implementationStatus || 'Đề xuất mới';
+
+    // Ở chế độ chỉ xem: chỉ hiển thị chip, không mở menu
+    if (isViewOnly) {
+      return (
+        <Chip
+          label={current}
+          sx={{
+            backgroundColor: getImplementationStatusColor(current),
+            color: 'white',
+            fontWeight: 'bold',
+            fontSize: '0.75rem'
+          }}
+          size="small"
+        />
+      );
+    }
 
     return (
       <>
@@ -1234,33 +1313,38 @@ const AdminDashboard: React.FC = () => {
         </div>
       )
     },
-    {
-      field: 'actions',
-      headerName: 'Thao tác',
-      width: 120,
-      renderCell: (params) => (
-        <Box>
-          <Tooltip title="Sửa">
-            <IconButton
-              color="primary"
-              onClick={() => handleEdit(params.row)}
-              size="small"
-            >
-              <EditIcon />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Xóa">
-            <IconButton
-              color="error"
-              onClick={() => handleDelete(params.row._id)}
-              size="small"
-            >
-              <DeleteIcon />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      ),
-    },
+    // Cột thao tác chỉ hiển thị trong chế độ admin đầy đủ
+    ...(!isViewOnly
+      ? [
+          {
+            field: 'actions',
+            headerName: 'Thao tác',
+            width: 120,
+            renderCell: (params: any) => (
+              <Box>
+                <Tooltip title="Sửa">
+                  <IconButton
+                    color="primary"
+                    onClick={() => handleEdit(params.row)}
+                    size="small"
+                  >
+                    <EditIcon />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Xóa">
+                  <IconButton
+                    color="error"
+                    onClick={() => handleDelete(params.row._id)}
+                    size="small"
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+            ),
+          } as GridColDef
+        ]
+      : [])
   ];
 
   return (
@@ -1391,10 +1475,10 @@ const AdminDashboard: React.FC = () => {
                     sx={{ minWidth: 200, maxWidth: 280, flexShrink: 1 }}
                   >
                     {[
-                      { value: 'pending', label: 'Chưa phê duyệt' },
-                      { value: 'rejected', label: 'Không phù hợp' },
-                      { value: 'noted', label: 'Lưu ý tưởng' },
-                      { value: 'approved', label: 'Phê duyệt triển khai' }
+                      { value: 'Chưa phê duyệt', label: 'Chưa phê duyệt' },
+                      { value: 'Không phù hợp', label: 'Không phù hợp' },
+                      { value: 'Lưu ý tưởng', label: 'Lưu ý tưởng' },
+                      { value: 'Phê duyệt triển khai', label: 'Phê duyệt triển khai' }
                     ].map(opt => (
                       <MenuItem key={opt.value} value={opt.value}>
                         <Checkbox checked={statusFilter.indexOf(opt.value as any) > -1} />
@@ -1481,86 +1565,131 @@ const AdminDashboard: React.FC = () => {
                 </Box>
 
                 {/* Hàng 3 */}
-                <Box sx={{ display: 'flex', gap: 2, marginLeft: 'auto', alignItems: 'center' }}>
-                  <Button
-                    variant="outlined"
-                    color="primary"
-                    onClick={openColMenu}
-                    sx={{
-                      py: 1.0,
-                      px: 2.0,
-                      fontSize: '0.95rem',
-                      fontWeight: 'bold',
-                      textTransform: 'none',
-                      whiteSpace: 'nowrap',
-                      minWidth: 'max-content'
-                    }}
-                  >
-                    Quản lý cột
-                  </Button>
-                  <Menu anchorEl={colMenuAnchor} open={isColMenuOpen} onClose={closeColMenu}>
-                    {allColumnFields.map((field) => (
-                      <MenuItem key={field} onClick={() => handleToggleColumn(field)}>
-                        <Checkbox checked={!!columnVisibilityModel[field]} />
-                        <ListItemText
-                          primary={
-                            (
-                              {
-                                ideaCode: 'Mã ý tưởng',
-                                fullName: 'Họ và tên',
-                                department: 'Đơn vị',
-                                idea: 'Ý tưởng',
-                                solution: 'Thực trạng',
-                                benefit: 'Giải pháp',
-                                benefitOutcome: 'Lợi ích mang lại',
-                                resourcesUsed: 'Nguồn lực sử dụng',
-                                calculationDescription: 'Mô tả cách tính',
-                                topicTitle: 'Tên đề tài',
-                                scalingOpportunity: 'Cơ hội nhân rộng phát triển',
-                                status: 'Quyết định phê duyệt',
-                                implementationStatus: 'Trạng thái',
-                                submissionDate: 'Thời gian nộp',
-                                implementationDepartment: 'Phòng ban triển khai',
-                                note: 'Ghi chú',
-                                benefitValue: 'Giá trị làm lợi (VND)',
-                                rewardAmount: 'Tiền thưởng (VND)',
-                                rewardApprovalDate: 'Ngày duyệt khen thưởng',
-                                actions: 'Thao tác'
-                              } as Record<string, string>
-                            )[field]
+                <Box sx={{ display: 'flex', gap: 2, justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                  {/* Box chứa 2 nút bên trái - chỉ hiển thị khi không phải chế độ chỉ xem */}
+                  {!isViewOnly && (
+                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                      {/* Nút Tính thưởng - link tới Google Form */}
+                      <Button
+                        variant="contained"
+                        color="warning"
+                        href="https://docs.google.com/forms/d/e/1FAIpQLScTqJZj1hTAM8WfUBgDOpeRjeowezkSnkM6PZB3l8MxmIidIw/viewform"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        sx={{
+                          py: 1.0,
+                          px: 2.0,
+                          fontSize: '0.95rem',
+                          fontWeight: 'bold',
+                          textTransform: 'none',
+                          whiteSpace: 'nowrap',
+                          minWidth: 'max-content',
+                          boxShadow: 2,
+                          '&:hover': {
+                            boxShadow: 4,
+                            transform: 'translateY(-2px)',
+                            transition: 'all 0.2s'
                           }
-                        />
-                      </MenuItem>
-                    ))}
-                  </Menu>
-                  <Button
-                      variant="contained"
-                      color="info"
-                      startIcon={<BarChartIcon />}
-                      onClick={handleGoToStatistics}
-                      sx={{
-                        py: 1.0,
-                        px: 2.0,
-                        fontSize: '0.95rem',
-                        fontWeight: 'bold',
-                        textTransform: 'none',
-                        boxShadow: 2,
-                        whiteSpace: 'nowrap',
-                        minWidth: 'max-content',
-                        '&:hover': {
-                          boxShadow: 4,
-                          transform: 'translateY(-2px)',
-                          transition: 'all 0.2s'
-                        }
-                      }}
-                    >
-                      Dashboard Thống kê
-                  </Button>
+                        }}
+                      >
+                        Tính thưởng
+                      </Button>
+                      
+                      {/* Nút Kết quả - link tới Google Sheets - màu tím */}
+                      <Button
+                        variant="contained"
+                        href="https://docs.google.com/spreadsheets/d/1rRjAAa-mq4txuOYFD3rbTDB-eMJx4wJcpop0uG0OtN8/edit?gid=1257837877#gid=1257837877"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        sx={{
+                          py: 1.0,
+                          px: 2.0,
+                          fontSize: '0.95rem',
+                          fontWeight: 'bold',
+                          textTransform: 'none',
+                          whiteSpace: 'nowrap',
+                          minWidth: 'max-content',
+                          boxShadow: 2,
+                          backgroundColor: '#9c27b0', // Màu tím
+                          color: 'white',
+                          '&:hover': {
+                            backgroundColor: '#7b1fa2', // Màu tím đậm hơn khi hover
+                            boxShadow: 4,
+                            transform: 'translateY(-2px)',
+                            transition: 'all 0.2s'
+                          }
+                        }}
+                      >
+                        Kết quả
+                      </Button>
+                    </Box>
+                  )}
+                  
+                  {/* Box chứa các nút bên phải */}
+                  <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                    {/* Quản lý cột chỉ dùng cho admin đầy đủ, không dùng trong chế độ chỉ xem */}
+                    {!isViewOnly && (
+                    <>
+                      <Button
+                        variant="outlined"
+                        color="primary"
+                        onClick={openColMenu}
+                        sx={{
+                          py: 1.0,
+                          px: 2.0,
+                          fontSize: '0.95rem',
+                          fontWeight: 'bold',
+                          textTransform: 'none',
+                          whiteSpace: 'nowrap',
+                          minWidth: 'max-content'
+                        }}
+                      >
+                        Quản lý cột
+                      </Button>
+                      <Menu anchorEl={colMenuAnchor} open={isColMenuOpen} onClose={closeColMenu}>
+                        {allColumnFields.map((field) => (
+                          <MenuItem key={field} onClick={() => handleToggleColumn(field)}>
+                            <Checkbox checked={!!columnVisibilityModel[field]} />
+                            <ListItemText
+                              primary={
+                                (
+                                  {
+                                    ideaCode: 'Mã ý tưởng',
+                                    fullName: 'Họ và tên',
+                                    department: 'Đơn vị',
+                                    idea: 'Ý tưởng',
+                                    solution: 'Thực trạng',
+                                    benefit: 'Giải pháp',
+                                    benefitOutcome: 'Lợi ích mang lại',
+                                    resourcesUsed: 'Nguồn lực sử dụng',
+                                    calculationDescription: 'Mô tả cách tính',
+                                    topicTitle: 'Tên đề tài',
+                                    scalingOpportunity: 'Cơ hội nhân rộng phát triển',
+                                    beforeImage: 'Hình ảnh trước',
+                                    afterImage: 'Hình ảnh sau',
+                                    status: 'Quyết định phê duyệt',
+                                    implementationStatus: 'Trạng thái',
+                                    submissionDate: 'Thời gian nộp',
+                                    implementationDepartment: 'Phòng ban triển khai',
+                                    note: 'Ghi chú',
+                                    benefitValue: 'Giá trị làm lợi (VND)',
+                                    rewardAmount: 'Tiền thưởng (VND)',
+                                    rewardApprovalDate: 'Ngày duyệt khen thưởng',
+                                    actions: 'Thao tác'
+                                  } as Record<string, string>
+                                )[field]
+                              }
+                            />
+                          </MenuItem>
+                        ))}
+                      </Menu>
+                    </>
+                  )}
                   <Button
                     variant="contained"
-                    color="success"
-                    startIcon={<FileDownloadIcon />}
-                    onClick={handleExportExcel}
+                    color="info"
+                    startIcon={<BarChartIcon />}
+                    onClick={handleGoToStatistics}
                     sx={{
                       py: 1.0,
                       px: 2.0,
@@ -1577,47 +1706,75 @@ const AdminDashboard: React.FC = () => {
                       }
                     }}
                   >
-                    Xuất Excel
+                    {isViewOnly ? 'Quay lại Thống kê' : 'Dashboard Thống kê'}
                   </Button>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    startIcon={<FileDownloadIcon />}
-                    onClick={() => setIsExportDialogOpen(true)}
-                    sx={{
-                      py: 1.0,
-                      px: 2.0,
-                      fontSize: '0.95rem',
-                      fontWeight: 'bold',
-                      textTransform: 'none',
-                      boxShadow: 2,
-                      whiteSpace: 'nowrap',
-                      minWidth: 'max-content',
-                      '&:hover': {
-                        boxShadow: 4,
-                        transform: 'translateY(-2px)',
-                        transition: 'all 0.2s'
-                      }
-                    }}
-                  >
-                    Export Báo Cáo
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    color="error"
-                    onClick={handleLogout}
-                    sx={{
-                      py: 1.0,
-                      px: 2.0,
-                      fontSize: '0.95rem',
-                      fontWeight: 'bold',
-                      textTransform: 'none',
-                      whiteSpace: 'nowrap',
-                      minWidth: 'max-content'
-                    }}
-                  >
-                    Đăng xuất
-                  </Button>
+                  {!isViewOnly && (
+                    <>
+                      <Button
+                        variant="contained"
+                        color="success"
+                        startIcon={<FileDownloadIcon />}
+                        onClick={handleExportExcel}
+                        sx={{
+                          py: 1.0,
+                          px: 2.0,
+                          fontSize: '0.95rem',
+                          fontWeight: 'bold',
+                          textTransform: 'none',
+                          boxShadow: 2,
+                          whiteSpace: 'nowrap',
+                          minWidth: 'max-content',
+                          '&:hover': {
+                            boxShadow: 4,
+                            transform: 'translateY(-2px)',
+                            transition: 'all 0.2s'
+                          }
+                        }}
+                      >
+                        Xuất Excel
+                      </Button>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        startIcon={<FileDownloadIcon />}
+                        onClick={() => setIsExportDialogOpen(true)}
+                        sx={{
+                          py: 1.0,
+                          px: 2.0,
+                          fontSize: '0.95rem',
+                          fontWeight: 'bold',
+                          textTransform: 'none',
+                          boxShadow: 2,
+                          whiteSpace: 'nowrap',
+                          minWidth: 'max-content',
+                          '&:hover': {
+                            boxShadow: 4,
+                            transform: 'translateY(-2px)',
+                            transition: 'all 0.2s'
+                          }
+                        }}
+                      >
+                        Export Báo Cáo
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        onClick={handleLogout}
+                        sx={{
+                          py: 1.0,
+                          px: 2.0,
+                          fontSize: '0.95rem',
+                          fontWeight: 'bold',
+                          textTransform: 'none',
+                          whiteSpace: 'nowrap',
+                          minWidth: 'max-content'
+                        }}
+                      >
+                        Đăng xuất
+                      </Button>
+                    </>
+                  )}
+                  </Box>
                 </Box>
               </Box>
             </Grid>

@@ -17,7 +17,8 @@ import {
   CardContent,
   Link
 } from '@mui/material';
-import { ContactSupport, Phone } from '@mui/icons-material';
+import { ContactSupport, Phone, AutoAwesome } from '@mui/icons-material';
+import { CircularProgress } from '@mui/material';
 import api from '../api/config';
 import ImageLightbox from './ImageLightbox';
 
@@ -49,6 +50,9 @@ const IdeaForm: React.FC = () => {
     fullName: '',
     department: '',
     idea: '',
+    solution: '',
+    benefit: '',
+    topicTitle: '',
     beforeImage: '',
     afterImage: ''
   });
@@ -59,6 +63,14 @@ const IdeaForm: React.FC = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [ideaCode, setIdeaCode] = useState('');
+  
+  // AI states
+  const [aiLoading, setAiLoading] = useState({
+    improveDescription: false,
+    suggestSolution: false,
+    suggestBenefit: false,
+    suggestTopicTitle: false
+  });
   
   // Lightbox state
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -206,6 +218,100 @@ const IdeaForm: React.FC = () => {
     }
   };
 
+  // AI Functions
+  const handleImproveDescription = async () => {
+    if (!formData.idea.trim()) {
+      setError('Vui lòng nhập mô tả ý tưởng trước khi sử dụng AI');
+      return;
+    }
+
+    setAiLoading(prev => ({ ...prev, improveDescription: true }));
+    setError('');
+
+    try {
+      const response = await api.post('/ai/improve-description', {
+        idea: formData.idea,
+        department: formData.department
+      });
+      setFormData(prev => ({ ...prev, idea: response.data.improvedIdea }));
+    } catch (error: any) {
+      console.error('AI Error:', error);
+      setError(error.response?.data?.message || 'Lỗi khi sử dụng AI. Vui lòng thử lại.');
+    } finally {
+      setAiLoading(prev => ({ ...prev, improveDescription: false }));
+    }
+  };
+
+  const handleSuggestSolution = async () => {
+    if (!formData.idea.trim()) {
+      setError('Vui lòng nhập mô tả ý tưởng trước khi sử dụng AI');
+      return;
+    }
+
+    setAiLoading(prev => ({ ...prev, suggestSolution: true }));
+    setError('');
+
+    try {
+      const response = await api.post('/ai/suggest-solution', {
+        idea: formData.idea,
+        department: formData.department
+      });
+      setFormData(prev => ({ ...prev, solution: response.data.solution }));
+    } catch (error: any) {
+      console.error('AI Error:', error);
+      setError(error.response?.data?.message || 'Lỗi khi sử dụng AI. Vui lòng thử lại.');
+    } finally {
+      setAiLoading(prev => ({ ...prev, suggestSolution: false }));
+    }
+  };
+
+  const handleSuggestBenefit = async () => {
+    if (!formData.idea.trim()) {
+      setError('Vui lòng nhập mô tả ý tưởng trước khi sử dụng AI');
+      return;
+    }
+
+    setAiLoading(prev => ({ ...prev, suggestBenefit: true }));
+    setError('');
+
+    try {
+      const response = await api.post('/ai/suggest-benefit', {
+        idea: formData.idea,
+        solution: formData.solution,
+        department: formData.department
+      });
+      setFormData(prev => ({ ...prev, benefit: response.data.benefit }));
+    } catch (error: any) {
+      console.error('AI Error:', error);
+      setError(error.response?.data?.message || 'Lỗi khi sử dụng AI. Vui lòng thử lại.');
+    } finally {
+      setAiLoading(prev => ({ ...prev, suggestBenefit: false }));
+    }
+  };
+
+  const handleSuggestTopicTitle = async () => {
+    if (!formData.idea.trim()) {
+      setError('Vui lòng nhập mô tả ý tưởng trước khi sử dụng AI');
+      return;
+    }
+
+    setAiLoading(prev => ({ ...prev, suggestTopicTitle: true }));
+    setError('');
+
+    try {
+      const response = await api.post('/ai/suggest-topic-title', {
+        idea: formData.idea,
+        department: formData.department
+      });
+      setFormData(prev => ({ ...prev, topicTitle: response.data.topicTitle }));
+    } catch (error: any) {
+      console.error('AI Error:', error);
+      setError(error.response?.data?.message || 'Lỗi khi sử dụng AI. Vui lòng thử lại.');
+    } finally {
+      setAiLoading(prev => ({ ...prev, suggestTopicTitle: false }));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -216,6 +322,9 @@ const IdeaForm: React.FC = () => {
         fullName: formData.fullName,
         department: formData.department,
         idea: formData.idea,
+        solution: formData.solution || null,
+        benefit: formData.benefit || null,
+        topicTitle: formData.topicTitle || null,
         beforeImage: formData.beforeImage || null,
         afterImage: formData.afterImage || null
       };
@@ -234,6 +343,9 @@ const IdeaForm: React.FC = () => {
         fullName: '',
         department: '',
         idea: '',
+        solution: '',
+        benefit: '',
+        topicTitle: '',
         beforeImage: '',
         afterImage: ''
       });
@@ -429,26 +541,187 @@ const IdeaForm: React.FC = () => {
               </FormControl>
             </Grid>
             <Grid item xs={12}>
-              <TextField
-                name="idea"
-                label="Ý tưởng"
-                value={formData.idea}
-                onChange={handleChange}
-                required
-                fullWidth
-                multiline
-                rows={6}
-                error={!!errors.idea}
-                helperText={errors.idea}
-                placeholder="Mô tả chi tiết ý tưởng cải tiến của bạn..."
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    '&:hover fieldset': {
-                      borderColor: '#1976d2',
+              <Box sx={{ position: 'relative' }}>
+                <TextField
+                  name="idea"
+                  label="Ý tưởng"
+                  value={formData.idea}
+                  onChange={handleChange}
+                  required
+                  fullWidth
+                  multiline
+                  rows={6}
+                  error={!!errors.idea}
+                  helperText={errors.idea}
+                  placeholder="Mô tả chi tiết ý tưởng cải tiến của bạn..."
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      '&:hover fieldset': {
+                        borderColor: '#1976d2',
+                      },
                     },
-                  },
-                }}
-              />
+                  }}
+                />
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={aiLoading.improveDescription ? <CircularProgress size={16} /> : <AutoAwesome />}
+                  onClick={handleImproveDescription}
+                  disabled={aiLoading.improveDescription || !formData.idea.trim()}
+                  sx={{
+                    position: 'absolute',
+                    top: 8,
+                    right: 8,
+                    minWidth: 'auto',
+                    px: 1.5,
+                    py: 0.5,
+                    fontSize: '0.75rem',
+                    textTransform: 'none',
+                    bgcolor: 'white',
+                    '&:hover': {
+                      bgcolor: '#f5f5f5',
+                    }
+                  }}
+                >
+                  AI Cải thiện
+                </Button>
+              </Box>
+            </Grid>
+            
+            {/* Tên đề tài với AI */}
+            <Grid item xs={12}>
+              <Box sx={{ position: 'relative' }}>
+                <TextField
+                  name="topicTitle"
+                  label="Tên đề tài"
+                  value={formData.topicTitle}
+                  onChange={handleChange}
+                  fullWidth
+                  placeholder="Tên đề tài cho ý tưởng (có thể để AI đề xuất)"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      '&:hover fieldset': {
+                        borderColor: '#1976d2',
+                      },
+                    },
+                  }}
+                />
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={aiLoading.suggestTopicTitle ? <CircularProgress size={16} /> : <AutoAwesome />}
+                  onClick={handleSuggestTopicTitle}
+                  disabled={aiLoading.suggestTopicTitle || !formData.idea.trim()}
+                  sx={{
+                    position: 'absolute',
+                    top: 8,
+                    right: 8,
+                    minWidth: 'auto',
+                    px: 1.5,
+                    py: 0.5,
+                    fontSize: '0.75rem',
+                    textTransform: 'none',
+                    bgcolor: 'white',
+                    '&:hover': {
+                      bgcolor: '#f5f5f5',
+                    }
+                  }}
+                >
+                  AI Đề xuất
+                </Button>
+              </Box>
+            </Grid>
+            
+            {/* Giải pháp với AI */}
+            <Grid item xs={12}>
+              <Box sx={{ position: 'relative' }}>
+                <TextField
+                  name="solution"
+                  label="Giải pháp"
+                  value={formData.solution}
+                  onChange={handleChange}
+                  fullWidth
+                  multiline
+                  rows={4}
+                  placeholder="Mô tả giải pháp cụ thể (có thể để AI đề xuất)"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      '&:hover fieldset': {
+                        borderColor: '#1976d2',
+                      },
+                    },
+                  }}
+                />
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={aiLoading.suggestSolution ? <CircularProgress size={16} /> : <AutoAwesome />}
+                  onClick={handleSuggestSolution}
+                  disabled={aiLoading.suggestSolution || !formData.idea.trim()}
+                  sx={{
+                    position: 'absolute',
+                    top: 8,
+                    right: 8,
+                    minWidth: 'auto',
+                    px: 1.5,
+                    py: 0.5,
+                    fontSize: '0.75rem',
+                    textTransform: 'none',
+                    bgcolor: 'white',
+                    '&:hover': {
+                      bgcolor: '#f5f5f5',
+                    }
+                  }}
+                >
+                  AI Đề xuất
+                </Button>
+              </Box>
+            </Grid>
+            
+            {/* Lợi ích với AI */}
+            <Grid item xs={12}>
+              <Box sx={{ position: 'relative' }}>
+                <TextField
+                  name="benefit"
+                  label="Lợi ích"
+                  value={formData.benefit}
+                  onChange={handleChange}
+                  fullWidth
+                  multiline
+                  rows={4}
+                  placeholder="Mô tả lợi ích mang lại (có thể để AI đề xuất)"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      '&:hover fieldset': {
+                        borderColor: '#1976d2',
+                      },
+                    },
+                  }}
+                />
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={aiLoading.suggestBenefit ? <CircularProgress size={16} /> : <AutoAwesome />}
+                  onClick={handleSuggestBenefit}
+                  disabled={aiLoading.suggestBenefit || !formData.idea.trim()}
+                  sx={{
+                    position: 'absolute',
+                    top: 8,
+                    right: 8,
+                    minWidth: 'auto',
+                    px: 1.5,
+                    py: 0.5,
+                    fontSize: '0.75rem',
+                    textTransform: 'none',
+                    bgcolor: 'white',
+                    '&:hover': {
+                      bgcolor: '#f5f5f5',
+                    }
+                  }}
+                >
+                  AI Đề xuất
+                </Button>
+              </Box>
             </Grid>
             {/* Hình ảnh trước và sau */}
             <Grid item xs={12} md={6}>
