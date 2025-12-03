@@ -1935,6 +1935,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
             departmentFilter={departmentFilter}
             dateFrom={dateFrom}
             dateTo={dateTo}
+            isViewOnly={isViewOnly}
           />
         </Box>
       )}

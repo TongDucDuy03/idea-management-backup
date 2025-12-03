@@ -1475,10 +1475,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
                     sx={{ minWidth: 200, maxWidth: 280, flexShrink: 1 }}
                   >
                     {[
-                      { value: 'Chưa phê duyệt', label: 'Chưa phê duyệt' },
-                      { value: 'Không phù hợp', label: 'Không phù hợp' },
-                      { value: 'Lưu ý tưởng', label: 'Lưu ý tưởng' },
-                      { value: 'Phê duyệt triển khai', label: 'Phê duyệt triển khai' }
+                      { value: 'pending', label: 'Chưa phê duyệt' },
+                      { value: 'rejected', label: 'Không phù hợp' },
+                      { value: 'noted', label: 'Lưu ý tưởng' },
+                      { value: 'approved', label: 'Phê duyệt triển khai' }
                     ].map(opt => (
                       <MenuItem key={opt.value} value={opt.value}>
                         <Checkbox checked={statusFilter.indexOf(opt.value as any) > -1} />

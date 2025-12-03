@@ -59,6 +59,7 @@ interface AdvancedStatisticsProps {
   departmentFilter: string;
   dateFrom?: string;
   dateTo?: string;
+  isViewOnly?: boolean; // Thêm prop để biết có phải chế độ chỉ xem không
 }
 
 const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({ 
@@ -66,22 +67,65 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
   timeRange, 
   departmentFilter,
   dateFrom,
-  dateTo
+  dateTo,
+  isViewOnly = false
 }) => {
   const navigate = useNavigate();
   const [selectedMetric, setSelectedMetric] = useState('ideas');
 
-  // Helper function to build query string with date filters
+  // Helper function để điều hướng sang admin hoặc admin-view tùy theo isViewOnly
+  const navigateToAdmin = (query?: string) => {
+    const basePath = isViewOnly ? '/admin-view' : '/admin';
+    navigate(`${basePath}${query ? `?${query}` : ''}`);
+  };
+
+  // Helper function to build query string with date filters, department, và timeRange
   const buildQuery = (additionalParams?: Record<string, string>) => {
     const params = new URLSearchParams();
+    
+    // Thêm dateFrom và dateTo nếu có
     if (dateFrom) params.append('dateFrom', dateFrom);
     if (dateTo) params.append('dateTo', dateTo);
     if (dateFrom || dateTo) params.append('filterType', 'dateRange');
+    
+    // Thêm departmentFilter nếu không phải 'all'
+    if (departmentFilter && departmentFilter !== 'all') {
+      params.append('department', departmentFilter);
+    }
+    
+    // Thêm timeRange nếu không có dateFrom/dateTo và không phải 'all'
+    if (!dateFrom && !dateTo && timeRange && timeRange !== 'all') {
+      // Chuyển timeRange thành khoảng ngày tương ứng
+      const today = new Date();
+      let from: string | null = null;
+      const to = today.toISOString().split('T')[0];
+
+      if (timeRange === 'week') {
+        const weekStart = new Date(today);
+        weekStart.setDate(today.getDate() - 7);
+        from = weekStart.toISOString().split('T')[0];
+      } else if (timeRange === 'month') {
+        const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+        from = monthStart.toISOString().split('T')[0];
+      } else if (timeRange === 'quarter') {
+        const quarterStart = new Date(today.getFullYear(), Math.floor(today.getMonth() / 3) * 3, 1);
+        from = quarterStart.toISOString().split('T')[0];
+      } else if (timeRange === 'year') {
+        const yearStart = new Date(today.getFullYear(), 0, 1);
+        from = yearStart.toISOString().split('T')[0];
+      }
+
+      if (from) params.append('dateFrom', from);
+      params.append('dateTo', to);
+    }
+    
+    // Thêm các tham số bổ sung
     if (additionalParams) {
       Object.entries(additionalParams).forEach(([key, value]) => {
         params.append(key, value);
       });
     }
+    
     return params.toString();
   };
   
@@ -758,7 +802,8 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
                     const [month, year] = monthLabel.split('/');
                     const startDate = `${year}-${month}-01`;
                     const endDate = new Date(parseInt(year), parseInt(month), 0).toISOString().split('T')[0];
-                    navigate(`/admin?dateFrom=${startDate}&dateTo=${endDate}`);
+                    const query = buildQuery({ dateFrom: startDate, dateTo: endDate });
+                    navigateToAdmin(query);
                   }
                 }}
               />
@@ -809,7 +854,8 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
                   const index = (elements[0] as any).index as number;
                   const dept = sortedDepartmentsByTotal[index]?.[0];
                   if (dept) {
-                    navigate(`/admin?department=${encodeURIComponent(dept)}`);
+                    const query = buildQuery({ department: dept });
+                    navigateToAdmin(query);
                   }
                 }}
               />
@@ -845,7 +891,10 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
                         cursor: 'pointer',
                         '&:hover': { backgroundColor: '#f5f5f5' }
                       }}
-                      onClick={() => navigate(`/admin?department=${encodeURIComponent(dept)}`)}
+                      onClick={() => {
+                        const query = buildQuery({ department: dept });
+                        navigateToAdmin(query);
+                      }}
                     >
                       <TableCell>
                         <Chip label={index + 1} color={index < 3 ? 'primary' : 'default'} size="small" />
@@ -965,7 +1014,7 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
                       }}
                       onClick={() => {
                         const query = buildQuery({ 'department': dept });
-                        navigate(`/admin?${query}`);
+                        navigateToAdmin(query);
                       }}
                     >
                       <TableCell>
@@ -1093,7 +1142,10 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
                         cursor: 'pointer',
                         '&:hover': { backgroundColor: '#f5f5f5' }
                       }}
-                      onClick={() => navigate(`/admin?fullName=${encodeURIComponent(name)}`)}
+                      onClick={() => {
+                        const query = buildQuery({ fullName: name });
+                        navigateToAdmin(query);
+                      }}
                     >
                       <TableCell>
                         <Chip label={index + 1} color={index < 3 ? 'primary' : 'default'} size="small" />
@@ -1185,7 +1237,8 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
                   const index = (elements[0] as any).index as number;
                   const dept = topDeptByBenefit[index]?.[0];
                   if (dept) {
-                    navigate(`/admin?department=${encodeURIComponent(dept)}`);
+                    const query = buildQuery({ department: dept });
+                    navigateToAdmin(query);
                   }
                 }}
               />
@@ -1234,7 +1287,8 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
                   const index = (elements[0] as any).index as number;
                   const dept = topDeptByReward[index]?.[0];
                   if (dept) {
-                    navigate(`/admin?department=${encodeURIComponent(dept)}`);
+                    const query = buildQuery({ department: dept });
+                    navigateToAdmin(query);
                   }
                 }}
               />
@@ -1283,7 +1337,8 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
                   const index = (elements[0] as any).index as number;
                   const user = topUsersByReward[index];
                   if (user) {
-                    navigate(`/admin?fullName=${encodeURIComponent(user.name)}`);
+                    const query = buildQuery({ fullName: user.name });
+                    navigateToAdmin(query);
                   }
                 }}
               />
@@ -1335,7 +1390,8 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
                     const [year, month] = monthLabel.split('-');
                     const startDate = `${year}-${month}-01`;
                     const endDate = new Date(parseInt(year), parseInt(month), 0).toISOString().split('T')[0];
-                    navigate(`/admin?dateFrom=${startDate}&dateTo=${endDate}`);
+                    const query = buildQuery({ dateFrom: startDate, dateTo: endDate });
+                    navigateToAdmin(query);
                   }
                 }}
               />
@@ -1367,7 +1423,8 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
                   const index = (elements[0] as any).index as number;
                   const dept = departmentsForApprovalRate[index]?.[0];
                   if (dept) {
-                    navigate(`/admin?department=${encodeURIComponent(dept)}`);
+                    const query = buildQuery({ department: dept });
+                    navigateToAdmin(query);
                   }
                 }}
               />
@@ -1394,7 +1451,8 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
                   const index = (elements[0] as any).index as number;
                   const dept = departmentsForImplPerApproved[index]?.[0];
                   if (dept) {
-                    navigate(`/admin?department=${encodeURIComponent(dept)}`);
+                    const query = buildQuery({ department: dept });
+                    navigateToAdmin(query);
                   }
                 }}
               />
@@ -1434,7 +1492,8 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
                   const index = (elements[0] as any).index as number;
                   const dept = departmentsByIdeaShare[index]?.dept;
                   if (dept) {
-                    navigate(`/admin?department=${encodeURIComponent(dept)}`);
+                    const query = buildQuery({ department: dept });
+                    navigateToAdmin(query);
                   }
                 }}
               />
