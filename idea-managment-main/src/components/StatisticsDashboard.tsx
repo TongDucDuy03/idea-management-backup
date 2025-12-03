@@ -128,6 +128,47 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
     fetchIdeas();
   }, [fetchIdeas]);
 
+  // Đồng bộ timeRange với dateFrom/dateTo: khi chọn timeRange thì tự động cập nhật dateFrom và dateTo
+  useEffect(() => {
+    // Chỉ cập nhật nếu chưa có dateFrom/dateTo (để không ghi đè lên bộ lọc tùy chỉnh)
+    if (!dateFrom && !dateTo && timeRange !== 'all') {
+      const today = new Date();
+      let from: string | null = null;
+      const to = formatLocalDate(today);
+
+      if (timeRange === 'week') {
+        // 7 ngày qua: từ 7 ngày trước đến hôm nay
+        const weekAgo = new Date(today);
+        weekAgo.setDate(today.getDate() - 7);
+        from = formatLocalDate(weekAgo);
+      } else if (timeRange === 'month') {
+        // 30 ngày qua: từ 30 ngày trước đến hôm nay
+        const monthAgo = new Date(today);
+        monthAgo.setDate(today.getDate() - 30);
+        from = formatLocalDate(monthAgo);
+      } else if (timeRange === 'quarter') {
+        // 3 tháng qua: từ 90 ngày trước đến hôm nay
+        const quarterAgo = new Date(today);
+        quarterAgo.setDate(today.getDate() - 90);
+        from = formatLocalDate(quarterAgo);
+      } else if (timeRange === 'year') {
+        // 1 năm qua: từ 365 ngày trước đến hôm nay
+        const yearAgo = new Date(today);
+        yearAgo.setDate(today.getDate() - 365);
+        from = formatLocalDate(yearAgo);
+      }
+
+      if (from) {
+        setDateFrom(from);
+        setDateTo(to);
+      }
+    }
+    // Nếu người dùng xóa dateFrom và dateTo bằng tay thì reset timeRange về 'all'
+    else if (!dateFrom && !dateTo && timeRange !== 'all') {
+      setTimeRange('all');
+    }
+  }, [timeRange, dateFrom, dateTo]); // Chạy khi timeRange, dateFrom hoặc dateTo thay đổi
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     navigate('/login');
@@ -177,21 +218,17 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
         setDateTo(todayStr);
         break;
       case 'week':
-        // Tuần này bắt đầu từ Thứ 2 (Monday = 1)
-        const weekStart = new Date(today);
-        const dayOfWeek = today.getDay(); // 0 = Chủ nhật, 1 = Thứ 2, ..., 6 = Thứ 7
-        // Nếu là Chủ nhật (0), lùi 6 ngày về Thứ 2 tuần này
-        // Nếu là Thứ 2 (1), lùi 0 ngày
-        // Nếu là Thứ 3 (2), lùi 1 ngày, v.v.
-        const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-        weekStart.setDate(today.getDate() - daysToMonday);
-        setDateFrom(formatLocalDate(weekStart)); // Sử dụng local timezone
+        // 7 ngày qua: từ 7 ngày trước đến hôm nay
+        const weekAgo = new Date(today);
+        weekAgo.setDate(today.getDate() - 7);
+        setDateFrom(formatLocalDate(weekAgo)); // Sử dụng local timezone
         setDateTo(todayStr);
         break;
       case 'month':
-        // Tháng này bắt đầu từ ngày 1
-        const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-        setDateFrom(formatLocalDate(monthStart)); // Sử dụng local timezone
+        // 30 ngày qua: từ 30 ngày trước đến hôm nay
+        const monthAgo = new Date(today);
+        monthAgo.setDate(today.getDate() - 30);
+        setDateFrom(formatLocalDate(monthAgo)); // Sử dụng local timezone
         setDateTo(todayStr);
         break;
       case 'quarter':
@@ -215,6 +252,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
   const handleClearDateFilter = () => {
     setDateFrom('');
     setDateTo('');
+    setTimeRange('all'); // Reset timeRange khi xóa bộ lọc tùy chỉnh
   };
 
   const isDateRangeValid = () => {
@@ -562,6 +600,11 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
   const buildDateFilterQuery = (additionalParams?: Record<string, string>) => {
     const params = new URLSearchParams(additionalParams || {});
     
+    // Thêm departmentFilter nếu không phải 'all'
+    if (departmentFilter && departmentFilter !== 'all') {
+      params.set('department', departmentFilter);
+    }
+    
     // Nếu đang dùng custom date range, ưu tiên dùng
     if (dateFrom) params.set('dateFrom', dateFrom);
     if (dateTo) params.set('dateTo', dateTo);
@@ -570,21 +613,28 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
     if (!dateFrom && !dateTo && timeRange !== 'all') {
       const today = new Date();
       let from: string | null = null;
-      let to: string | null = today.toISOString().split('T')[0];
+      let to: string | null = formatLocalDate(today); // Sử dụng formatLocalDate để tránh timezone issues
 
       if (timeRange === 'week') {
-        const weekStart = new Date(today);
-        weekStart.setDate(today.getDate() - 7);
-        from = weekStart.toISOString().split('T')[0];
+        // 7 ngày qua: từ 7 ngày trước đến hôm nay
+        const weekAgo = new Date(today);
+        weekAgo.setDate(today.getDate() - 7);
+        from = formatLocalDate(weekAgo);
       } else if (timeRange === 'month') {
-        const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-        from = monthStart.toISOString().split('T')[0];
+        // 30 ngày qua: từ 30 ngày trước đến hôm nay
+        const monthAgo = new Date(today);
+        monthAgo.setDate(today.getDate() - 30);
+        from = formatLocalDate(monthAgo);
       } else if (timeRange === 'quarter') {
-        const quarterStart = new Date(today.getFullYear(), Math.floor(today.getMonth() / 3) * 3, 1);
-        from = quarterStart.toISOString().split('T')[0];
+        // 3 tháng qua: từ 90 ngày trước đến hôm nay
+        const quarterAgo = new Date(today);
+        quarterAgo.setDate(today.getDate() - 90);
+        from = formatLocalDate(quarterAgo);
       } else if (timeRange === 'year') {
-        const yearStart = new Date(today.getFullYear(), 0, 1);
-        from = yearStart.toISOString().split('T')[0];
+        // 1 năm qua: từ 365 ngày trước đến hôm nay
+        const yearAgo = new Date(today);
+        yearAgo.setDate(today.getDate() - 365);
+        from = formatLocalDate(yearAgo);
       }
 
       if (from) params.set('dateFrom', from);

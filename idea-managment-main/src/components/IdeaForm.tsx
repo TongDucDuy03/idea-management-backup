@@ -588,8 +588,8 @@ const IdeaForm: React.FC = () => {
               </Box>
             </Grid>
             
-            {/* Tên đề tài với AI */}
-            <Grid item xs={12}>
+            {/* Tên đề tài với AI - Đã ẩn */}
+            {/* <Grid item xs={12}>
               <Box sx={{ position: 'relative' }}>
                 <TextField
                   name="topicTitle"
@@ -630,10 +630,10 @@ const IdeaForm: React.FC = () => {
                   AI Đề xuất
                 </Button>
               </Box>
-            </Grid>
+            </Grid> */}
             
-            {/* Giải pháp với AI */}
-            <Grid item xs={12}>
+            {/* Giải pháp với AI - Đã ẩn */}
+            {/* <Grid item xs={12}>
               <Box sx={{ position: 'relative' }}>
                 <TextField
                   name="solution"
@@ -676,10 +676,10 @@ const IdeaForm: React.FC = () => {
                   AI Đề xuất
                 </Button>
               </Box>
-            </Grid>
+            </Grid> */}
             
-            {/* Lợi ích với AI */}
-            <Grid item xs={12}>
+            {/* Lợi ích với AI - Đã ẩn */}
+            {/* <Grid item xs={12}>
               <Box sx={{ position: 'relative' }}>
                 <TextField
                   name="benefit"
@@ -722,7 +722,7 @@ const IdeaForm: React.FC = () => {
                   AI Đề xuất
                 </Button>
               </Box>
-            </Grid>
+            </Grid> */}
             {/* Hình ảnh trước và sau */}
             <Grid item xs={12} md={6}>
               <Box>
