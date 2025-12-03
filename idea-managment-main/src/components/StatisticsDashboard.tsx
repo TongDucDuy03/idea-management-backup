@@ -388,24 +388,42 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
     });
   };
 
+  // Helper để lọc theo department nếu có
+  const applyDepartmentFilter = (list: Idea[]) => {
+    if (departmentFilter !== 'all') {
+      return list.filter(idea => idea.department === departmentFilter);
+    }
+    return list;
+  };
+
   // Helpers for period filtering based on selections
   // DÙNG submissionDate để phục vụ so sánh & giá trị
-  const filterByYear = (list: Idea[], y: number) => list.filter(i => {
-    const d = new Date(i.submissionDate);
-    return d.getFullYear() === y;
-  });
-  const filterByQuarter = (list: Idea[], y: number, q: number) => list.filter(i => {
-    const d = new Date(i.submissionDate);
-    const year = d.getFullYear();
-    const quarter = Math.floor(d.getMonth() / 3) + 1;
-    return year === y && quarter === q;
-  });
-  const filterByMonth = (list: Idea[], y: number, m: number) => list.filter(i => {
-    const d = new Date(i.submissionDate);
-    const year = d.getFullYear();
-    const month = d.getMonth() + 1;
-    return year === y && month === m;
-  });
+  // Áp dụng departmentFilter trước khi lọc theo thời gian
+  const filterByYear = (list: Idea[], y: number) => {
+    const filtered = applyDepartmentFilter(list);
+    return filtered.filter(i => {
+      const d = new Date(i.submissionDate);
+      return d.getFullYear() === y;
+    });
+  };
+  const filterByQuarter = (list: Idea[], y: number, q: number) => {
+    const filtered = applyDepartmentFilter(list);
+    return filtered.filter(i => {
+      const d = new Date(i.submissionDate);
+      const year = d.getFullYear();
+      const quarter = Math.floor(d.getMonth() / 3) + 1;
+      return year === y && quarter === q;
+    });
+  };
+  const filterByMonth = (list: Idea[], y: number, m: number) => {
+    const filtered = applyDepartmentFilter(list);
+    return filtered.filter(i => {
+      const d = new Date(i.submissionDate);
+      const year = d.getFullYear();
+      const month = d.getMonth() + 1;
+      return year === y && month === m;
+    });
+  };
 
   const calculateComparisonData = () => {
     if (comparisonType === 'month') {
