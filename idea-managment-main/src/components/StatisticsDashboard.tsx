@@ -218,17 +218,18 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
         setDateTo(todayStr);
         break;
       case 'week':
-        // 7 ngày qua: từ 7 ngày trước đến hôm nay
-        const weekAgo = new Date(today);
-        weekAgo.setDate(today.getDate() - 7);
-        setDateFrom(formatLocalDate(weekAgo)); // Sử dụng local timezone
+        // Tuần này: bắt đầu từ Thứ 2 của tuần hiện tại tới hôm nay
+        const weekStart = new Date(today);
+        const dayOfWeek = today.getDay(); // 0 = CN, 1 = Thứ 2, ...
+        const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        weekStart.setDate(today.getDate() - daysToMonday);
+        setDateFrom(formatLocalDate(weekStart)); // Sử dụng local timezone
         setDateTo(todayStr);
         break;
       case 'month':
-        // 30 ngày qua: từ 30 ngày trước đến hôm nay
-        const monthAgo = new Date(today);
-        monthAgo.setDate(today.getDate() - 30);
-        setDateFrom(formatLocalDate(monthAgo)); // Sử dụng local timezone
+        // Tháng này: từ ngày 1 tháng hiện tại đến hôm nay
+        const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+        setDateFrom(formatLocalDate(monthStart)); // Sử dụng local timezone
         setDateTo(todayStr);
         break;
       case 'quarter':
