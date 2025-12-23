@@ -721,13 +721,13 @@ const ExportReportDialog: React.FC<ExportReportDialogProps> = ({
         const idea = selectedIdeasData[0];
         const htmlContent = generateHTMLReport(idea);
         // Đặt tên file: Mã ý tưởng + Tên người gửi ý tưởng
-        const filename = `${idea.ideaCode }_${idea.fullName}.pdf`;
+        const filename = `${idea.fullName }_${idea.ideaCode}.pdf`;
         await createPdfFromHtml(htmlContent, filename);
       } else {
         for (const idea of selectedIdeasData) {
           const htmlContent = generateHTMLReport(idea);
           // Đặt tên file: Mã ý tưởng + Tên người gửi ý tưởng
-          const filename = `${idea.ideaCode }_${idea.fullName}.pdf`;
+          const filename = `$${idea.fullName}_${idea.ideaCode}.pdf`;
           await createPdfFromHtml(htmlContent, filename);
           // Delay giữa các file để tránh lỗi
           await new Promise(resolve => setTimeout(resolve, 1000));
