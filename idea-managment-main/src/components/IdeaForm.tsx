@@ -541,51 +541,26 @@ const IdeaForm: React.FC = () => {
               </FormControl>
             </Grid>
             <Grid item xs={12}>
-              <Box sx={{ position: 'relative' }}>
-                <TextField
-                  name="idea"
-                  label="Ý tưởng"
-                  value={formData.idea}
-                  onChange={handleChange}
-                  required
-                  fullWidth
-                  multiline
-                  rows={6}
-                  error={!!errors.idea}
-                  helperText={errors.idea}
-                  placeholder="Mô tả chi tiết ý tưởng cải tiến của bạn..."
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      '&:hover fieldset': {
-                        borderColor: '#1976d2',
-                      },
+              <TextField
+                name="idea"
+                label="Ý tưởng"
+                value={formData.idea}
+                onChange={handleChange}
+                required
+                fullWidth
+                multiline
+                rows={6}
+                error={!!errors.idea}
+                helperText={errors.idea}
+                placeholder="Mô tả chi tiết ý tưởng cải tiến của bạn..."
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    '&:hover fieldset': {
+                      borderColor: '#1976d2',
                     },
-                  }}
-                />
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={aiLoading.improveDescription ? <CircularProgress size={16} /> : <AutoAwesome />}
-                  onClick={handleImproveDescription}
-                  disabled={aiLoading.improveDescription || !formData.idea.trim()}
-                  sx={{
-                    position: 'absolute',
-                    top: 8,
-                    right: 8,
-                    minWidth: 'auto',
-                    px: 1.5,
-                    py: 0.5,
-                    fontSize: '0.75rem',
-                    textTransform: 'none',
-                    bgcolor: 'white',
-                    '&:hover': {
-                      bgcolor: '#f5f5f5',
-                    }
-                  }}
-                >
-                  AI Cải thiện
-                </Button>
-              </Box>
+                  },
+                }}
+              />
             </Grid>
             
             {/* Tên đề tài với AI - Đã ẩn */}

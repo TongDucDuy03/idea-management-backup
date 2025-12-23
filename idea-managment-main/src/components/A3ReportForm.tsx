@@ -651,7 +651,7 @@ const A3ReportForm: React.FC<A3ReportFormProps> = ({ idea, onClose }) => {
                         <span class="info-label">Ngày lập: ${formatDate(new Date())}</span>
                     </div>
                     <div class="info-row">
-                        <span class="info-label">Đơn vị: ${idea.implementationDepartment || idea.department || 'N/A'}</span>
+                        <span class="info-label">Đơn vị: ${idea.department || 'N/A'}</span>
                     </div>
                 </div>
             </div>

@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import ideaRoutes from './routes/ideaRoutes';
 import authRoutes from './routes/authRoutes';
 import a3ReportRoutes from './routes/a3ReportRoutes';
+import aiRoutes from './routes/aiRoutes';
 
 dotenv.config();
 console.log(">>> ENV MONGODB_URI:", process.env.MONGODB_URI);
@@ -32,6 +33,7 @@ app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 app.use('/api/ideas', ideaRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/a3-reports', a3ReportRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/idea-management')
