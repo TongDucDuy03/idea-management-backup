@@ -43,7 +43,7 @@ import {
   BarChart as BarChartIcon
 } from '@mui/icons-material';
 import api from '../api/config';
-import { Idea, IdeaStatus } from '../types';
+import { Idea, IdeaStatus, RewardStatus } from '../types';
 import AdvancedStatistics from './AdvancedStatistics';
 import ReportGenerator from './ReportGenerator';
 
@@ -678,6 +678,24 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
   const successNumerator = a3SuccessIdeas + rewardDecisionIdeas + rewardedIdeas;
   const successDenominator = successNumerator + failedIdeas;
   const newSuccessRate = successDenominator > 0 ? ((successNumerator / successDenominator) * 100).toFixed(1) : '0';
+  
+  // Reward statistics
+  const waitingReward50k = filteredIdeas.filter(idea => {
+    const rewardStatuses: RewardStatus[] = (idea as any).rewardStatuses || [];
+    return rewardStatuses.includes(RewardStatus.CHO_KHEN_THUONG_50K);
+  }).length;
+  const rewarded50k = filteredIdeas.filter(idea => {
+    const rewardStatuses: RewardStatus[] = (idea as any).rewardStatuses || [];
+    return rewardStatuses.includes(RewardStatus.DA_KHEN_THUONG_50K);
+  }).length;
+  const waitingRewardKaizen = filteredIdeas.filter(idea => {
+    const rewardStatuses: RewardStatus[] = (idea as any).rewardStatuses || [];
+    return rewardStatuses.includes(RewardStatus.CHO_KHEN_THUONG_20);
+  }).length;
+  const rewardedKaizen = filteredIdeas.filter(idea => {
+    const rewardStatuses: RewardStatus[] = (idea as any).rewardStatuses || [];
+    return rewardStatuses.includes(RewardStatus.DA_KHEN_THUONG_20);
+  }).length;
 
   // Implementation-based statistics
   const isImplemented = (status?: string) => status === 'Đang triển khai' || status === 'Lập báo cáo A3' || status === 'Phê duyệt khen thưởng' || status === 'Đã khen thưởng';
@@ -1750,12 +1768,117 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
             </CardContent>
           </Card>
         </Grid>
+      </Grid>
 
-        
-        
-        
+      {/* Reward Statistics Cards (Row 3: 4 columns) */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        {/* Ý tưởng chờ thưởng 50k */}
+        <Grid item xs={12} sm={6} md={3}>
+          <Card 
+            elevation={3} 
+            sx={{ 
+              textAlign: 'center', 
+              p: 2,
+              cursor: 'pointer',
+              '&:hover': {
+                backgroundColor: '#f5f5f5',
+                transform: 'translateY(-2px)',
+                boxShadow: 6
+              },
+              transition: 'all 0.2s'
+            }}
+            onClick={() => {
+              const query = buildDateFilterQuery({ 'rewardStatuses': String(RewardStatus.CHO_KHEN_THUONG_50K) });
+              handleNavigateToAdmin(query);
+            }}
+          >
+            <CardContent>
+              <Typography variant="h3" color="warning.main" sx={{ fontWeight: 'bold' }}>{waitingReward50k}</Typography>
+              <Typography variant="h6" color="text.secondary">Ý tưởng chờ thưởng 50k</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
 
-        
+        {/* Ý tưởng đã thưởng 50k */}
+        <Grid item xs={12} sm={6} md={3}>
+          <Card 
+            elevation={3} 
+            sx={{ 
+              textAlign: 'center', 
+              p: 2,
+              cursor: 'pointer',
+              '&:hover': {
+                backgroundColor: '#f5f5f5',
+                transform: 'translateY(-2px)',
+                boxShadow: 6
+              },
+              transition: 'all 0.2s'
+            }}
+            onClick={() => {
+              const query = buildDateFilterQuery({ 'rewardStatuses': String(RewardStatus.DA_KHEN_THUONG_50K) });
+              handleNavigateToAdmin(query);
+            }}
+          >
+            <CardContent>
+              <Typography variant="h3" color="success.main" sx={{ fontWeight: 'bold' }}>{rewarded50k}</Typography>
+              <Typography variant="h6" color="text.secondary">Ý tưởng đã thưởng 50k</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Ý tưởng chờ thưởng kaizen */}
+        <Grid item xs={12} sm={6} md={3}>
+          <Card 
+            elevation={3} 
+            sx={{ 
+              textAlign: 'center', 
+              p: 2,
+              cursor: 'pointer',
+              '&:hover': {
+                backgroundColor: '#f5f5f5',
+                transform: 'translateY(-2px)',
+                boxShadow: 6
+              },
+              transition: 'all 0.2s'
+            }}
+            onClick={() => {
+              const query = buildDateFilterQuery({ 'rewardStatuses': String(RewardStatus.CHO_KHEN_THUONG_20) });
+              handleNavigateToAdmin(query);
+            }}
+          >
+            <CardContent>
+              <Typography variant="h3" color="warning.main" sx={{ fontWeight: 'bold' }}>{waitingRewardKaizen}</Typography>
+              <Typography variant="h6" color="text.secondary">Ý tưởng chờ thưởng kaizen</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Ý tưởng đã thưởng kaizen */}
+        <Grid item xs={12} sm={6} md={3}>
+          <Card 
+            elevation={3} 
+            sx={{ 
+              textAlign: 'center', 
+              p: 2,
+              cursor: 'pointer',
+              '&:hover': {
+                backgroundColor: '#f5f5f5',
+                transform: 'translateY(-2px)',
+                boxShadow: 6
+              },
+              transition: 'all 0.2s'
+            }}
+            onClick={() => {
+              const query = buildDateFilterQuery({ 'rewardStatuses': String(RewardStatus.DA_KHEN_THUONG_20) });
+              handleNavigateToAdmin(query);
+            }}
+          >
+            <CardContent>
+              <Typography variant="h3" color="success.main" sx={{ fontWeight: 'bold' }}>{rewardedKaizen}</Typography>
+              <Typography variant="h6" color="text.secondary">Ý tưởng đã thưởng kaizen</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
       </Grid>
 
       {/* Charts */}

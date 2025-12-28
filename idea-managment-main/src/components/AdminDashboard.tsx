@@ -113,8 +113,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     'department',        // Phòng ban
     'idea',              // Ý tưởng
     'status',            // Trạng thái
+    'rewardStatuses',    // Tình trạng khen thưởng
+    'rewardCalculationMethod', // Phương thức tính thưởng
     'beforeImage',       // Ảnh trước
-    'afterImage'         // Ảnh sau
+    'afterImage',        // Ảnh sau
+    'note'               // Ghi chú
   ]);
 
   const defaultVisibleFields = new Set<string>(
@@ -257,6 +260,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     const status = params.get('status');
     if (status && Object.values(IdeaStatus).includes(status as IdeaStatus)) {
       setStatusFilter([status as IdeaStatus]);
+    }
+    
+    // Reward statuses filter
+    const rewardStatusesParam = params.get('rewardStatuses');
+    if (rewardStatusesParam && Object.values(RewardStatus).includes(rewardStatusesParam as RewardStatus)) {
+      setRewardStatusesFilter([rewardStatusesParam as RewardStatus]);
     }
     
     // Date filters from query params
@@ -786,8 +795,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       'idea': 'Ý tưởng',
       'status': 'Trạng thái',
       'rewardStatuses': 'Tình trạng khen thưởng',
+      'rewardCalculationMethod': 'Phương thức tính thưởng',
       'beforeImage': 'Hình trước',
-      'afterImage': 'Hình sau'
+      'afterImage': 'Hình sau',
+      'note': 'Ghi chú'
     };
 
     // Only export fields visible in viewOnly mode
