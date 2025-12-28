@@ -14,7 +14,7 @@ import {
   MenuItem,
   SelectChangeEvent
 } from '@mui/material';
-import { Idea, IdeaStatus, IdeaStatusLabels } from '../types';
+import { Idea, IdeaStatus, IdeaStatusLabels, RewardCalculationMethod, RewardCalculationMethodLabels } from '../types';
 import ImageLightbox from './ImageLightbox';
 
 // Helpers to parse legacy records where "idea" may include lines like
@@ -106,6 +106,7 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
     benefitValue: 0,
     rewardAmount: 0,
     rewardApprovalDate: undefined,
+    rewardCalculationMethod: undefined,
     benefitOutcome: '',
     resourcesUsed: '',
     calculationDescription: '',
@@ -171,6 +172,7 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
           const date = new Date((idea as any).rewardApprovalDate);
           return date;
         })() : undefined,
+        rewardCalculationMethod: (idea as any).rewardCalculationMethod || undefined,
         benefitOutcome: (idea as any).benefitOutcome || '',
         resourcesUsed: (idea as any).resourcesUsed || '',
         calculationDescription: (idea as any).calculationDescription || '',
@@ -192,6 +194,7 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
         benefitValue: 0,
         rewardAmount: 0,
         rewardApprovalDate: undefined,
+        rewardCalculationMethod: undefined,
         benefitOutcome: '',
         resourcesUsed: '',
         calculationDescription: '',
@@ -214,7 +217,7 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: value === '' ? undefined : value
     }));
   };
 
@@ -650,6 +653,24 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
               }}
               sx={textFieldStyle}
             />
+            <FormControl fullWidth>
+              <InputLabel>Phương thức tính thưởng</InputLabel>
+              <Select
+                name="rewardCalculationMethod"
+                value={formData.rewardCalculationMethod || ''}
+                onChange={handleSelectChange}
+                label="Phương thức tính thưởng"
+              >
+                <MenuItem value="">
+                  <em>Chọn phương thức (để trống)</em>
+                </MenuItem>
+                {Object.values(RewardCalculationMethod).map((method) => (
+                  <MenuItem key={method} value={method}>
+                    {RewardCalculationMethodLabels[method]}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             {isEdit && (
               <FormControl fullWidth>
                 {/* Additional edit-only controls can be added here */}

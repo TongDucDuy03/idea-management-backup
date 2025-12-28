@@ -18,18 +18,20 @@ import {
   Menu,
   MenuItem,
   Select,
+  SelectChangeEvent,
   Checkbox,
   ListItemText,
   FormControlLabel
 } from '@mui/material';
 import { DataGrid, GridColDef, GridRowHeightParams } from '@mui/x-data-grid';
-import { Edit as EditIcon, Delete as DeleteIcon, FileDownload as FileDownloadIcon, BarChart as BarChartIcon } from '@mui/icons-material';
+import { Edit as EditIcon, Delete as DeleteIcon, FileDownload as FileDownloadIcon, BarChart as BarChartIcon, Upload as UploadIcon } from '@mui/icons-material';
 import * as XLSX from 'xlsx';
-import { Idea, IdeaStatus, IdeaStatusLabels, RewardStatus, RewardStatusLabels } from '../types';
+import { Idea, IdeaStatus, IdeaStatusLabels, RewardStatus, RewardStatusLabels, RewardCalculationMethod, RewardCalculationMethodLabels } from '../types';
 import IdeaDialog from './IdeaDialog';
 import ExportReportDialog from './ExportReportDialog';
 import ImageLightbox from './ImageLightbox';
 import RewardStatusDialog from './RewardStatusDialog';
+import ImportDialog from './ImportDialog';
 import api from '../api/config';
 
 interface AdminDashboardProps {
@@ -50,6 +52,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
   const [departmentFilter, setDepartmentFilter] = useState<string[]>([]);
   const [implementationDepartmentFilter, setImplementationDepartmentFilter] = useState<string[]>([]);
   const [rewardStatusesFilter, setRewardStatusesFilter] = useState<RewardStatus[]>([]);
+  const [rewardCalculationMethodFilter, setRewardCalculationMethodFilter] = useState<RewardCalculationMethod | ''>('');
   const [ideaCodeFilter, setIdeaCodeFilter] = useState('');
   const [fullNameFilter, setFullNameFilter] = useState('');
   const [ideaTextFilter, setIdeaTextFilter] = useState('');
@@ -58,6 +61,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
   const [rewardApprovalDateFromFilter, setRewardApprovalDateFromFilter] = useState('');
   const [rewardApprovalDateToFilter, setRewardApprovalDateToFilter] = useState('');
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   
   // Lightbox state
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -98,6 +102,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     'benefitValue',
     'rewardAmount',
     'rewardApprovalDate',
+    'rewardCalculationMethod',
     'actions'
   ] as const;
 
@@ -302,6 +307,44 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     setPaginationModel(prev => ({ ...prev, page: 0 }));
   };
 
+  const handleRewardCalculationMethodFilterChange = (event: SelectChangeEvent<RewardCalculationMethod | ''>) => {
+    setRewardCalculationMethodFilter(event.target.value as RewardCalculationMethod | '');
+    setPaginationModel(prev => ({ ...prev, page: 0 }));
+  };
+
+  const handleRewardCalculationMethodChange = async (id: string, method: RewardCalculationMethod | undefined) => {
+    if (isViewOnly) return; // Không cho sửa ở chế độ chỉ xem
+    
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
+
+      await api.put(
+        `/ideas/${id}`,
+        { rewardCalculationMethod: method || null },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      // Refresh ideas from server
+      fetchIdeas();
+    } catch (error: any) {
+      console.error('Error updating reward calculation method:', error);
+      if (error.response?.status === 401) {
+        localStorage.removeItem('token');
+        navigate('/login');
+      } else {
+        setError('Không thể cập nhật phương thức tính thưởng');
+      }
+    }
+  };
+
   const handleIdeaCodeFilter = (event: React.ChangeEvent<HTMLInputElement>) => {
     setIdeaCodeFilter(event.target.value);
     setPaginationModel(prev => ({ ...prev, page: 0 }));
@@ -342,6 +385,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     setStatusFilter([]);
     setDepartmentFilter([]);
     setImplementationDepartmentFilter([]);
+    setRewardStatusesFilter([]);
+    setRewardCalculationMethodFilter('');
     setIdeaCodeFilter('');
     setFullNameFilter('');
     setIdeaTextFilter('');
@@ -650,8 +695,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       'resourcesUsed': 'Nguồn lực sử dụng',
       'calculationDescription': 'Mô tả cách tính',
       'scalingOpportunity': 'Cơ hội nhân rộng phát triển',
-      'status': 'Quyết định phê duyệt',
-      'implementationStatus': 'Trạng thái triển khai',
+        'status': 'Trạng thái',
+        'rewardStatuses': 'Tình trạng khen thưởng',
+        'rewardCalculationMethod': 'Phương thức tính thưởng',
+        'implementationStatus': 'Trạng thái triển khai',
       'implementationDepartment': 'Phòng ban triển khai',
       'note': 'Ghi chú',
       'benefitValue': 'Giá trị làm lợi (VND)',
@@ -706,6 +753,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
             normalizedStatus = ideaStatus as IdeaStatus;
           }
           row[displayName] = IdeaStatusLabels[normalizedStatus];
+        } else if (field === 'rewardStatuses') {
+          const rewardStatuses: RewardStatus[] = (idea as any).rewardStatuses || [];
+          if (rewardStatuses.length > 0) {
+            row[displayName] = rewardStatuses.map(s => RewardStatusLabels[s]).join(', ');
+          } else {
+            row[displayName] = '';
+          }
+        } else if (field === 'rewardCalculationMethod') {
+          const method = (idea as any)[field] as RewardCalculationMethod | undefined;
+          row[displayName] = method ? RewardCalculationMethodLabels[method] : '';
         } else {
           row[displayName] = (idea as any)[field] || '-';
         }
@@ -728,6 +785,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       'department': 'Đơn vị',
       'idea': 'Ý tưởng',
       'status': 'Trạng thái',
+      'rewardStatuses': 'Tình trạng khen thưởng',
       'beforeImage': 'Hình trước',
       'afterImage': 'Hình sau'
     };
@@ -764,6 +822,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
             normalizedStatus = ideaStatus as IdeaStatus;
           }
           row[displayName] = IdeaStatusLabels[normalizedStatus];
+        } else if (field === 'rewardStatuses') {
+          const rewardStatuses: RewardStatus[] = (idea as any).rewardStatuses || [];
+          if (rewardStatuses.length > 0) {
+            row[displayName] = rewardStatuses.map(s => RewardStatusLabels[s]).join(', ');
+          } else {
+            row[displayName] = '';
+          }
+        } else if (field === 'rewardCalculationMethod') {
+          const method = (idea as any)[field] as RewardCalculationMethod | undefined;
+          row[displayName] = method ? RewardCalculationMethodLabels[method] : '';
         } else if (field === 'idea') {
           row[displayName] = (idea as any)[field] || '-';
         } else {
@@ -829,6 +897,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       matchesRewardStatuses = rewardStatusesFilter.every(filterStatus => 
         ideaRewardStatuses.includes(filterStatus)
       );
+    }
+
+    // Filter by reward calculation method
+    let matchesRewardCalculationMethod = true;
+    if (rewardCalculationMethodFilter) {
+      const ideaMethod = (idea as any).rewardCalculationMethod || RewardCalculationMethod.TOOL_BASED;
+      matchesRewardCalculationMethod = ideaMethod === rewardCalculationMethodFilter;
     }
 
     // Filter by submission date
@@ -1024,6 +1099,73 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
           {Object.values(IdeaStatus).map(status => (
             <MenuItem key={status} onClick={() => selectStatus(status)}>
               {IdeaStatusLabels[status]}
+            </MenuItem>
+          ))}
+        </Menu>
+      </>
+    );
+  };
+
+  const RewardCalculationMethodCell: React.FC<{ row: Idea }> = ({ row }) => {
+    const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+    const open = Boolean(anchorEl);
+    const currentMethod = (row as any).rewardCalculationMethod as RewardCalculationMethod | undefined;
+
+    const handleOpen = (e: React.MouseEvent<HTMLElement>) => {
+      if (isViewOnly) return; // Không cho mở menu ở chế độ chỉ xem
+      setAnchorEl(e.currentTarget);
+    };
+
+    const handleClose = () => setAnchorEl(null);
+
+    const handleSelectMethod = (method: RewardCalculationMethod | '') => {
+      handleRewardCalculationMethodChange(row._id, method || undefined);
+      handleClose();
+    };
+
+    // Ở chế độ chỉ xem: chỉ hiển thị chip, không mở menu
+    if (isViewOnly) {
+      if (!currentMethod) {
+        return <Typography variant="body2" color="text.secondary">-</Typography>;
+      }
+      return (
+        <Chip
+          label={RewardCalculationMethodLabels[currentMethod]}
+          size="small"
+          sx={{
+            backgroundColor: currentMethod === RewardCalculationMethod.PERCENT_20 ? '#FF9800' : '#2196F3',
+            color: 'white',
+            fontWeight: 'bold',
+            fontSize: '0.75rem'
+          }}
+        />
+      );
+    }
+
+    // Ở chế độ edit: hiển thị chip có thể click
+    return (
+      <>
+        <Chip
+          label={currentMethod ? RewardCalculationMethodLabels[currentMethod] : '-'}
+          size="small"
+          sx={{
+            backgroundColor: currentMethod 
+              ? (currentMethod === RewardCalculationMethod.PERCENT_20 ? '#FF9800' : '#2196F3')
+              : '#9E9E9E',
+            color: 'white',
+            fontWeight: 'bold',
+            fontSize: '0.75rem',
+            cursor: 'pointer'
+          }}
+          onClick={handleOpen}
+        />
+        <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
+          <MenuItem onClick={() => handleSelectMethod('')}>
+            <em>Xóa (để trống)</em>
+          </MenuItem>
+          {Object.values(RewardCalculationMethod).map((method) => (
+            <MenuItem key={method} onClick={() => handleSelectMethod(method)}>
+              {RewardCalculationMethodLabels[method]}
             </MenuItem>
           ))}
         </Menu>
@@ -1714,6 +1856,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
         </div>
       )
     },
+    {
+      field: 'rewardCalculationMethod',
+      headerName: 'Phương thức tính thưởng',
+      width: 200,
+      align: 'center',
+      headerAlign: 'center',
+      renderCell: (params) => <RewardCalculationMethodCell row={params.row as Idea} />
+    },
     // Cột thao tác chỉ hiển thị trong chế độ admin đầy đủ
     ...(!isViewOnly
       ? [
@@ -1906,6 +2056,29 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
                   </Select>
 
                   <Select
+                    displayEmpty
+                    value={rewardCalculationMethodFilter}
+                    onChange={handleRewardCalculationMethodFilterChange}
+                    renderValue={(selected) => {
+                      if (!selected) {
+                        return 'Lọc phương thức tính thưởng';
+                      }
+                      return RewardCalculationMethodLabels[selected as RewardCalculationMethod];
+                    }}
+                    size="small"
+                    sx={{ minWidth: 240, maxWidth: 340, flexShrink: 1 }}
+                  >
+                    <MenuItem value="">
+                      <em>Tất cả</em>
+                    </MenuItem>
+                    {Object.values(RewardCalculationMethod).map((method) => (
+                      <MenuItem key={method} value={method}>
+                        {RewardCalculationMethodLabels[method]}
+                      </MenuItem>
+                    ))}
+                  </Select>
+
+                  <Select
                     multiple
                     displayEmpty
                     value={implementationDepartmentFilter}
@@ -2069,6 +2242,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
                                     benefitValue: 'Giá trị làm lợi (VND)',
                                     rewardAmount: 'Tiền thưởng (VND)',
                                     rewardApprovalDate: 'Ngày duyệt khen thưởng',
+                                    rewardCalculationMethod: 'Phương thức tính thưởng',
                                     actions: 'Thao tác'
                                   } as Record<string, string>
                                 )[field]
@@ -2174,6 +2348,29 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
                         }}
                       >
                         Export Báo Cáo
+                      </Button>
+                      <Button
+                        variant="contained"
+                        color="info"
+                        startIcon={<UploadIcon />}
+                        onClick={() => setIsImportDialogOpen(true)}
+                        sx={{
+                          py: 1.0,
+                          px: 2.0,
+                          fontSize: '0.95rem',
+                          fontWeight: 'bold',
+                          textTransform: 'none',
+                          boxShadow: 2,
+                          whiteSpace: 'nowrap',
+                          minWidth: 'max-content',
+                          '&:hover': {
+                            boxShadow: 4,
+                            transform: 'translateY(-2px)',
+                            transition: 'all 0.2s'
+                          }
+                        }}
+                      >
+                        Import
                       </Button>
                       <Button
                         variant="outlined"
@@ -2374,6 +2571,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
         onConfirm={handleRewardStatusConfirm}
         currentStatuses={(ideas.find(i => i._id === pendingStatusChange?.ideaId) as any)?.rewardStatuses || []}
         targetStatus={pendingStatusChange?.newStatus || ''}
+      />
+      <ImportDialog
+        open={isImportDialogOpen}
+        onClose={() => setIsImportDialogOpen(false)}
+        onSuccess={() => {
+          fetchIdeas();
+          setIsImportDialogOpen(false);
+        }}
       />
     </Container>
   );

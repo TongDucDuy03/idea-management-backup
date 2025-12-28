@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import Idea, { IIdea, IdeaStatus } from '../models/Idea';
+import Idea, { IIdea, IdeaStatus, RewardCalculationMethod } from '../models/Idea';
 import { sendIdeaSubmittedEmail } from '../services/emailService';
 
 export const createIdea = async (req: Request, res: Response) => {
@@ -63,7 +63,7 @@ export const createIdea = async (req: Request, res: Response) => {
 
 export const getAllIdeas = async (req: Request, res: Response) => {
   try {
-    const { search, isPaid } = req.query;
+    const { search, isPaid, rewardCalculationMethod } = req.query;
     let query: any = {};
 
     if (search) {
@@ -75,6 +75,13 @@ export const getAllIdeas = async (req: Request, res: Response) => {
 
     if (isPaid !== undefined) {
       query.isPaid = isPaid === 'true';
+    }
+
+    if (rewardCalculationMethod) {
+      // Validate enum value
+      if (Object.values(RewardCalculationMethod).includes(rewardCalculationMethod as RewardCalculationMethod)) {
+        query.rewardCalculationMethod = rewardCalculationMethod;
+      }
     }
 
     const ideas = await Idea.find(query).sort({ submissionDate: -1 });

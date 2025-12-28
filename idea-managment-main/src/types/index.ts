@@ -20,6 +20,18 @@ export enum RewardStatus {
   DA_KHEN_THUONG_20 = 'DA_KHEN_THUONG_20'
 }
 
+// Enum phương thức tính tiền thưởng
+export enum RewardCalculationMethod {
+  PERCENT_20 = 'PERCENT_20', // Tính được 20%
+  TOOL_BASED = 'TOOL_BASED' // Tính bằng công cụ
+}
+
+// Mapping để hiển thị tiếng Việt cho RewardCalculationMethod
+export const RewardCalculationMethodLabels: Record<RewardCalculationMethod, string> = {
+  [RewardCalculationMethod.PERCENT_20]: 'Tính được 20%',
+  [RewardCalculationMethod.TOOL_BASED]: 'Tính bằng công cụ'
+};
+
 // Mapping để hiển thị tiếng Việt cho RewardStatus
 export const RewardStatusLabels: Record<RewardStatus, string> = {
   [RewardStatus.CHO_KHEN_THUONG_50K]: 'Chờ khen thưởng 50.000đ',
@@ -58,6 +70,7 @@ export interface Idea {
   rewardAmount?: number; // Tiền thưởng (VND)
   rewardApprovalDate?: Date; // Ngày duyệt khen thưởng
   rewardStatuses?: RewardStatus[]; // Tình trạng khen thưởng (multi-select)
+  rewardCalculationMethod?: RewardCalculationMethod; // Phương thức tính tiền thưởng
   // New fields
   benefitOutcome?: string; // Lợi ích mang lại (mô tả)
   resourcesUsed?: string; // Nguồn lực sử dụng
@@ -119,4 +132,39 @@ export interface A3Report {
   createdBy?: string;
   createdAt?: Date;
   updatedAt?: Date;
-} 
+}
+
+// Import types
+export enum ImportRowStatus {
+  OK = 'OK',
+  WARNING = 'WARNING',
+  ERROR = 'ERROR'
+}
+
+export interface ImportRow {
+  rowIndex: number;
+  ideaCode: string;
+  payload: Record<string, any>;
+  diff?: {
+    current: Record<string, any>;
+    new: Record<string, any>;
+  };
+  status: ImportRowStatus;
+  messages: string[];
+  selected: boolean;
+}
+
+export interface ImportSession {
+  _id: string;
+  fileName: string;
+  uploadedBy?: string;
+  createdAt: Date;
+  mappingConfig?: Record<string, string>;
+  summary: {
+    total: number;
+    ok: number;
+    warn: number;
+    error: number;
+  };
+  rows: ImportRow[];
+}

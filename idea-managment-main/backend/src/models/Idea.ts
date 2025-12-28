@@ -8,6 +8,12 @@ export enum RewardStatus {
   DA_KHEN_THUONG_20 = 'DA_KHEN_THUONG_20'
 }
 
+// Enum phương thức tính tiền thưởng
+export enum RewardCalculationMethod {
+  PERCENT_20 = 'PERCENT_20', // Tính được 20%
+  TOOL_BASED = 'TOOL_BASED' // Tính bằng công cụ
+}
+
 // Enum trạng thái chuẩn - Single Source of Truth
 export enum IdeaStatus {
   DE_NGHI_MOI = 'DE_NGHI_MOI',
@@ -40,6 +46,7 @@ export interface IIdea extends Document {
   rewardAmount?: number; // Tiền thưởng (VND)
   rewardApprovalDate?: Date; // Ngày duyệt khen thưởng
   rewardStatuses?: RewardStatus[]; // Tình trạng khen thưởng (multi-select)
+  rewardCalculationMethod?: RewardCalculationMethod; // Phương thức tính tiền thưởng
   // New fields
   benefitOutcome?: string; // Lợi ích mang lại (mô tả)
   resourcesUsed?: string; // Nguồn lực sử dụng
@@ -74,6 +81,11 @@ const IdeaSchema: Schema = new Schema({
     type: [String], 
     enum: Object.values(RewardStatus),
     default: []
+  },
+  rewardCalculationMethod: {
+    type: String,
+    enum: Object.values(RewardCalculationMethod),
+    required: false
   },
   // New fields
   benefitOutcome: { type: String, required: false },
