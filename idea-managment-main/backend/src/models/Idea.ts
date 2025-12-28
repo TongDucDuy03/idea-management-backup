@@ -1,5 +1,27 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
+// Enum tình trạng khen thưởng (đặt trước IdeaStatus để tránh lỗi)
+export enum RewardStatus {
+  CHO_KHEN_THUONG_50K = 'CHO_KHEN_THUONG_50K',
+  DA_KHEN_THUONG_50K = 'DA_KHEN_THUONG_50K',
+  CHO_KHEN_THUONG_20 = 'CHO_KHEN_THUONG_20',
+  DA_KHEN_THUONG_20 = 'DA_KHEN_THUONG_20'
+}
+
+// Enum trạng thái chuẩn - Single Source of Truth
+export enum IdeaStatus {
+  DE_NGHI_MOI = 'DE_NGHI_MOI',
+  XEM_XET = 'XEM_XET',
+  CHO_PHE_DUYET = 'CHO_PHE_DUYET',
+  TRIEN_KHAI = 'TRIEN_KHAI',
+  KHONG_PHU_HOP = 'KHONG_PHU_HOP',
+  LUU_Y_TUONG = 'LUU_Y_TUONG',
+  BAO_CAO_A3 = 'BAO_CAO_A3',
+  KHEN_THUONG = 'KHEN_THUONG',
+  DONE = 'DONE',
+  REJECTED = 'REJECTED'
+}
+
 export interface IIdea extends Document {
   fullName?: string;
   department: string;
@@ -9,8 +31,7 @@ export interface IIdea extends Document {
   ideaCode: string;
   submissionDate: Date;
   isPaid: boolean;
-  status: 'pending' | 'rejected' | 'noted' | 'approved'; // Quyết định phê duyệt (cũ)
-  implementationStatus: 'Đề xuất mới' | 'Xem xét' | 'Phê duyệt' | 'Phản hồi phê duyệt' | 'Đang triển khai' | 'Lập báo cáo A3' | 'Phê duyệt khen thưởng' | 'Đã khen thưởng' | 'Không đạt'; // Trạng thái triển khai (mới)
+  status: IdeaStatus; // Single source of truth - chỉ sử dụng trường này
   implementationDepartment?: string;
   // Legacy field used in migration scripts (hướng triển khai cũ)
   implementationDirection?: string;
@@ -18,11 +39,11 @@ export interface IIdea extends Document {
   benefitValue?: number; // Giá trị làm lợi (VND)
   rewardAmount?: number; // Tiền thưởng (VND)
   rewardApprovalDate?: Date; // Ngày duyệt khen thưởng
+  rewardStatuses?: RewardStatus[]; // Tình trạng khen thưởng (multi-select)
   // New fields
   benefitOutcome?: string; // Lợi ích mang lại (mô tả)
   resourcesUsed?: string; // Nguồn lực sử dụng
   calculationDescription?: string; // Mô tả cách tính
-  topicTitle?: string; // Tên đề tài
   scalingOpportunity?: string; // Cơ hội nhân rộng phát triển
   beforeImage?: string; // Hình ảnh trước (data URL hoặc URL)
   afterImage?: string; // Hình ảnh sau (data URL hoặc URL)
@@ -39,13 +60,8 @@ const IdeaSchema: Schema = new Schema({
   isPaid: { type: Boolean, default: false },
   status: { 
     type: String, 
-    enum: ['pending', 'rejected', 'noted', 'approved'], 
-    default: 'pending' 
-  },
-  implementationStatus: { 
-    type: String, 
-    enum: ['Đề xuất mới', 'Xem xét', 'Phê duyệt', 'Phản hồi phê duyệt', 'Đang triển khai', 'Lập báo cáo A3', 'Phê duyệt khen thưởng', 'Đã khen thưởng', 'Không đạt'], 
-    default: 'Đề xuất mới' 
+    enum: Object.values(IdeaStatus), 
+    default: IdeaStatus.DE_NGHI_MOI 
   },
   implementationDepartment: { type: String, required: false },
   // Legacy field giữ lại để phục vụ các script migrate cũ
@@ -54,11 +70,15 @@ const IdeaSchema: Schema = new Schema({
   benefitValue: { type: Number, required: false, default: 0 },
   rewardAmount: { type: Number, required: false, default: 0 },
   rewardApprovalDate: { type: Date, required: false },
+  rewardStatuses: { 
+    type: [String], 
+    enum: Object.values(RewardStatus),
+    default: []
+  },
   // New fields
   benefitOutcome: { type: String, required: false },
   resourcesUsed: { type: String, required: false },
   calculationDescription: { type: String, required: false },
-  topicTitle: { type: String, required: false },
   scalingOpportunity: { type: String, required: false },
   beforeImage: { type: String, required: false },
   afterImage: { type: String, required: false }

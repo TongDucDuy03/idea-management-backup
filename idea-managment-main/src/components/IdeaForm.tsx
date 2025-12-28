@@ -52,7 +52,6 @@ const IdeaForm: React.FC = () => {
     idea: '',
     solution: '',
     benefit: '',
-    topicTitle: '',
     beforeImage: '',
     afterImage: ''
   });
@@ -324,7 +323,6 @@ const IdeaForm: React.FC = () => {
         idea: formData.idea,
         solution: formData.solution || null,
         benefit: formData.benefit || null,
-        topicTitle: formData.topicTitle || null,
         beforeImage: formData.beforeImage || null,
         afterImage: formData.afterImage || null
       };
@@ -345,7 +343,6 @@ const IdeaForm: React.FC = () => {
         idea: '',
         solution: '',
         benefit: '',
-        topicTitle: '',
         beforeImage: '',
         afterImage: ''
       });

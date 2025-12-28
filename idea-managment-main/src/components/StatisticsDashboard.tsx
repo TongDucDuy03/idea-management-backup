@@ -43,7 +43,7 @@ import {
   BarChart as BarChartIcon
 } from '@mui/icons-material';
 import api from '../api/config';
-import { Idea } from '../types';
+import { Idea, IdeaStatus } from '../types';
 import AdvancedStatistics from './AdvancedStatistics';
 import ReportGenerator from './ReportGenerator';
 
@@ -656,16 +656,24 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
 
   // Calculate statistics (updated per requirements)
   const totalIdeas = filteredIdeas.length;
-  const approvedForImplementation = filteredIdeas.filter(idea => idea.status === 'approved').length; // Quyết định phê duyệt = Phê duyệt triển khai
-  const deployingIdeas = filteredIdeas.filter(idea => idea.implementationStatus === 'Đang triển khai').length; // Trạng thái triển khai = Đang triển khai
-  const a3Ideas = filteredIdeas.filter(idea => idea.implementationStatus === 'Lập báo cáo A3').length; // Trạng thái triển khai = Lập báo cáo A3
-  const rewardDecisionIdeas = filteredIdeas.filter(idea => idea.implementationStatus === 'Phê duyệt khen thưởng').length; // Phê duyệt khen thưởng
+  // 'approved' legacy status maps to TRIEN_KHAI in new enum
+  const approvedForImplementation = filteredIdeas.filter(idea => {
+    const status: any = idea.status;
+    return status === 'approved' || status === IdeaStatus.TRIEN_KHAI;
+  }).length; // Quyết định phê duyệt = Phê duyệt triển khai
+  const deployingIdeas = filteredIdeas.filter(idea => (idea as any).implementationStatus === 'Đang triển khai').length; // Trạng thái triển khai = Đang triển khai
+  const a3Ideas = filteredIdeas.filter(idea => (idea as any).implementationStatus === 'Lập báo cáo A3').length; // Trạng thái triển khai = Lập báo cáo A3
+  const rewardDecisionIdeas = filteredIdeas.filter(idea => (idea as any).implementationStatus === 'Phê duyệt khen thưởng').length; // Phê duyệt khen thưởng
   // Ý tưởng đã khen thưởng: lọc theo rewardApprovalDate (rewardDateFilteredIdeas) thay vì submissionDate
-  const rewardedIdeas = rewardDateFilteredIdeas.filter(idea => idea.implementationStatus === 'Đã khen thưởng').length; // Đã khen thưởng (lọc theo ngày duyệt khen thưởng)
+  const rewardedIdeas = rewardDateFilteredIdeas.filter(idea => (idea as any).implementationStatus === 'Đã khen thưởng').length; // Đã khen thưởng (lọc theo ngày duyệt khen thưởng)
   const a3SuccessIdeas = a3Ideas; // Lập báo cáo A3
-  const waitingDeployIdeas = filteredIdeas.filter(idea => idea.implementationStatus === 'Phản hồi phê duyệt').length; // Chờ triển khai
-  const waitingApprovalIdeas = filteredIdeas.filter(idea => idea.status === 'pending').length; // Chờ phê duyệt (quyết định phê duyệt = chưa phê duyệt)
-  const failedIdeas = filteredIdeas.filter(idea => idea.implementationStatus === 'Không đạt').length;
+  const waitingDeployIdeas = filteredIdeas.filter(idea => (idea as any).implementationStatus === 'Phản hồi phê duyệt').length; // Chờ triển khai
+  // 'pending' legacy status maps to DE_NGHI_MOI in new enum
+  const waitingApprovalIdeas = filteredIdeas.filter(idea => {
+    const status: any = idea.status;
+    return status === 'pending' || status === IdeaStatus.DE_NGHI_MOI;
+  }).length; // Chờ phê duyệt (quyết định phê duyệt = chưa phê duyệt)
+  const failedIdeas = filteredIdeas.filter(idea => (idea as any).implementationStatus === 'Không đạt').length;
   // Success rate per new definition: (A3 + Phê duyệt khen thưởng + Đã khen thưởng) / (A3 + Phê duyệt khen thưởng + Đã khen thưởng + Không đạt)
   const successNumerator = a3SuccessIdeas + rewardDecisionIdeas + rewardedIdeas;
   const successDenominator = successNumerator + failedIdeas;
@@ -675,9 +683,9 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
   const isImplemented = (status?: string) => status === 'Đang triển khai' || status === 'Lập báo cáo A3' || status === 'Phê duyệt khen thưởng' || status === 'Đã khen thưởng';
   const implementedDeployed = (status?: string) => status === 'Đang triển khai' || status === 'Lập báo cáo A3';
   const isSuccessful = (status?: string) => status === 'Lập báo cáo A3' || status === 'Phê duyệt khen thưởng' || status === 'Đã khen thưởng';
-  const implementedCount = filteredIdeas.filter(idea => isImplemented(idea.implementationStatus)).length;
-  const implementedCountDeployed = filteredIdeas.filter(idea => implementedDeployed(idea.implementationStatus)).length;
-  const implementationSuccess = filteredIdeas.filter(idea => isSuccessful(idea.implementationStatus)).length;
+  const implementedCount = filteredIdeas.filter(idea => isImplemented((idea as any).implementationStatus)).length;
+  const implementedCountDeployed = filteredIdeas.filter(idea => implementedDeployed((idea as any).implementationStatus)).length;
+  const implementationSuccess = filteredIdeas.filter(idea => isSuccessful((idea as any).implementationStatus)).length;
   const implementationSuccessRate = newSuccessRate; // New success rate definition
 
   // Department statistics
@@ -712,7 +720,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
       };
     }
     acc[userName].total++;
-    acc[userName][idea.implementationStatus as keyof typeof acc[typeof userName]]++;
+    acc[userName][(idea as any).implementationStatus as keyof typeof acc[typeof userName]]++;
     return acc;
   }, {} as Record<string, { name: string; total: number; 'Đề xuất mới': number; 'Xem xét': number; 'Phê duyệt': number; 'Phản hồi phê duyệt': number; 'Đang triển khai': number; 'Lập báo cáo A3': number; 'Phê duyệt khen thưởng': number; 'Đã khen thưởng': number; 'Không đạt': number; department: string }>);
   // Chỉ giữ những người có ít nhất 2 ý tưởng
@@ -740,7 +748,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
       };
     }
     acc[monthKey].total++;
-    acc[monthKey][idea.implementationStatus as keyof typeof acc[typeof monthKey]]++;
+    acc[monthKey][(idea as any).implementationStatus as keyof typeof acc[typeof monthKey]]++;
     return acc;
   }, {} as Record<string, { 
     total: number; 
@@ -763,7 +771,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
 
   // Chart configurations
   const countByImplementationStatus = (status: 'Đề xuất mới' | 'Xem xét' | 'Phê duyệt' | 'Phản hồi phê duyệt' | 'Đang triển khai' | 'Lập báo cáo A3' | 'Phê duyệt khen thưởng' | 'Đã khen thưởng' | 'Không đạt') =>
-    filteredIdeas.filter(i => i.implementationStatus === status).length;
+    filteredIdeas.filter(i => (i as any).implementationStatus === status).length;
 
   const statusChartData = {
     labels: ['Đề xuất mới', 'Xem xét', 'Phê duyệt', 'Phản hồi phê duyệt', 'Đang triển khai', 'Lập báo cáo A3', 'Phê duyệt khen thưởng', 'Đã khen thưởng', 'Không đạt'],

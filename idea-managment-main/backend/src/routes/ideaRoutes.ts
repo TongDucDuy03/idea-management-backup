@@ -28,7 +28,7 @@ router.get('/code/:ideaCode', async (req, res) => {
     console.log('[PUBLIC] Found idea:', {
       id: idea._id,
       code: idea.ideaCode,
-      status: idea.implementationStatus
+      status: idea.status
     });
     
     return res.json(idea);
@@ -83,18 +83,17 @@ router.put('/code/:ideaCode', async (req, res) => {
       return res.status(404).json({ message: 'Không tìm thấy ý tưởng với mã này' });
     }
 
-    // Kiểm tra trạng thái
-    const currentStatus = (idea as any).implementationStatus;
-    if (currentStatus !== 'Lập báo cáo A3') {
+    // Kiểm tra trạng thái (sử dụng status mới)
+    const { IdeaStatus } = await import('../models/Idea');
+    if (idea.status !== IdeaStatus.BAO_CAO_A3) {
       return res.status(400).json({ 
-        message: 'Ý tưởng chưa ở trạng thái "Lập báo cáo A3"',
-        currentStatus: currentStatus
+        message: 'Ý tưởng chưa ở trạng thái "BAO_CAO_A3"',
+        currentStatus: idea.status
       });
     }
 
     // Chỉ cho phép cập nhật các trường A3
     const allowedFields = [
-      'topicTitle',
       'solution',
       'benefit',
       'benefitOutcome',

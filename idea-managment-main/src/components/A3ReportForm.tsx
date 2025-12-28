@@ -253,7 +253,7 @@ const A3ReportForm: React.FC<A3ReportFormProps> = ({ idea, onClose }) => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Form Báo Cáo Cải Tiến A3 - ${idea.topicTitle || idea.ideaCode || 'N/A'}</title>
+    <title>Form Báo Cáo Cải Tiến A3 - ${idea.ideaCode || 'N/A'}</title>
     <style>
         * {
             margin: 0;
@@ -632,7 +632,7 @@ const A3ReportForm: React.FC<A3ReportFormProps> = ({ idea, onClose }) => {
                 <div class="info-section">
                     <div class="info-row">
                         <span class="info-label">TÊN ĐỀ TÀI:</span>
-                        <div class="info-value">${idea.topicTitle || idea.idea || 'N/A'}</div>
+                        <div class="info-value">${idea.idea || 'N/A'}</div>
                     </div>
                     
                 </div>
@@ -1022,17 +1022,6 @@ const A3ReportForm: React.FC<A3ReportFormProps> = ({ idea, onClose }) => {
                 label="Đơn vị"
                 value={reportData.department || ''}
                 disabled
-                variant="outlined"
-                sx={textFieldStyle}
-              />
-            </Grid>
-            
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Tên đề tài"
-                value={reportData.topicTitle || ''}
-                onChange={(e) => handleInputChange('topicTitle', e.target.value)}
                 variant="outlined"
                 sx={textFieldStyle}
               />

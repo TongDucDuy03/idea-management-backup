@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import Idea, { IIdea } from '../models/Idea';
+import Idea, { IIdea, IdeaStatus } from '../models/Idea';
 import { sendIdeaSubmittedEmail } from '../services/emailService';
 
 export const createIdea = async (req: Request, res: Response) => {
@@ -11,7 +11,6 @@ export const createIdea = async (req: Request, res: Response) => {
       solution, 
       benefit, 
       status, 
-      implementationStatus,
       implementationDepartment, 
       note,
       benefitValue,
@@ -26,6 +25,11 @@ export const createIdea = async (req: Request, res: Response) => {
     const randomNum = Math.floor(Math.random() * 1000);
     const ideaCode = `${timestamp}-${randomNum}`;
 
+    // Validate và set status mặc định
+    const ideaStatus = status && Object.values(IdeaStatus).includes(status) 
+      ? status 
+      : IdeaStatus.DE_NGHI_MOI;
+
     const newIdea = new Idea({
       fullName,
       department,
@@ -34,8 +38,7 @@ export const createIdea = async (req: Request, res: Response) => {
       benefit,
       ideaCode,
       submissionDate: new Date(),
-      status: status || 'pending',
-      implementationStatus: implementationStatus || 'Đề xuất mới',
+      status: ideaStatus,
       implementationDepartment,
       note,
       benefitValue: benefitValue || 0,

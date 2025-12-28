@@ -1,3 +1,47 @@
+// Enum trạng thái chuẩn - Single Source of Truth
+export enum IdeaStatus {
+  DE_NGHI_MOI = 'DE_NGHI_MOI',
+  XEM_XET = 'XEM_XET',
+  CHO_PHE_DUYET = 'CHO_PHE_DUYET',
+  TRIEN_KHAI = 'TRIEN_KHAI',
+  KHONG_PHU_HOP = 'KHONG_PHU_HOP',
+  LUU_Y_TUONG = 'LUU_Y_TUONG',
+  BAO_CAO_A3 = 'BAO_CAO_A3',
+  KHEN_THUONG = 'KHEN_THUONG',
+  DONE = 'DONE',
+  REJECTED = 'REJECTED'
+}
+
+// Enum tình trạng khen thưởng
+export enum RewardStatus {
+  CHO_KHEN_THUONG_50K = 'CHO_KHEN_THUONG_50K',
+  DA_KHEN_THUONG_50K = 'DA_KHEN_THUONG_50K',
+  CHO_KHEN_THUONG_20 = 'CHO_KHEN_THUONG_20',
+  DA_KHEN_THUONG_20 = 'DA_KHEN_THUONG_20'
+}
+
+// Mapping để hiển thị tiếng Việt cho RewardStatus
+export const RewardStatusLabels: Record<RewardStatus, string> = {
+  [RewardStatus.CHO_KHEN_THUONG_50K]: 'Chờ khen thưởng 50.000đ',
+  [RewardStatus.DA_KHEN_THUONG_50K]: 'Đã khen thưởng 50.000đ',
+  [RewardStatus.CHO_KHEN_THUONG_20]: 'Chờ khen thưởng 20%',
+  [RewardStatus.DA_KHEN_THUONG_20]: 'Đã khen thưởng 20%'
+};
+
+// Mapping để hiển thị tiếng Việt
+export const IdeaStatusLabels: Record<IdeaStatus, string> = {
+  [IdeaStatus.DE_NGHI_MOI]: 'Đề nghị mới',
+  [IdeaStatus.XEM_XET]: 'Xem xét',
+  [IdeaStatus.CHO_PHE_DUYET]: 'Chờ phê duyệt',
+  [IdeaStatus.TRIEN_KHAI]: 'Triển khai',
+  [IdeaStatus.KHONG_PHU_HOP]: 'Không phù hợp',
+  [IdeaStatus.LUU_Y_TUONG]: 'Lưu ý tưởng',
+  [IdeaStatus.BAO_CAO_A3]: 'Báo cáo A3',
+  [IdeaStatus.KHEN_THUONG]: 'Khen thưởng',
+  [IdeaStatus.DONE]: 'Hoàn thành',
+  [IdeaStatus.REJECTED]: 'Không thành công'
+};
+
 export interface Idea {
   _id: string;
   fullName: string;
@@ -7,18 +51,17 @@ export interface Idea {
   benefit?: string;
   ideaCode: string;
   submissionDate: Date;
-  status: 'pending' | 'rejected' | 'noted' | 'approved'; // Quyết định phê duyệt (cũ)
-  implementationStatus: 'Đề xuất mới' | 'Xem xét' | 'Phê duyệt' | 'Phản hồi phê duyệt' | 'Đang triển khai' | 'Lập báo cáo A3' | 'Phê duyệt khen thưởng' | 'Đã khen thưởng' | 'Không đạt'; // Trạng thái triển khai (mới)
+  status: IdeaStatus; // Single source of truth - chỉ sử dụng trường này
   implementationDepartment?: string;
   note?: string;
   benefitValue?: number; // Giá trị làm lợi (VND)
   rewardAmount?: number; // Tiền thưởng (VND)
   rewardApprovalDate?: Date; // Ngày duyệt khen thưởng
+  rewardStatuses?: RewardStatus[]; // Tình trạng khen thưởng (multi-select)
   // New fields
   benefitOutcome?: string; // Lợi ích mang lại (mô tả)
   resourcesUsed?: string; // Nguồn lực sử dụng
   calculationDescription?: string; // Mô tả cách tính
-  topicTitle?: string; // Tên đề tài
   scalingOpportunity?: string; // Cơ hội nhân rộng phát triển
   beforeImage?: string; // Hình ảnh trước (data URL hoặc URL)
   afterImage?: string; // Hình ảnh sau (data URL hoặc URL)
@@ -34,7 +77,6 @@ export interface IdeaFormData {
   benefitOutcome?: string;
   resourcesUsed?: string;
   calculationDescription?: string;
-  topicTitle?: string;
   scalingOpportunity?: string;
   beforeImage?: string;
   afterImage?: string;

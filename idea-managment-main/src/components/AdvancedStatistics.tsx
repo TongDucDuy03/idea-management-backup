@@ -37,7 +37,7 @@ import {
 } from 'chart.js';
 import { Bar, Doughnut, Line, Pie, getElementAtEvent } from 'react-chartjs-2';
 import { useNavigate } from 'react-router-dom';
-import { Idea } from '../types';
+import { Idea, IdeaStatus } from '../types';
 
 // Register Chart.js components
 ChartJS.register(
@@ -292,7 +292,9 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
     const key = idea.department || 'Khác';
     if (!acc[key]) acc[key] = { total: 0, approved: 0, deploying: 0, implemented: 0, implementedFinal: 0, successful: 0 } as ImplStats;
     acc[key].total += 1;
-    if (idea.status === 'approved') acc[key].approved += 1;
+    // 'approved' legacy status maps to TRIEN_KHAI in new enum
+    const ideaStatus: any = idea.status;
+    if (ideaStatus === 'approved' || ideaStatus === IdeaStatus.TRIEN_KHAI) acc[key].approved += 1;
     if (isDeploying((idea as any).implementationStatus)) acc[key].deploying += 1;
     if (isImplemented((idea as any).implementationStatus)) acc[key].implemented += 1;
     if (isImplementedFinal((idea as any).implementationStatus)) acc[key].implementedFinal += 1;
@@ -304,7 +306,9 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
     const key = idea.fullName || 'Không rõ';
     if (!acc[key]) acc[key] = { total: 0, approved: 0, deploying: 0, implemented: 0, implementedFinal: 0, successful: 0 } as ImplStats;
     acc[key].total += 1;
-    if (idea.status === 'approved') acc[key].approved += 1;
+    // 'approved' legacy status maps to TRIEN_KHAI in new enum
+    const ideaStatus: any = idea.status;
+    if (ideaStatus === 'approved' || ideaStatus === IdeaStatus.TRIEN_KHAI) acc[key].approved += 1;
     if (isDeploying((idea as any).implementationStatus)) acc[key].deploying += 1;
     if (isImplemented((idea as any).implementationStatus)) acc[key].implemented += 1;
     if (isImplementedFinal((idea as any).implementationStatus)) acc[key].implementedFinal += 1;
@@ -317,7 +321,9 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
     const key = idea.department || 'Khác';
     if (!acc[key]) acc[key] = { total: 0, approved: 0, deploying: 0, implemented: 0, implementedFinal: 0, successful: 0 } as ImplStats;
     acc[key].total += 1;
-    if (idea.status === 'approved') acc[key].approved += 1;
+    // 'approved' legacy status maps to TRIEN_KHAI in new enum
+    const ideaStatus: any = idea.status;
+    if (ideaStatus === 'approved' || ideaStatus === IdeaStatus.TRIEN_KHAI) acc[key].approved += 1;
     if (isDeploying((idea as any).implementationStatus)) acc[key].deploying += 1;
     if (isImplemented((idea as any).implementationStatus)) acc[key].implemented += 1;
     if (isImplementedFinal((idea as any).implementationStatus)) acc[key].implementedFinal += 1;

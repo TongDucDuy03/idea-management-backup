@@ -17,7 +17,7 @@ import {
   Chip,
   CircularProgress
 } from '@mui/material';
-import { Idea } from '../types';
+import { Idea, IdeaStatus } from '../types';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -36,10 +36,16 @@ const ExportReportDialog: React.FC<ExportReportDialogProps> = ({
   const [loading, setLoading] = useState(false);
   const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
 
-  // Lọc các ý tưởng có trạng thái "Lập báo cáo A3"
-  const filteredIdeas = ideas.filter(idea => 
-    idea.implementationStatus === 'Lập báo cáo A3'
-  );
+  // Lọc các ý tưởng có trạng thái "BAO_CAO_A3"
+  const filteredIdeas = ideas.filter(idea => {
+    const status = idea.status;
+    // Handle backward compatibility
+    if (!Object.values(IdeaStatus).includes(status as IdeaStatus)) {
+      // Legacy: check implementationStatus
+      return (idea as any).implementationStatus === 'Lập báo cáo A3';
+    }
+    return status === IdeaStatus.BAO_CAO_A3;
+  });
 
   // Reset selected ideas when dialog opens
   useEffect(() => {
@@ -102,7 +108,7 @@ const ExportReportDialog: React.FC<ExportReportDialogProps> = ({
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Form Báo Cáo Cải Tiến A3 - ${idea.topicTitle || idea.ideaCode || 'N/A'}</title>
+    <title>Form Báo Cáo Cải Tiến A3 - ${idea.ideaCode || 'N/A'}</title>
     <style>
         * {
             margin: 0;
@@ -479,7 +485,7 @@ const ExportReportDialog: React.FC<ExportReportDialogProps> = ({
                 <div class="info-section">
                     <div class="info-row">
                         <span class="info-label">TÊN ĐỀ TÀI:</span>
-                        <div class="info-value">${idea.topicTitle || idea.idea || 'N/A'}</div>
+                        <div class="info-value">${idea.idea || 'N/A'}</div>
                     </div>
                     
                 </div>
@@ -795,7 +801,7 @@ const ExportReportDialog: React.FC<ExportReportDialogProps> = ({
                 <Checkbox checked={selectedIdeas.includes(idea._id)} />
                 <ListItemText 
                   primary={`${idea.ideaCode || 'N/A'} - ${idea.fullName || 'N/A'}`}
-                  secondary={`${idea.department || 'N/A'} - ${idea.topicTitle || idea.idea?.substring(0, 50) + '...' || 'N/A'}`}
+                  secondary={`${idea.department || 'N/A'} - ${idea.idea?.substring(0, 50) + '...' || 'N/A'}`}
                 />
               </MenuItem>
             ))}

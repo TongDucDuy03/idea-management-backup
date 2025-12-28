@@ -14,7 +14,7 @@ import {
   MenuItem,
   SelectChangeEvent
 } from '@mui/material';
-import { Idea } from '../types';
+import { Idea, IdeaStatus, IdeaStatusLabels } from '../types';
 import ImageLightbox from './ImageLightbox';
 
 // Helpers to parse legacy records where "idea" may include lines like
@@ -102,15 +102,13 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
     benefit: '',
     implementationDepartment: '',
     note: '',
-    status: 'pending',
-    implementationStatus: 'Đề xuất mới',
+    status: IdeaStatus.DE_NGHI_MOI,
     benefitValue: 0,
     rewardAmount: 0,
     rewardApprovalDate: undefined,
     benefitOutcome: '',
     resourcesUsed: '',
     calculationDescription: '',
-    topicTitle: '',
     scalingOpportunity: '',
     beforeImage: '',
     afterImage: ''
@@ -136,6 +134,26 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
 
   useEffect(() => {
     if (idea) {
+      // Handle legacy status values (backward compatibility)
+      let statusValue = idea.status || IdeaStatus.DE_NGHI_MOI;
+      
+      // If status is old value, try to migrate
+      if (!Object.values(IdeaStatus).includes(statusValue as IdeaStatus)) {
+        // Legacy compatibility: map old status to new
+        const oldStatus = statusValue as string;
+        if (oldStatus === 'pending') {
+          statusValue = IdeaStatus.DE_NGHI_MOI;
+        } else if (oldStatus === 'rejected') {
+          statusValue = IdeaStatus.REJECTED;
+        } else if (oldStatus === 'noted') {
+          statusValue = IdeaStatus.LUU_Y_TUONG;
+        } else if (oldStatus === 'approved') {
+          statusValue = IdeaStatus.TRIEN_KHAI;
+        } else {
+          statusValue = IdeaStatus.DE_NGHI_MOI;
+        }
+      }
+
       setFormData({
         ...idea,
         // Ensure problem text is pure, without solution/benefit lines
@@ -145,8 +163,7 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
         benefit: idea.benefit || parseFieldFromIdea(idea.idea, 'Lợi ích'),
         implementationDepartment: idea.implementationDepartment || '',
         note: idea.note || '',
-        status: idea.status || 'pending',
-        implementationStatus: idea.implementationStatus || 'Đề xuất mới',
+        status: statusValue as IdeaStatus,
         benefitValue: idea.benefitValue || 0,
         rewardAmount: idea.rewardAmount || 0,
         rewardApprovalDate: (idea as any).rewardApprovalDate ? (() => {
@@ -157,7 +174,6 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
         benefitOutcome: (idea as any).benefitOutcome || '',
         resourcesUsed: (idea as any).resourcesUsed || '',
         calculationDescription: (idea as any).calculationDescription || '',
-        topicTitle: (idea as any).topicTitle || '',
         scalingOpportunity: (idea as any).scalingOpportunity || '',
         beforeImage: (idea as any).beforeImage || '',
         afterImage: (idea as any).afterImage || ''
@@ -172,15 +188,13 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
         benefit: '',
         implementationDepartment: '',
         note: '',
-        status: 'pending',
-        implementationStatus: 'Đề xuất mới',
+        status: IdeaStatus.DE_NGHI_MOI,
         benefitValue: 0,
         rewardAmount: 0,
         rewardApprovalDate: undefined,
         benefitOutcome: '',
         resourcesUsed: '',
         calculationDescription: '',
-        topicTitle: '',
         scalingOpportunity: '',
         beforeImage: '',
         afterImage: ''
@@ -431,15 +445,6 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
               rows={4}
             />
             <TextField
-              name="topicTitle"
-              label="Tên đề tài"
-              value={(formData as any).topicTitle || ''}
-              onChange={handleTextChange}
-              fullWidth
-              multiline
-              rows={2}
-            />
-            <TextField
               name="scalingOpportunity"
               label="Cơ hội nhân rộng phát triển"
               value={(formData as any).scalingOpportunity || ''}
@@ -542,36 +547,18 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
               </Box>
             </Box>
             <FormControl fullWidth>
-              <InputLabel>Quyết định phê duyệt</InputLabel>
+              <InputLabel>Trạng thái</InputLabel>
               <Select
                 name="status"
-                value={formData.status || 'pending'}
+                value={formData.status || IdeaStatus.DE_NGHI_MOI}
                 onChange={handleSelectChange}
-                label="Quyết định phê duyệt"
+                label="Trạng thái"
               >
-                <MenuItem value="pending">Chưa phê duyệt</MenuItem>
-                <MenuItem value="rejected">Không phù hợp</MenuItem>
-                <MenuItem value="noted">Lưu ý tưởng</MenuItem>
-                <MenuItem value="approved">Phê duyệt triển khai</MenuItem>
-              </Select>
-            </FormControl>
-            <FormControl fullWidth>
-              <InputLabel>Trạng thái triển khai</InputLabel>
-              <Select
-                name="implementationStatus"
-                value={formData.implementationStatus || 'Đề xuất mới'}
-                onChange={handleSelectChange}
-                label="Trạng thái triển khai"
-              >
-                <MenuItem value="Đề xuất mới">Đề xuất mới</MenuItem>
-                <MenuItem value="Xem xét">Xem xét</MenuItem>
-                <MenuItem value="Phê duyệt">Phê duyệt</MenuItem>
-                <MenuItem value="Phản hồi phê duyệt">Phản hồi phê duyệt</MenuItem>
-                <MenuItem value="Đang triển khai">Đang triển khai</MenuItem>
-                <MenuItem value="Lập báo cáo A3">Lập báo cáo A3</MenuItem>
-                <MenuItem value="Phê duyệt khen thưởng">Phê duyệt khen thưởng</MenuItem>
-                <MenuItem value="Đã khen thưởng">Đã khen thưởng</MenuItem>
-                <MenuItem value="Không đạt">Không đạt</MenuItem>
+                {Object.values(IdeaStatus).map((status) => (
+                  <MenuItem key={status} value={status}>
+                    {IdeaStatusLabels[status]}
+                  </MenuItem>
+                ))}
               </Select>
             </FormControl>
             <FormControl fullWidth>
