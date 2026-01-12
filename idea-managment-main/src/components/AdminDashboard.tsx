@@ -913,8 +913,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     // Filter by reward calculation method
     let matchesRewardCalculationMethod = true;
     if (rewardCalculationMethodFilter) {
-      const ideaMethod = (idea as any).rewardCalculationMethod || RewardCalculationMethod.TOOL_BASED;
-      matchesRewardCalculationMethod = ideaMethod === rewardCalculationMethodFilter;
+      const ideaMethod = (idea as any).rewardCalculationMethod;
+      // Chỉ khớp khi idea có phương thức tính thưởng rõ ràng
+      matchesRewardCalculationMethod =
+        !!ideaMethod && ideaMethod === rewardCalculationMethodFilter;
     }
 
     // Filter by submission date
@@ -979,6 +981,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       matchesDepartment &&
       matchesImplementationDepartment &&
       matchesRewardStatuses &&
+      matchesRewardCalculationMethod &&
       matchesSubmissionDate &&
       matchesRewardApprovalDate
     );
