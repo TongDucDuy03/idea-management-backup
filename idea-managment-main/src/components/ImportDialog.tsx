@@ -130,10 +130,11 @@ const ImportDialog: React.FC<ImportDialogProps> = ({ open, onClose, onSuccess })
 
   const handleSelectAll = () => {
     if (!importSession) return;
-    const okRows = importSession.rows
-      .map((row, index) => row.status === ImportRowStatus.OK ? index : -1)
+    // Chọn tất cả các dòng KHÔNG lỗi (OK + Cảnh báo)
+    const selectableRows = importSession.rows
+      .map((row, index) => row.status !== ImportRowStatus.ERROR ? index : -1)
       .filter(idx => idx !== -1);
-    setSelectedRowIndices(okRows);
+    setSelectedRowIndices(selectableRows);
   };
 
   const handleDeselectAll = () => {
@@ -478,7 +479,7 @@ const ImportDialog: React.FC<ImportDialogProps> = ({ open, onClose, onSuccess })
                     </Box>
                     <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
                       <Button size="small" onClick={handleSelectAll}>
-                        Chọn tất cả OK
+                        Chọn tất cả
                       </Button>
                       <Button size="small" onClick={handleDeselectAll}>
                         Bỏ chọn tất cả
