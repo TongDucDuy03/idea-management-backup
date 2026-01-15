@@ -664,8 +664,13 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
   const deployingIdeas = filteredIdeas.filter(idea => (idea as any).implementationStatus === 'Đang triển khai').length; // Trạng thái triển khai = Đang triển khai
   const a3Ideas = filteredIdeas.filter(idea => (idea as any).implementationStatus === 'Lập báo cáo A3').length; // Trạng thái triển khai = Lập báo cáo A3
   const rewardDecisionIdeas = filteredIdeas.filter(idea => (idea as any).implementationStatus === 'Phê duyệt khen thưởng').length; // Phê duyệt khen thưởng
-  // Ý tưởng đã khen thưởng: lọc theo rewardApprovalDate (rewardDateFilteredIdeas) thay vì submissionDate
+  // Ý tưởng đã khen thưởng: lọc theo rewardApprovalDate (rewardDateFilteredIdeas) thay vì submissionDate (dùng cho success rate và chip hiển thị)
   const rewardedIdeas = rewardDateFilteredIdeas.filter(idea => (idea as any).implementationStatus === 'Đã khen thưởng').length; // Đã khen thưởng (lọc theo ngày duyệt khen thưởng)
+  // Tổng giá trị làm lợi ước tính: tính tổng cột giá trị làm lợi (benefitValue)
+  const totalBenefitValue = filteredIdeas.reduce((sum, idea) => {
+    const value = Number((idea as any).benefitValue) || 0;
+    return sum + value;
+  }, 0);
   const a3SuccessIdeas = a3Ideas; // Lập báo cáo A3
   const waitingDeployIdeas = filteredIdeas.filter(idea => (idea as any).implementationStatus === 'Phản hồi phê duyệt').length; // Chờ triển khai
   // 'pending' legacy status maps to DE_NGHI_MOI in new enum
@@ -1600,6 +1605,45 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
             </CardContent>
           </Card>
         </Grid>
+
+        {/* Tổng giá trị làm lợi ước tính */}
+        <Grid item xs={12} sm={6} md={3}>
+          <Card 
+            elevation={3} 
+            sx={{ 
+              textAlign: 'center', 
+              p: 2,
+              cursor: 'pointer',
+              '&:hover': {
+                backgroundColor: '#f5f5f5',
+                transform: 'translateY(-2px)',
+                boxShadow: 6
+              },
+              transition: 'all 0.2s'
+            }}
+            onClick={() => {
+              const query = buildDateFilterQuery();
+              handleNavigateToAdmin(query);
+            }}
+          >
+            <CardContent sx={{ overflow: 'hidden' }}>
+              <Typography 
+                color="error" 
+                sx={{ 
+                  fontWeight: 'bold',
+                  whiteSpace: 'nowrap',
+                  fontSize: 'clamp(1.2rem, 4vw, 2.5rem)',
+                  lineHeight: 1.2,
+                  maxWidth: '100%',
+                  display: 'block'
+                }}
+              >
+                {totalBenefitValue.toLocaleString('vi-VN')} đ
+              </Typography>
+              <Typography variant="h6" color="text.secondary">Tổng giá trị làm lợi ước tính</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
         
         {/* Số ý tưởng chờ phê duyệt triển khai (implementationStatus=Phê duyệt) */}
         <Grid item xs={12} sm={6} md={3}>
@@ -1713,34 +1757,6 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
             <CardContent>
               <Typography variant="h3" color="warning.main" sx={{ fontWeight: 'bold' }}>{a3Ideas}</Typography>
               <Typography variant="h6" color="text.secondary">Ý tưởng đang lập báo cáo A3</Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
-
-        {/* Số ý tưởng đã khen thưởng (implementationStatus=Đã khen thưởng) - lọc theo rewardApprovalDate */}
-        <Grid item xs={12} sm={6} md={3}>
-          <Card 
-            elevation={3} 
-            sx={{ 
-              textAlign: 'center', 
-              p: 2,
-              cursor: 'pointer',
-              '&:hover': {
-                backgroundColor: '#f5f5f5',
-                transform: 'translateY(-2px)',
-                boxShadow: 6
-              },
-              transition: 'all 0.2s'
-            }}
-            onClick={() => {
-              const query = buildRewardFilterQueryForAdmin();
-              handleNavigateToAdmin(query);
-            }}
-          >
-            <CardContent>
-              <Typography variant="h3" color="secondary" sx={{ fontWeight: 'bold' }}>{rewardedIdeas}</Typography>
-              <Typography variant="h6" color="text.secondary">Ý tưởng đã khen thưởng</Typography>
             </CardContent>
           </Card>
         </Grid>
