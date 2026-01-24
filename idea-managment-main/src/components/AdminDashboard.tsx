@@ -52,6 +52,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
   const [departmentFilter, setDepartmentFilter] = useState<string[]>([]);
   const [implementationDepartmentFilter, setImplementationDepartmentFilter] = useState<string[]>([]);
   const [rewardStatusesFilter, setRewardStatusesFilter] = useState<RewardStatus[]>([]);
+  const [implementationStatusFilter, setImplementationStatusFilter] = useState<string>('');
   const [rewardCalculationMethodFilter, setRewardCalculationMethodFilter] = useState<RewardCalculationMethod | ''>('');
   const [ideaCodeFilter, setIdeaCodeFilter] = useState('');
   const [fullNameFilter, setFullNameFilter] = useState('');
@@ -262,6 +263,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       setStatusFilter([status as IdeaStatus]);
     }
     
+    // Implementation status filter
+    const implementationStatus = params.get('implementationStatus');
+    if (implementationStatus) {
+      setImplementationStatusFilter(implementationStatus);
+    }
+    
     // Reward statuses filter
     const rewardStatusesParam = params.get('rewardStatuses');
     if (rewardStatusesParam && Object.values(RewardStatus).includes(rewardStatusesParam as RewardStatus)) {
@@ -396,6 +403,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     setImplementationDepartmentFilter([]);
     setRewardStatusesFilter([]);
     setRewardCalculationMethodFilter('');
+    setImplementationStatusFilter('');
     setIdeaCodeFilter('');
     setFullNameFilter('');
     setIdeaTextFilter('');
@@ -897,6 +905,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     const matchesStatus = statusFilter.length === 0 || statusFilter.includes(normalizedStatus);
     const matchesDepartment = departmentFilter.length === 0 || departmentFilter.includes((idea as any).department);
     const matchesImplementationDepartment = implementationDepartmentFilter.length === 0 || implementationDepartmentFilter.includes(((idea as any).implementationDepartment || ''));
+    
+    // Filter by implementation status
+    const matchesImplementationStatus = !implementationStatusFilter || (idea as any).implementationStatus === implementationStatusFilter;
 
     // Filter by reward statuses - lọc các idea có TẤT CẢ các status được chọn (AND logic)
     // Idea có thể có thêm status khác, nhưng phải có đủ tất cả các status trong filter
@@ -980,6 +991,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       matchesStatus &&
       matchesDepartment &&
       matchesImplementationDepartment &&
+      matchesImplementationStatus &&
       matchesRewardStatuses &&
       matchesRewardCalculationMethod &&
       matchesSubmissionDate &&

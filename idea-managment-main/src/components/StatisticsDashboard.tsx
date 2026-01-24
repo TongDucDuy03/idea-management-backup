@@ -43,7 +43,7 @@ import {
   BarChart as BarChartIcon
 } from '@mui/icons-material';
 import api from '../api/config';
-import { Idea, IdeaStatus, RewardStatus } from '../types';
+import { Idea, IdeaStatus, IdeaStatusLabels, RewardStatus } from '../types';
 import AdvancedStatistics from './AdvancedStatistics';
 import ReportGenerator from './ReportGenerator';
 
@@ -792,46 +792,64 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
   const monthlyRejected = monthlyLabels.map(label => monthlyData[label]['Không đạt']);
   const monthlyNoted = monthlyLabels.map(label => monthlyData[label]['Xem xét']);
 
-  // Chart configurations
-  const countByImplementationStatus = (status: 'Đề xuất mới' | 'Xem xét' | 'Phê duyệt' | 'Phản hồi phê duyệt' | 'Đang triển khai' | 'Lập báo cáo A3' | 'Phê duyệt khen thưởng' | 'Đã khen thưởng' | 'Không đạt') =>
-    filteredIdeas.filter(i => (i as any).implementationStatus === status).length;
+  // Chart configurations - tính từ status (IdeaStatus enum) để khớp với AdminDashboard
+  const countByStatus = (status: IdeaStatus) => {
+    return filteredIdeas.filter(idea => {
+      const ideaStatus: any = idea.status;
+      // Handle backward compatibility: map old status values to new enum
+      if (!Object.values(IdeaStatus).includes(ideaStatus as IdeaStatus)) {
+        if (ideaStatus === 'pending' && status === IdeaStatus.DE_NGHI_MOI) return true;
+        if (ideaStatus === 'rejected' && status === IdeaStatus.REJECTED) return true;
+        if (ideaStatus === 'noted' && status === IdeaStatus.LUU_Y_TUONG) return true;
+        if (ideaStatus === 'approved' && status === IdeaStatus.TRIEN_KHAI) return true;
+        return false;
+      }
+      return ideaStatus === status;
+    }).length;
+  };
+
+  // Lấy tất cả các IdeaStatus theo thứ tự
+  const allStatuses = [
+    IdeaStatus.DE_NGHI_MOI,
+    IdeaStatus.XEM_XET,
+    IdeaStatus.CHO_PHE_DUYET,
+    IdeaStatus.TRIEN_KHAI,
+    IdeaStatus.KHONG_PHU_HOP,
+    IdeaStatus.LUU_Y_TUONG,
+    IdeaStatus.BAO_CAO_A3,
+    IdeaStatus.KHEN_THUONG,
+    IdeaStatus.DONE,
+    IdeaStatus.REJECTED
+  ];
 
   const statusChartData = {
-    labels: ['Đề xuất mới', 'Xem xét', 'Phê duyệt', 'Phản hồi phê duyệt', 'Đang triển khai', 'Lập báo cáo A3', 'Phê duyệt khen thưởng', 'Đã khen thưởng', 'Không đạt'],
+    labels: allStatuses.map(status => IdeaStatusLabels[status]),
     datasets: [
       {
-        data: [
-          countByImplementationStatus('Đề xuất mới'),
-          countByImplementationStatus('Xem xét'),
-          countByImplementationStatus('Phê duyệt'),
-          countByImplementationStatus('Phản hồi phê duyệt'),
-          deployingIdeas,
-          a3Ideas,
-          rewardDecisionIdeas,
-          countByImplementationStatus('Đã khen thưởng'),
-          failedIdeas
-        ],
+        data: allStatuses.map(status => countByStatus(status)),
         backgroundColor: [
-          '#2196F3',
-          '#FF9800',
-          '#4CAF50',
-          '#9C27B0',
-          '#00BCD4',
-          '#795548',
-          '#607D8B',
-          '#2E7D32',
-          '#F44336'
+          '#2196F3', // Đề nghị mới - Blue
+          '#FF9800', // Xem xét - Orange
+          '#4CAF50', // Chờ phê duyệt - Green
+          '#00BCD4', // Triển khai - Cyan
+          '#F44336', // Không phù hợp - Red
+          '#9C27B0', // Lưu ý tưởng - Purple
+          '#795548', // Báo cáo A3 - Brown
+          '#607D8B', // Khen thưởng - Grey
+          '#2E7D32', // Hoàn thành - Dark Green
+          '#D32F2F'  // Không thành công - Dark Red
         ],
         borderColor: [
-          '#1976D2',
-          '#F57C00',
-          '#2E7D32',
-          '#7B1FA2',
-          '#0097A7',
-          '#5D4037',
-          '#455A64',
-          '#1B5E20',
-          '#D32F2F'
+          '#1976D2', // Đề nghị mới
+          '#F57C00', // Xem xét
+          '#2E7D32', // Chờ phê duyệt
+          '#0097A7', // Triển khai
+          '#D32F2F', // Không phù hợp
+          '#7B1FA2', // Lưu ý tưởng
+          '#5D4037', // Báo cáo A3
+          '#455A64', // Khen thưởng
+          '#1B5E20', // Hoàn thành
+          '#B71C1C'  // Không thành công
         ],
         borderWidth: 2
       }
@@ -1944,10 +1962,9 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
                   const elements = getElementAtEvent(chart, event);
                   if (!elements || elements.length === 0) return;
                   const index = (elements[0] as any).index as number;
-                  const statusMap = ['Đề xuất mới', 'Xem xét', 'Phê duyệt', 'Phản hồi phê duyệt', 'Đang triển khai', 'Lập báo cáo A3', 'Phê duyệt khen thưởng', 'Đã khen thưởng', 'Không đạt'];
-                  const status = statusMap[index];
-                  if (status) {
-                    const query = buildDateFilterQuery({ 'implementationStatus': status });
+                  const selectedStatus = allStatuses[index];
+                  if (selectedStatus) {
+                    const query = buildDateFilterQuery({ 'status': selectedStatus });
                     handleNavigateToAdmin(query);
                   }
                 }}
