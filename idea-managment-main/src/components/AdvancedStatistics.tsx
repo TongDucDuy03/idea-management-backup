@@ -20,8 +20,10 @@ import {
   Paper,
   LinearProgress,
   TableSortLabel,
-  Button
+  Button,
+  IconButton
 } from '@mui/material';
+import { NavigateBefore, NavigateNext } from '@mui/icons-material';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -510,29 +512,66 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
     ]
   };
 
-  // Yearly distribution and monthly counts (current year ONLY - always filter by current year, not time range)
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const ideasThisYear = ideas.filter(i => {
-    const d = new Date(i.submissionDate);
-    return d.getFullYear() === currentYear;
-  });
+  // Monthly counts with sliding window (12 months)
+  const [monthChartOffset, setMonthChartOffset] = useState(0); // 0 = latest 12 months
 
-  const monthlyCounts = Array.from({ length: 12 }, () => 0);
-  ideasThisYear.forEach(i => {
-    const d = new Date(i.submissionDate);
-    const m = d.getMonth();
-    monthlyCounts[m] += 1;
-  });
+  const { allMonths, allMonthlyCounts } = React.useMemo(() => {
+    if (ideas.length === 0) {
+      const now = new Date();
+      const year = now.getFullYear();
+      const months = Array.from({length: 12}, (_, i) => `${String(i+1).padStart(2, '0')}/${year}`);
+      return { allMonths: months, allMonthlyCounts: new Array(12).fill(0) };
+    }
 
-  const monthLabels = ['01','02','03','04','05','06','07','08','09','10','11','12'].map(m => `${m}/${currentYear}`);
+    const timestamps = ideas.map(i => new Date(i.submissionDate).getTime());
+    const minTs = Math.min(...timestamps);
+    const minDate = new Date(minTs);
+    const now = new Date();
+    
+    const months: string[] = [];
+    let current = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth(), 1);
+    
+    // Ensure we cover up to current month
+    if (current > end) {
+       current = new Date(end.getFullYear(), end.getMonth(), 1);
+    }
+
+    while (current <= end) {
+      const m = String(current.getMonth() + 1).padStart(2, '0');
+      const y = current.getFullYear();
+      months.push(`${m}/${y}`);
+      current.setMonth(current.getMonth() + 1);
+    }
+
+    // Count ideas per month
+    const countsMap: Record<string, number> = {};
+    ideas.forEach(i => {
+      const d = new Date(i.submissionDate);
+      const key = `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+      countsMap[key] = (countsMap[key] || 0) + 1;
+    });
+
+    const counts = months.map(m => countsMap[m] || 0);
+    return { allMonths: months, allMonthlyCounts: counts };
+  }, [ideas]);
+
+  const monthsToShow = 12;
+  const maxOffset = Math.max(0, allMonths.length - monthsToShow);
+  const effectiveOffset = Math.min(monthChartOffset, maxOffset);
+  
+  const startIndex = Math.max(0, allMonths.length - monthsToShow - effectiveOffset);
+  const endIndex = Math.min(allMonths.length, startIndex + monthsToShow);
+  
+  const visibleMonthLabels = allMonths.slice(startIndex, endIndex);
+  const visibleMonthlyCounts = allMonthlyCounts.slice(startIndex, endIndex);
 
   const monthlyCountBarData = {
-    labels: monthLabels,
+    labels: visibleMonthLabels,
     datasets: [
       {
         label: 'Số ý tưởng theo tháng',
-        data: monthlyCounts,
+        data: visibleMonthlyCounts,
         backgroundColor: '#42A5F5',
         borderColor: '#1E88E5',
         borderWidth: 1
@@ -540,19 +579,14 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
     ]
   };
 
-  const yearlyDistributionPie = {
-    labels: monthLabels,
-    datasets: [
-      {
-        data: monthlyCounts,
-        backgroundColor: [
-          '#1E88E5','#43A047','#FB8C00','#8E24AA','#F4511E','#3949AB',
-          '#00ACC1','#7CB342','#FDD835','#5E35B1','#039BE5','#8D6E63'
-        ],
-        borderWidth: 1
-      }
-    ]
+  const handlePrevMonths = () => {
+    setMonthChartOffset(prev => Math.min(maxOffset, prev + 1));
   };
+
+  const handleNextMonths = () => {
+    setMonthChartOffset(prev => Math.max(0, prev - 1));
+  };
+
 
   // Value-based statistics
   const departmentBenefitValue = filteredIdeas.reduce((acc, idea) => {
@@ -789,9 +823,25 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
         {/* Monthly Counts (Bar) */}
         <Grid item xs={12} md={6}>
           <Card elevation={3} sx={{ p: 3, height: 400 }}>
-            <Typography variant="h6" gutterBottom align="center" sx={{ fontWeight: 'bold' }}>
-              Số ý tưởng theo từng tháng
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
+              <IconButton 
+                onClick={handlePrevMonths} 
+                disabled={effectiveOffset >= maxOffset}
+                size="small"
+              >
+                <NavigateBefore />
+              </IconButton>
+              <Typography variant="h6" sx={{ fontWeight: 'bold', mx: 2 }}>
+                Số ý tưởng theo từng tháng
+              </Typography>
+              <IconButton 
+                onClick={handleNextMonths} 
+                disabled={effectiveOffset <= 0}
+                size="small"
+              >
+                <NavigateNext />
+              </IconButton>
+            </Box>
             <Box sx={{ height: 300, mt: 2 }}>
               <Bar 
                 ref={monthlyCountBarRef}
@@ -803,7 +853,7 @@ const AdvancedStatistics: React.FC<AdvancedStatisticsProps> = ({
                   const elements = getElementAtEvent(chart, event);
                   if (!elements || elements.length === 0) return;
                   const index = (elements[0] as any).index as number;
-                  const monthLabel = monthLabels[index];
+                  const monthLabel = visibleMonthLabels[index];
                   if (monthLabel) {
                     const [month, year] = monthLabel.split('/');
                     const startDate = `${year}-${month}-01`;
