@@ -36,7 +36,7 @@ import {
   Filler
 } from 'chart.js';
 import { Bar, Doughnut, Line, getElementAtEvent } from 'react-chartjs-2';
-import { 
+import {
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
   CompareArrows as CompareArrowsIcon,
@@ -211,7 +211,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
   const handleQuickDateFilter = (type: 'today' | 'week' | 'month' | 'quarter' | 'year') => {
     const today = new Date();
     const todayStr = formatLocalDate(today); // Sử dụng local timezone
-    
+
     switch (type) {
       case 'today':
         setDateFrom(todayStr);
@@ -387,7 +387,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-    
+
     return ideas.filter(idea => {
       const d = new Date(idea.submissionDate);
       return d >= startOfMonth && d <= endOfMonth;
@@ -398,7 +398,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
     const now = new Date();
     const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const endOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
-    
+
     return ideas.filter(idea => {
       const d = new Date(idea.submissionDate);
       return d >= startOfPrevMonth && d <= endOfPrevMonth;
@@ -409,7 +409,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
     const now = new Date();
     const startOfYear = new Date(now.getFullYear(), 0, 1);
     const endOfYear = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
-    
+
     return ideas.filter(idea => {
       const d = new Date(idea.submissionDate);
       return d >= startOfYear && d <= endOfYear;
@@ -420,7 +420,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
     const now = new Date();
     const startOfPrevYear = new Date(now.getFullYear() - 1, 0, 1);
     const endOfPrevYear = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
-    
+
     return ideas.filter(idea => {
       const d = new Date(idea.submissionDate);
       return d >= startOfPrevYear && d <= endOfPrevYear;
@@ -600,12 +600,12 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
   // Helper: build date filter query string từ bộ lọc hiện tại
   const buildDateFilterQuery = (additionalParams?: Record<string, string>) => {
     const params = new URLSearchParams(additionalParams || {});
-    
+
     // Thêm departmentFilter nếu không phải 'all'
     if (departmentFilter && departmentFilter !== 'all') {
       params.set('department', departmentFilter);
     }
-    
+
     // Nếu đang dùng custom date range, ưu tiên dùng
     if (dateFrom) params.set('dateFrom', dateFrom);
     if (dateTo) params.set('dateTo', dateTo);
@@ -683,7 +683,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
   const successNumerator = a3SuccessIdeas + rewardDecisionIdeas + rewardedIdeas;
   const successDenominator = successNumerator + failedIdeas;
   const newSuccessRate = successDenominator > 0 ? ((successNumerator / successDenominator) * 100).toFixed(1) : '0';
-  
+
   // Reward statistics
   const waitingReward50k = filteredIdeas.filter(idea => {
     const rewardStatuses: RewardStatus[] = (idea as any).rewardStatuses || [];
@@ -720,7 +720,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
   // Chỉ giữ các phòng ban có ít nhất 2 ý tưởng
   const topDepartments = Object.entries(departmentStats)
     .filter(([, count]) => count > 1)
-    .sort(([,a], [,b]) => b - a)
+    .sort(([, a], [, b]) => b - a)
     .slice(0, 10);
 
   // User ranking statistics
@@ -757,33 +757,33 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
     const date = new Date(idea.submissionDate);
     const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
     if (!acc[monthKey]) {
-      acc[monthKey] = { 
-        total: 0, 
-        'Đề xuất mới': 0, 
-        'Xem xét': 0, 
-        'Phê duyệt': 0, 
-        'Phản hồi phê duyệt': 0, 
-        'Đang triển khai': 0, 
-        'Lập báo cáo A3': 0, 
-        'Phê duyệt khen thưởng': 0, 
-        'Đã khen thưởng': 0, 
-        'Không đạt': 0 
+      acc[monthKey] = {
+        total: 0,
+        'Đề xuất mới': 0,
+        'Xem xét': 0,
+        'Phê duyệt': 0,
+        'Phản hồi phê duyệt': 0,
+        'Đang triển khai': 0,
+        'Lập báo cáo A3': 0,
+        'Phê duyệt khen thưởng': 0,
+        'Đã khen thưởng': 0,
+        'Không đạt': 0
       };
     }
     acc[monthKey].total++;
     acc[monthKey][(idea as any).implementationStatus as keyof typeof acc[typeof monthKey]]++;
     return acc;
-  }, {} as Record<string, { 
-    total: number; 
-    'Đề xuất mới': number; 
-    'Xem xét': number; 
-    'Phê duyệt': number; 
-    'Phản hồi phê duyệt': number; 
-    'Đang triển khai': number; 
-    'Lập báo cáo A3': number; 
-    'Phê duyệt khen thưởng': number; 
-    'Đã khen thưởng': number; 
-    'Không đạt': number 
+  }, {} as Record<string, {
+    total: number;
+    'Đề xuất mới': number;
+    'Xem xét': number;
+    'Phê duyệt': number;
+    'Phản hồi phê duyệt': number;
+    'Đang triển khai': number;
+    'Lập báo cáo A3': number;
+    'Phê duyệt khen thưởng': number;
+    'Đã khen thưởng': number;
+    'Không đạt': number
   }>);
 
   const monthlyLabels = Object.keys(monthlyData).sort();
@@ -993,20 +993,20 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
   const trendLineRef = useRef<any>(null);
 
   // Comparison Card Component
-  const ComparisonCard: React.FC<{ 
-    title: string; 
-    currentValue: number; 
-    previousValue: number; 
-    change: number; 
+  const ComparisonCard: React.FC<{
+    title: string;
+    currentValue: number;
+    previousValue: number;
+    change: number;
     changePercent: number;
     icon: React.ReactNode;
   }> = ({ title, currentValue, previousValue, change, changePercent, icon }) => {
     const isPositive = change >= 0;
     const isSignificant = Math.abs(changePercent) >= 5; // 5% threshold for significant change
-    
+
     return (
-      <Card sx={{ 
-        p: 2, 
+      <Card sx={{
+        p: 2,
         height: '100%',
         background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
         border: '1px solid #e0e0e0',
@@ -1019,7 +1019,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
             {title}
           </Typography>
         </Box>
-        
+
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
           <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#2e7d32' }}>
             {currentValue}
@@ -1030,9 +1030,9 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
             ) : (
               <TrendingDownIcon sx={{ color: '#d32f2f', mr: 0.5 }} />
             )}
-            <Typography 
-              variant="body2" 
-              sx={{ 
+            <Typography
+              variant="body2"
+              sx={{
                 color: isPositive ? '#2e7d32' : '#d32f2f',
                 fontWeight: 'bold',
                 fontSize: isSignificant ? '1rem' : '0.875rem'
@@ -1042,7 +1042,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
             </Typography>
           </Box>
         </Box>
-        
+
         <Typography variant="body2" color="text.secondary">
           So với kỳ trước: {previousValue}
         </Typography>
@@ -1086,7 +1086,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
               </Button>
               {!isViewOnly && (
                 <>
-                  <ReportGenerator 
+                  <ReportGenerator
                     ideas={ideas}
                     timeRange={timeRange}
                     departmentFilter={departmentFilter}
@@ -1104,7 +1104,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
             </Box>
           </Box>
           <Divider />
-          
+
           {/* Filters */}
           <Box sx={{ display: 'flex', gap: 3, mt: 3, flexWrap: 'wrap', alignItems: 'center' }}>
             <FormControl sx={{ minWidth: 150 }}>
@@ -1122,7 +1122,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
                 <MenuItem value="year">1 năm qua</MenuItem>
               </Select>
             </FormControl>
-            
+
             <FormControl sx={{ minWidth: 200 }}>
               <InputLabel>Phòng ban</InputLabel>
               <Select
@@ -1223,7 +1223,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
               exclusive
               onChange={handleComparisonTypeChange}
               size="small"
-              sx={{ 
+              sx={{
                 border: '1px solid #1976d2',
                 borderRadius: 1,
                 '& .MuiToggleButton-root': {
@@ -1268,7 +1268,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
                     <FormControl size="small" sx={{ minWidth: 140 }}>
                       <InputLabel>Năm A</InputLabel>
                       <Select label="Năm A" value={yearA} onChange={(e) => setYearA(Number(e.target.value))}>
-                        {Array.from(new Set(ideas.map(i => new Date(i.submissionDate).getFullYear()))).sort((a,b) => a - b).map(y => (
+                        {Array.from(new Set(ideas.map(i => new Date(i.submissionDate).getFullYear()))).sort((a, b) => a - b).map(y => (
                           <MenuItem key={y} value={y}>{y}</MenuItem>
                         ))}
                       </Select>
@@ -1276,7 +1276,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
                     <FormControl size="small" sx={{ minWidth: 140 }}>
                       <InputLabel>Năm B</InputLabel>
                       <Select label="Năm B" value={yearB} onChange={(e) => setYearB(Number(e.target.value))}>
-                        {Array.from(new Set(ideas.map(i => new Date(i.submissionDate).getFullYear()))).sort((a,b) => a - b).map(y => (
+                        {Array.from(new Set(ideas.map(i => new Date(i.submissionDate).getFullYear()))).sort((a, b) => a - b).map(y => (
                           <MenuItem key={y} value={y}>{y}</MenuItem>
                         ))}
                       </Select>
@@ -1288,7 +1288,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
                     <FormControl size="small" sx={{ minWidth: 140 }}>
                       <InputLabel>Năm A</InputLabel>
                       <Select label="Năm A" value={yearA} onChange={(e) => setYearA(Number(e.target.value))}>
-                        {Array.from(new Set(ideas.map(i => new Date(i.submissionDate).getFullYear()))).sort((a,b) => a - b).map(y => (
+                        {Array.from(new Set(ideas.map(i => new Date(i.submissionDate).getFullYear()))).sort((a, b) => a - b).map(y => (
                           <MenuItem key={y} value={y}>{y}</MenuItem>
                         ))}
                       </Select>
@@ -1296,13 +1296,13 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
                     <FormControl size="small" sx={{ minWidth: 120 }}>
                       <InputLabel>Quý A</InputLabel>
                       <Select label="Quý A" value={quarterA} onChange={(e) => setQuarterA(Number(e.target.value))}>
-                        {[1,2,3,4].map(q => (<MenuItem key={q} value={q}>{`Q${q}`}</MenuItem>))}
+                        {[1, 2, 3, 4].map(q => (<MenuItem key={q} value={q}>{`Q${q}`}</MenuItem>))}
                       </Select>
                     </FormControl>
                     <FormControl size="small" sx={{ minWidth: 140 }}>
                       <InputLabel>Năm B</InputLabel>
                       <Select label="Năm B" value={yearB} onChange={(e) => setYearB(Number(e.target.value))}>
-                        {Array.from(new Set(ideas.map(i => new Date(i.submissionDate).getFullYear()))).sort((a,b) => a - b).map(y => (
+                        {Array.from(new Set(ideas.map(i => new Date(i.submissionDate).getFullYear()))).sort((a, b) => a - b).map(y => (
                           <MenuItem key={y} value={y}>{y}</MenuItem>
                         ))}
                       </Select>
@@ -1310,7 +1310,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
                     <FormControl size="small" sx={{ minWidth: 120 }}>
                       <InputLabel>Quý B</InputLabel>
                       <Select label="Quý B" value={quarterB} onChange={(e) => setQuarterB(Number(e.target.value))}>
-                        {[1,2,3,4].map(q => (<MenuItem key={q} value={q}>{`Q${q}`}</MenuItem>))}
+                        {[1, 2, 3, 4].map(q => (<MenuItem key={q} value={q}>{`Q${q}`}</MenuItem>))}
                       </Select>
                     </FormControl>
                   </>
@@ -1320,7 +1320,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
                     <FormControl size="small" sx={{ minWidth: 140 }}>
                       <InputLabel>Năm A</InputLabel>
                       <Select label="Năm A" value={yearA} onChange={(e) => setYearA(Number(e.target.value))}>
-                        {Array.from(new Set(ideas.map(i => new Date(i.submissionDate).getFullYear()))).sort((a,b) => a - b).map(y => (
+                        {Array.from(new Set(ideas.map(i => new Date(i.submissionDate).getFullYear()))).sort((a, b) => a - b).map(y => (
                           <MenuItem key={y} value={y}>{y}</MenuItem>
                         ))}
                       </Select>
@@ -1334,7 +1334,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
                     <FormControl size="small" sx={{ minWidth: 140 }}>
                       <InputLabel>Năm B</InputLabel>
                       <Select label="Năm B" value={yearB} onChange={(e) => setYearB(Number(e.target.value))}>
-                        {Array.from(new Set(ideas.map(i => new Date(i.submissionDate).getFullYear()))).sort((a,b) => a - b).map(y => (
+                        {Array.from(new Set(ideas.map(i => new Date(i.submissionDate).getFullYear()))).sort((a, b) => a - b).map(y => (
                           <MenuItem key={y} value={y}>{y}</MenuItem>
                         ))}
                       </Select>
@@ -1359,8 +1359,8 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
           <CardContent sx={{ py: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="body1" color="text.secondary">
-                <strong>Bộ lọc ngày tháng đang áp dụng:</strong> 
-                {dateFrom ? ` Từ ${new Date(dateFrom).toLocaleDateString('vi-VN')}` : ' Từ đầu'} 
+                <strong>Bộ lọc ngày tháng đang áp dụng:</strong>
+                {dateFrom ? ` Từ ${new Date(dateFrom).toLocaleDateString('vi-VN')}` : ' Từ đầu'}
                 {dateTo ? ` đến ${new Date(dateTo).toLocaleDateString('vi-VN')}` : ' đến hiện tại'}
               </Typography>
               <Typography variant="body2" color="primary" sx={{ fontWeight: 'bold' }}>
@@ -1391,7 +1391,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
                   So sánh {stats.period}: {stats.currentLabel} vs {stats.previousLabel}
                 </Typography>
               </Box>
-              
+
               <Grid container spacing={3}>
                 <Grid item xs={12} md={3}>
                   <ComparisonCard
@@ -1414,8 +1414,8 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
                   />
                 </Grid>
                 <Grid item xs={12} md={3}>
-                  <Card sx={{ 
-                    p: 2, 
+                  <Card sx={{
+                    p: 2,
                     height: '100%',
                     background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
                     border: '1px solid #e0e0e0',
@@ -1428,7 +1428,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
                         Tỷ lệ triển khai thành công
                       </Typography>
                     </Box>
-                    
+
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                       <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#2e7d32' }}>
                         {stats.implSuccessRate.current.toFixed(1)}%
@@ -1439,9 +1439,9 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
                         ) : (
                           <TrendingDownIcon sx={{ color: '#d32f2f', mr: 0.5 }} />
                         )}
-                        <Typography 
-                          variant="body2" 
-                          sx={{ 
+                        <Typography
+                          variant="body2"
+                          sx={{
                             color: stats.implSuccessRate.change >= 0 ? '#2e7d32' : '#d32f2f',
                             fontWeight: 'bold'
                           }}
@@ -1450,15 +1450,15 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
                         </Typography>
                       </Box>
                     </Box>
-                    
+
                     <Typography variant="body2" color="text.secondary">
                       So với kỳ trước: {stats.implSuccessRate.previous.toFixed(1)}%
                     </Typography>
                   </Card>
                 </Grid>
                 <Grid item xs={12} md={3}>
-                  <Card sx={{ 
-                    p: 2, 
+                  <Card sx={{
+                    p: 2,
                     height: '100%',
                     background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
                     border: '1px solid #e0e0e0',
@@ -1471,7 +1471,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
                         Giá trị làm lợi
                       </Typography>
                     </Box>
-                    
+
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                       <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#2e7d32' }}>
                         {(stats.benefitValue.current / 1000000).toFixed(1)}M
@@ -1482,9 +1482,9 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
                         ) : (
                           <TrendingDownIcon sx={{ color: '#d32f2f', mr: 0.5 }} />
                         )}
-                        <Typography 
-                          variant="body2" 
-                          sx={{ 
+                        <Typography
+                          variant="body2"
+                          sx={{
                             color: stats.benefitValue.change >= 0 ? '#2e7d32' : '#d32f2f',
                             fontWeight: 'bold'
                           }}
@@ -1493,19 +1493,19 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
                         </Typography>
                       </Box>
                     </Box>
-                    
+
                     <Typography variant="body2" color="text.secondary">
                       So với kỳ trước: {(stats.benefitValue.previous / 1000000).toFixed(1)}M VND
                     </Typography>
                   </Card>
                 </Grid>
               </Grid>
-              
+
               {/* Second row for reward amount */}
               <Grid container spacing={3} sx={{ mt: 1 }}>
                 <Grid item xs={12} md={6}>
-                  <Card sx={{ 
-                    p: 2, 
+                  <Card sx={{
+                    p: 2,
                     height: '100%',
                     background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
                     border: '1px solid #e0e0e0',
@@ -1518,7 +1518,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
                         Tổng tiền thưởng
                       </Typography>
                     </Box>
-                    
+
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                       <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#2e7d32' }}>
                         {(stats.rewardAmount.current / 1000000).toFixed(1)}M
@@ -1529,9 +1529,9 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
                         ) : (
                           <TrendingDownIcon sx={{ color: '#d32f2f', mr: 0.5 }} />
                         )}
-                        <Typography 
-                          variant="body2" 
-                          sx={{ 
+                        <Typography
+                          variant="body2"
+                          sx={{
                             color: stats.rewardAmount.change >= 0 ? '#2e7d32' : '#d32f2f',
                             fontWeight: 'bold'
                           }}
@@ -1540,15 +1540,15 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
                         </Typography>
                       </Box>
                     </Box>
-                    
+
                     <Typography variant="body2" color="text.secondary">
                       So với kỳ trước: {(stats.rewardAmount.previous / 1000000).toFixed(1)}M VND
                     </Typography>
                   </Card>
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <Card sx={{ 
-                    p: 2, 
+                  <Card sx={{
+                    p: 2,
                     height: '100%',
                     background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
                     border: '1px solid #e0e0e0',
@@ -1561,7 +1561,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
                         Tỷ lệ thay đổi tiền thưởng
                       </Typography>
                     </Box>
-                    
+
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                       <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#2e7d32' }}>
                         {stats.rewardAmount.changePercent.toFixed(1)}%
@@ -1572,9 +1572,9 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
                         ) : (
                           <TrendingDownIcon sx={{ color: '#d32f2f', mr: 0.5 }} />
                         )}
-                        <Typography 
-                          variant="body2" 
-                          sx={{ 
+                        <Typography
+                          variant="body2"
+                          sx={{
                             color: stats.rewardAmount.changePercent >= 0 ? '#2e7d32' : '#d32f2f',
                             fontWeight: 'bold'
                           }}
@@ -1583,7 +1583,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
                         </Typography>
                       </Box>
                     </Box>
-                    
+
                     <Typography variant="body2" color="text.secondary">
                       Thay đổi so với kỳ trước
                     </Typography>
@@ -1599,10 +1599,10 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
       <Grid container spacing={3} sx={{ mb: 4 }}>
         {/* Tổng số ý tưởng */}
         <Grid item xs={12} sm={6} md={3}>
-          <Card 
-            elevation={3} 
-            sx={{ 
-              textAlign: 'center', 
+          <Card
+            elevation={3}
+            sx={{
+              textAlign: 'center',
               p: 2,
               cursor: 'pointer',
               '&:hover': {
@@ -1626,10 +1626,10 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
 
         {/* Tổng giá trị làm lợi ước tính */}
         <Grid item xs={12} sm={6} md={3}>
-          <Card 
-            elevation={3} 
-            sx={{ 
-              textAlign: 'center', 
+          <Card
+            elevation={3}
+            sx={{
+              textAlign: 'center',
               p: 2,
               cursor: 'pointer',
               '&:hover': {
@@ -1645,9 +1645,9 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
             }}
           >
             <CardContent sx={{ overflow: 'hidden' }}>
-              <Typography 
-                color="error" 
-                sx={{ 
+              <Typography
+                color="error"
+                sx={{
                   fontWeight: 'bold',
                   whiteSpace: 'nowrap',
                   fontSize: 'clamp(1.2rem, 4vw, 2.5rem)',
@@ -1662,14 +1662,14 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
             </CardContent>
           </Card>
         </Grid>
-        
+
         {/* Số ý tưởng chờ phê duyệt triển khai (implementationStatus=Phê duyệt) */}
         <Grid item xs={12} sm={6} md={3}>
-          <Card 
-            elevation={3} 
+          <Card
+            elevation={3}
             sx={{ textAlign: 'center', p: 2, cursor: 'pointer', '&:hover': { backgroundColor: '#f5f5f5', transform: 'translateY(-2px)', boxShadow: 6 }, transition: 'all 0.2s' }}
             onClick={() => {
-              const query = buildDateFilterQuery({ 'status': 'pending' });
+              const query = buildDateFilterQuery({ 'status': IdeaStatus.DE_NGHI_MOI });
               handleNavigateToAdmin(query);
             }}
           >
@@ -1682,10 +1682,10 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
 
         {/* Số ý tưởng được duyệt triển khai (status=approved) */}
         <Grid item xs={12} sm={6} md={3}>
-          <Card 
-            elevation={3} 
-            sx={{ 
-              textAlign: 'center', 
+          <Card
+            elevation={3}
+            sx={{
+              textAlign: 'center',
               p: 2,
               cursor: 'pointer',
               '&:hover': {
@@ -1696,7 +1696,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
               transition: 'all 0.2s'
             }}
             onClick={() => {
-              const query = buildDateFilterQuery({ 'status': 'approved' });
+              const query = buildDateFilterQuery({ 'status': IdeaStatus.TRIEN_KHAI });
               handleNavigateToAdmin(query);
             }}
           >
@@ -1706,12 +1706,12 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
             </CardContent>
           </Card>
         </Grid>
-        
+
 
         {/* Số ý tưởng chờ triển khai (implementationStatus=Phản hồi phê duyệt) */}{/* Số ý tưởng chờ triển khai (implementationStatus=Phản hồi phê duyệt) */}
         <Grid item xs={12} sm={6} md={3}>
-          <Card 
-            elevation={3} 
+          <Card
+            elevation={3}
             sx={{ textAlign: 'center', p: 2, cursor: 'pointer', '&:hover': { backgroundColor: '#f5f5f5', transform: 'translateY(-2px)', boxShadow: 6 }, transition: 'all 0.2s' }}
             onClick={() => {
               const query = buildDateFilterQuery({ 'implementationStatus': 'Phản hồi phê duyệt' });
@@ -1724,13 +1724,13 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
             </CardContent>
           </Card>
         </Grid>
-        
+
         {/* Số ý tưởng đang triển khai (implementationStatus=Đang triển khai) */}
         <Grid item xs={12} sm={6} md={3}>
-          <Card 
-            elevation={3} 
-            sx={{ 
-              textAlign: 'center', 
+          <Card
+            elevation={3}
+            sx={{
+              textAlign: 'center',
               p: 2,
               cursor: 'pointer',
               '&:hover': {
@@ -1754,10 +1754,10 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
 
         {/* Số ý tưởng đang lập báo cáo A3 (implementationStatus=Lập báo cáo A3) */}
         <Grid item xs={12} sm={6} md={3}>
-          <Card 
-            elevation={3} 
-            sx={{ 
-              textAlign: 'center', 
+          <Card
+            elevation={3}
+            sx={{
+              textAlign: 'center',
               p: 2,
               cursor: 'pointer',
               '&:hover': {
@@ -1781,10 +1781,10 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
 
         {/* Tỷ lệ triển khai thành công = Đã lập quyết định / (Đã lập quyết định + Không đạt) */}
         <Grid item xs={12} sm={6} md={3}>
-          <Card 
-            elevation={3} 
-            sx={{ 
-              textAlign: 'center', 
+          <Card
+            elevation={3}
+            sx={{
+              textAlign: 'center',
               p: 2,
               cursor: 'pointer',
               '&:hover': {
@@ -1794,7 +1794,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
               },
               transition: 'all 0.2s'
             }}
-            
+
           >
             <CardContent>
               <Typography variant="h3" color="success.dark" sx={{ fontWeight: 'bold' }}>{implementationSuccessRate}%</Typography>
@@ -1808,10 +1808,10 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
       <Grid container spacing={3} sx={{ mb: 4 }}>
         {/* Ý tưởng chờ thưởng 50k */}
         <Grid item xs={12} sm={6} md={3}>
-          <Card 
-            elevation={3} 
-            sx={{ 
-              textAlign: 'center', 
+          <Card
+            elevation={3}
+            sx={{
+              textAlign: 'center',
               p: 2,
               cursor: 'pointer',
               '&:hover': {
@@ -1835,10 +1835,10 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
 
         {/* Ý tưởng đã thưởng 50k */}
         <Grid item xs={12} sm={6} md={3}>
-          <Card 
-            elevation={3} 
-            sx={{ 
-              textAlign: 'center', 
+          <Card
+            elevation={3}
+            sx={{
+              textAlign: 'center',
               p: 2,
               cursor: 'pointer',
               '&:hover': {
@@ -1862,10 +1862,10 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
 
         {/* Ý tưởng chờ thưởng kaizen */}
         <Grid item xs={12} sm={6} md={3}>
-          <Card 
-            elevation={3} 
-            sx={{ 
-              textAlign: 'center', 
+          <Card
+            elevation={3}
+            sx={{
+              textAlign: 'center',
               p: 2,
               cursor: 'pointer',
               '&:hover': {
@@ -1889,10 +1889,10 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
 
         {/* Ý tưởng đã thưởng kaizen */}
         <Grid item xs={12} sm={6} md={3}>
-          <Card 
-            elevation={3} 
-            sx={{ 
-              textAlign: 'center', 
+          <Card
+            elevation={3}
+            sx={{
+              textAlign: 'center',
               p: 2,
               cursor: 'pointer',
               '&:hover': {
@@ -1952,9 +1952,9 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
               Phân bố Trạng thái Ý tưởng
             </Typography>
             <Box sx={{ height: 300, mt: 2 }}>
-              <Doughnut 
+              <Doughnut
                 ref={statusDoughnutRef}
-                data={statusChartData} 
+                data={statusChartData}
                 options={doughnutOptions}
                 onClick={(event) => {
                   const chart = statusDoughnutRef.current;
@@ -1980,9 +1980,9 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
               Top 10 Phòng ban có nhiều ý tưởng nhất
             </Typography>
             <Box sx={{ height: 300, mt: 2 }}>
-              <Bar 
+              <Bar
                 ref={departmentBarRef}
-                data={departmentChartData} 
+                data={departmentChartData}
                 options={chartOptions}
                 onClick={(event) => {
                   const chart = departmentBarRef.current;
@@ -2008,9 +2008,9 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
               Xu hướng Ý tưởng theo Tháng
             </Typography>
             <Box sx={{ height: 300, mt: 2 }}>
-              <Line 
+              <Line
                 ref={trendLineRef}
-                data={trendChartData} 
+                data={trendChartData}
                 options={chartOptions}
                 onClick={(event) => {
                   const chart = trendLineRef.current;
@@ -2023,7 +2023,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
                     const [year, month] = monthLabel.split('-');
                     const startDate = `${year}-${month}-01`;
                     const endDate = new Date(parseInt(year), parseInt(month), 0).toISOString().split('T')[0];
-                    const query = buildDateFilterQuery({ 
+                    const query = buildDateFilterQuery({
                       'filterType': 'dateRange',
                       'dateFrom': startDate,
                       'dateTo': endDate
@@ -2088,11 +2088,11 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
             </Typography>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               {topDepartments.slice(0, 10).map(([dept, count], index) => (
-                <Box 
-                  key={dept} 
-                  sx={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
+                <Box
+                  key={dept}
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
                     alignItems: 'center',
                     cursor: 'pointer',
                     p: 1,
@@ -2123,11 +2123,11 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
             </Typography>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, maxHeight: 470, overflowY: 'auto' }}>
               {topUsers.slice(0, 10).map((user, index) => (
-                <Box 
-                  key={user.name} 
-                  sx={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
+                <Box
+                  key={user.name}
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
                     alignItems: 'center',
                     p: 1,
                     borderRadius: 1,
@@ -2162,7 +2162,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
       {/* Advanced Statistics */}
       {showAdvanced && (
         <Box sx={{ mt: 4 }}>
-          <AdvancedStatistics 
+          <AdvancedStatistics
             ideas={ideas}
             timeRange={timeRange}
             departmentFilter={departmentFilter}
@@ -2172,7 +2172,7 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
           />
         </Box>
       )}
-      
+
       {/* Snackbar for login message */}
       {/* Snackbar này hiện không còn dùng để chặn vào Admin khi ở viewOnly,
           nên có thể giữ lại cho mục đích thông báo khác nếu cần */}

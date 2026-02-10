@@ -63,16 +63,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
   const [rewardApprovalDateToFilter, setRewardApprovalDateToFilter] = useState('');
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-  
+
   // Lightbox state
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [lightboxTitle, setLightboxTitle] = useState<string>('');
-  
+
   // Reward status dialog state
   const [isRewardStatusDialogOpen, setIsRewardStatusDialogOpen] = useState(false);
   const [pendingStatusChange, setPendingStatusChange] = useState<{ ideaId: string; newStatus: IdeaStatus; oldStatus: IdeaStatus } | null>(null);
-  
+
   const [paginationModel, setPaginationModel] = useState({
     pageSize: 10,
     page: 0,
@@ -125,16 +125,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     isViewOnly
       ? Array.from(viewOnlyFields)
       : [
-          'ideaCode',
-          'idea',
-          'solution',
-          'benefit',
-          'beforeImage',
-          'afterImage',
-          'status',
-          'note',
-          'actions'
-        ]
+        'ideaCode',
+        'idea',
+        'solution',
+        'benefit',
+        'beforeImage',
+        'afterImage',
+        'status',
+        'note',
+        'actions'
+      ]
   );
 
   const [columnVisibilityModel, setColumnVisibilityModel] = useState<Record<string, boolean>>(() => {
@@ -150,7 +150,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     try {
       const saved = localStorage.getItem('admin_column_visibility');
       if (saved) return JSON.parse(saved);
-    } catch {}
+    } catch { }
     const model: Record<string, boolean> = {};
     allColumnFields.forEach(f => { model[f] = defaultVisibleFields.has(f); });
     return model;
@@ -160,7 +160,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     if (isViewOnly) return;
     try {
       localStorage.setItem('admin_column_visibility', JSON.stringify(columnVisibilityModel));
-    } catch {}
+    } catch { }
   }, [columnVisibilityModel, isViewOnly]);
 
   const [colMenuAnchor, setColMenuAnchor] = useState<null | HTMLElement>(null);
@@ -187,7 +187,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
   //   const ideaLength = params.model.idea ? params.model.idea.length : 0;
   //   const solutionLength = params.model.solution ? params.model.solution.length : 0;
   //   const benefitLength = (params as any).model.benefit ? (params as any).model.benefit.length : 0;
-    
+
   //   // Approximate characters per line for 'idea' and 'solution' columns
   //   // width: 300px, font-size: default (around 14px), assume ~40 characters per line for 300px width
   //   const charsPerLineIdea = 40; 
@@ -250,31 +250,46 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
   // Apply filters from query params if present
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    
+
+    // Reset all filters first to ensure clean state
+    setStatusFilter([]);
+    setDepartmentFilter([]);
+    setImplementationDepartmentFilter([]);
+    setRewardStatusesFilter([]);
+    setRewardCalculationMethodFilter('');
+    setImplementationStatusFilter('');
+    setIdeaCodeFilter('');
+    setFullNameFilter('');
+    setIdeaTextFilter('');
+    setSubmissionDateFromFilter('');
+    setSubmissionDateToFilter('');
+    setRewardApprovalDateFromFilter('');
+    setRewardApprovalDateToFilter('');
+
     // Department filter
     const dept = params.get('department');
     if (dept) {
       setDepartmentFilter([dept]);
     }
-    
+
     // Status filter
     const status = params.get('status');
     if (status && Object.values(IdeaStatus).includes(status as IdeaStatus)) {
       setStatusFilter([status as IdeaStatus]);
     }
-    
+
     // Implementation status filter
     const implementationStatus = params.get('implementationStatus');
     if (implementationStatus) {
       setImplementationStatusFilter(implementationStatus);
     }
-    
+
     // Reward statuses filter
     const rewardStatusesParam = params.get('rewardStatuses');
     if (rewardStatusesParam && Object.values(RewardStatus).includes(rewardStatusesParam as RewardStatus)) {
       setRewardStatusesFilter([rewardStatusesParam as RewardStatus]);
     }
-    
+
     // Date filters from query params
     const dateFrom = params.get('dateFrom');
     const dateTo = params.get('dateTo');
@@ -291,16 +306,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
         if (dateTo) setSubmissionDateToFilter(dateTo);
       }
     }
-    
-    
+
+
     // Full name filter
     const fullName = params.get('fullName');
     if (fullName) setFullNameFilter(fullName);
-    
-    
+
+
     setPaginationModel(prev => ({ ...prev, page: 0 }));
   }, [location.search]);
-  
+
+
 
   const handleStatusFilterChange = (event: any) => {
     const value = event.target.value as IdeaStatus[];
@@ -330,7 +346,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
 
   const handleRewardCalculationMethodChange = async (id: string, method: RewardCalculationMethod | undefined) => {
     if (isViewOnly) return; // Không cho sửa ở chế độ chỉ xem
-    
+
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -396,7 +412,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     setPaginationModel(prev => ({ ...prev, page: 0 }));
   };
 
-  
+
   const handleClearAllFilters = () => {
     setStatusFilter([]);
     setDepartmentFilter([]);
@@ -417,14 +433,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
 
   const handleStatusChange = async (id: string, status: IdeaStatus) => {
     if (isViewOnly) return; // Không cho sửa ở chế độ chỉ xem
-    
+
     // Tìm idea hiện tại để lấy status cũ
     const currentIdea = ideas.find(i => i._id === id);
     if (!currentIdea) return;
 
     const oldStatus: any = currentIdea.status;
     let normalizedOldStatus: IdeaStatus;
-    
+
     // Normalize old status
     if (!Object.values(IdeaStatus).includes(oldStatus as IdeaStatus)) {
       const statusStr = String(oldStatus);
@@ -507,22 +523,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
 
     // Áp dụng quy tắc: không được tồn tại đồng thời CHO và DA của cùng một loại
     let validStatuses = [...selectedStatuses];
-    
+
     // Loại bỏ xung đột nếu có
-    if (validStatuses.includes(RewardStatus.CHO_KHEN_THUONG_50K) && 
-        validStatuses.includes(RewardStatus.DA_KHEN_THUONG_50K)) {
+    if (validStatuses.includes(RewardStatus.CHO_KHEN_THUONG_50K) &&
+      validStatuses.includes(RewardStatus.DA_KHEN_THUONG_50K)) {
       // Giữ lại CHO nếu cả hai đều có
       validStatuses = validStatuses.filter(s => s !== RewardStatus.DA_KHEN_THUONG_50K);
     }
-    
-    if (validStatuses.includes(RewardStatus.CHO_KHEN_THUONG_20) && 
-        validStatuses.includes(RewardStatus.DA_KHEN_THUONG_20)) {
+
+    if (validStatuses.includes(RewardStatus.CHO_KHEN_THUONG_20) &&
+      validStatuses.includes(RewardStatus.DA_KHEN_THUONG_20)) {
       validStatuses = validStatuses.filter(s => s !== RewardStatus.DA_KHEN_THUONG_20);
     }
 
     // Cập nhật status và rewardStatuses
     await updateStatus(pendingStatusChange.ideaId, pendingStatusChange.newStatus, validStatuses);
-    
+
     // Reset state
     setPendingStatusChange(null);
     setIsRewardStatusDialogOpen(false);
@@ -544,16 +560,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
 
       // Áp dụng quy tắc: không được tồn tại đồng thời CHO và DA của cùng một loại
       let validStatuses = [...rewardStatuses];
-      
+
       // Loại bỏ xung đột nếu có
-      if (validStatuses.includes(RewardStatus.CHO_KHEN_THUONG_50K) && 
-          validStatuses.includes(RewardStatus.DA_KHEN_THUONG_50K)) {
+      if (validStatuses.includes(RewardStatus.CHO_KHEN_THUONG_50K) &&
+        validStatuses.includes(RewardStatus.DA_KHEN_THUONG_50K)) {
         // Giữ lại DA nếu cả hai đều có (ưu tiên đã chi)
         validStatuses = validStatuses.filter(s => s !== RewardStatus.CHO_KHEN_THUONG_50K);
       }
-      
-      if (validStatuses.includes(RewardStatus.CHO_KHEN_THUONG_20) && 
-          validStatuses.includes(RewardStatus.DA_KHEN_THUONG_20)) {
+
+      if (validStatuses.includes(RewardStatus.CHO_KHEN_THUONG_20) &&
+        validStatuses.includes(RewardStatus.DA_KHEN_THUONG_20)) {
         validStatuses = validStatuses.filter(s => s !== RewardStatus.CHO_KHEN_THUONG_20);
       }
 
@@ -576,7 +592,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
   };
 
   const handleImplementationStatusChange = async (
-    id: string, 
+    id: string,
     implementationStatus: 'Đề xuất mới' | 'Xem xét' | 'Phê duyệt' | 'Phản hồi phê duyệt' | 'Đang triển khai' | 'Lập báo cáo A3' | 'Phê duyệt khen thưởng' | 'Đã khen thưởng' | 'Không đạt'
   ) => {
     if (isViewOnly) return; // Không cho sửa ở chế độ chỉ xem
@@ -712,10 +728,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       'resourcesUsed': 'Nguồn lực sử dụng',
       'calculationDescription': 'Mô tả cách tính',
       'scalingOpportunity': 'Cơ hội nhân rộng phát triển',
-        'status': 'Trạng thái',
-        'rewardStatuses': 'Tình trạng khen thưởng',
-        'rewardCalculationMethod': 'Phương thức tính thưởng',
-        'implementationStatus': 'Trạng thái triển khai',
+      'status': 'Trạng thái',
+      'rewardStatuses': 'Tình trạng khen thưởng',
+      'rewardCalculationMethod': 'Phương thức tính thưởng',
+      'implementationStatus': 'Trạng thái triển khai',
       'implementationDepartment': 'Phòng ban triển khai',
       'note': 'Ghi chú',
       'benefitValue': 'Giá trị làm lợi (VND)',
@@ -733,10 +749,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
 
     const exportData = filteredIdeas.map(idea => {
       const row: Record<string, any> = {};
-      
+
       visibleFields.forEach(field => {
         const displayName = fieldDisplayNames[field] || field;
-        
+
         if (field === 'beforeImage' || field === 'afterImage') {
           row[displayName] = (idea as any)[field] ? 'Có' : 'Không';
         } else if (field === 'benefitValue' || field === 'rewardAmount') {
@@ -784,7 +800,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
           row[displayName] = (idea as any)[field] || '-';
         }
       });
-      
+
       return row;
     });
 
@@ -814,10 +830,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
 
     const exportData = filteredIdeas.map(idea => {
       const row: Record<string, any> = {};
-      
+
       visibleFields.forEach(field => {
         const displayName = fieldDisplayNames[field] || field;
-        
+
         if (field === 'beforeImage' || field === 'afterImage') {
           row[displayName] = (idea as any)[field] ? 'Có' : 'Không';
         } else if (field === 'status') {
@@ -857,7 +873,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
           row[displayName] = (idea as any)[field] || '-';
         }
       });
-      
+
       return row;
     });
 
@@ -883,7 +899,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     // Handle backward compatibility: check if idea.status is old value or new enum
     const ideaStatus = (idea as any).status;
     let normalizedStatus: IdeaStatus;
-    
+
     // Map old status values to new enum
     if (!Object.values(IdeaStatus).includes(ideaStatus as IdeaStatus)) {
       // Legacy status mapping
@@ -901,11 +917,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     } else {
       normalizedStatus = ideaStatus as IdeaStatus;
     }
-    
+
     const matchesStatus = statusFilter.length === 0 || statusFilter.includes(normalizedStatus);
     const matchesDepartment = departmentFilter.length === 0 || departmentFilter.includes((idea as any).department);
     const matchesImplementationDepartment = implementationDepartmentFilter.length === 0 || implementationDepartmentFilter.includes(((idea as any).implementationDepartment || ''));
-    
+
     // Filter by implementation status
     const matchesImplementationStatus = !implementationStatusFilter || (idea as any).implementationStatus === implementationStatusFilter;
 
@@ -916,7 +932,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       const ideaRewardStatuses: RewardStatus[] = (idea as any).rewardStatuses || [];
       // Kiểm tra xem idea có TẤT CẢ các rewardStatus trong filter không (AND logic)
       // Ví dụ: chọn "Chờ 50k" và "Đã 50k" -> chỉ lọc các idea có CẢ HAI (có thể có thêm status khác)
-      matchesRewardStatuses = rewardStatusesFilter.every(filterStatus => 
+      matchesRewardStatuses = rewardStatusesFilter.every(filterStatus =>
         ideaRewardStatuses.includes(filterStatus)
       );
     }
@@ -935,7 +951,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     if (submissionDateFromFilter || submissionDateToFilter) {
       const submissionDate = new Date(idea.submissionDate);
       const submissionDateOnly = new Date(submissionDate.getFullYear(), submissionDate.getMonth(), submissionDate.getDate());
-      
+
       if (submissionDateFromFilter) {
         const fromDate = new Date(submissionDateFromFilter);
         fromDate.setHours(0, 0, 0, 0);
@@ -943,7 +959,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
           matchesSubmissionDate = false;
         }
       }
-      
+
       if (submissionDateToFilter && matchesSubmissionDate) {
         const toDate = new Date(submissionDateToFilter);
         toDate.setHours(23, 59, 59, 999);
@@ -965,7 +981,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
         // Adjust for timezone (GMT+7)
         const adjustedDate = new Date(rewardDateObj.getTime() + (7 * 60 * 60 * 1000));
         const rewardDateOnly = new Date(adjustedDate.getFullYear(), adjustedDate.getMonth(), adjustedDate.getDate());
-        
+
         if (rewardApprovalDateFromFilter) {
           const fromDate = new Date(rewardApprovalDateFromFilter);
           fromDate.setHours(0, 0, 0, 0);
@@ -973,7 +989,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
             matchesRewardApprovalDate = false;
           }
         }
-        
+
         if (rewardApprovalDateToFilter && matchesRewardApprovalDate) {
           const toDate = new Date(rewardApprovalDateToFilter);
           toDate.setHours(23, 59, 59, 999);
@@ -1007,16 +1023,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     if (!topScrollElement || !dataGridElement) return;
 
     // Tính tổng chiều rộng của các cột (hardcode để tránh lỗi dependency)
-    const totalWidth = 
-  150 + 200 + 200 + 
-  300 + 300 + 300 + 300 + 300 + 300 + 300 + 300 + 
-  180 + 180 + 
-  180 + 180 + 
-  180 + 180 + 
-  200 + 200 + 
-  180 + 180 + 
-  120; // Tổng chiều rộng các cột (bao gồm cột hình ảnh)
-    
+    const totalWidth =
+      150 + 200 + 200 +
+      300 + 300 + 300 + 300 + 300 + 300 + 300 + 300 +
+      180 + 180 +
+      180 + 180 +
+      180 + 180 +
+      200 + 200 +
+      180 + 180 +
+      120; // Tổng chiều rộng các cột (bao gồm cột hình ảnh)
+
     // Cập nhật chiều rộng của thanh cuộn trên
     const invisibleContent = topScrollElement.querySelector('div');
     if (invisibleContent) {
@@ -1047,11 +1063,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
   const StatusCell: React.FC<{ row: Idea }> = ({ row }) => {
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const open = Boolean(anchorEl);
-    
+
     // Handle backward compatibility
     const ideaStatus: any = row.status;
     let normalizedStatus: IdeaStatus;
-    
+
     // Type guard to check if ideaStatus is a string (legacy) or IdeaStatus enum
     if (!Object.values(IdeaStatus).includes(ideaStatus as IdeaStatus)) {
       // Legacy status mapping - handle old string values
@@ -1175,7 +1191,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
           label={currentMethod ? RewardCalculationMethodLabels[currentMethod] : '-'}
           size="small"
           sx={{
-            backgroundColor: currentMethod 
+            backgroundColor: currentMethod
               ? (currentMethod === RewardCalculationMethod.PERCENT_20 ? '#FF9800' : '#2196F3')
               : '#9E9E9E',
             color: 'white',
@@ -1226,7 +1242,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
         }
         // Nếu đang thêm status mới
         let newStatuses = [...prev, status];
-        
+
         // Áp dụng quy tắc: không được tồn tại đồng thời CHO và DA của cùng một loại
         if (status === RewardStatus.CHO_KHEN_THUONG_50K) {
           newStatuses = newStatuses.filter(s => s !== RewardStatus.DA_KHEN_THUONG_50K);
@@ -1237,7 +1253,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
         } else if (status === RewardStatus.DA_KHEN_THUONG_20) {
           newStatuses = newStatuses.filter(s => s !== RewardStatus.CHO_KHEN_THUONG_20);
         }
-        
+
         return newStatuses;
       });
     };
@@ -1262,7 +1278,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
               label={RewardStatusLabels[status]}
               size="small"
               sx={{
-                backgroundColor: 
+                backgroundColor:
                   status === RewardStatus.CHO_KHEN_THUONG_50K || status === RewardStatus.CHO_KHEN_THUONG_20
                     ? '#FF9800' // Màu cam cho "Chờ"
                     : '#4CAF50', // Màu xanh cho "Đã"
@@ -1280,11 +1296,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     // Ở chế độ edit: hiển thị chip có thể click
     return (
       <>
-        <Box 
-          sx={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            gap: 0.5, 
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 0.5,
             alignItems: 'center',
             cursor: 'pointer',
             width: '100%'
@@ -1300,7 +1316,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
                 label={RewardStatusLabels[status]}
                 size="small"
                 sx={{
-                  backgroundColor: 
+                  backgroundColor:
                     status === RewardStatus.CHO_KHEN_THUONG_50K || status === RewardStatus.CHO_KHEN_THUONG_20
                       ? '#FF9800' // Màu cam cho "Chờ"
                       : '#4CAF50', // Màu xanh cho "Đã"
@@ -1313,9 +1329,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
             ))
           )}
         </Box>
-        <Menu 
-          anchorEl={anchorEl} 
-          open={open} 
+        <Menu
+          anchorEl={anchorEl}
+          open={open}
           onClose={handleClose}
           PaperProps={{
             sx: { minWidth: 250 }
@@ -1455,21 +1471,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
   };
 
   const columns: GridColDef[] = [
-    { 
-      field: 'ideaCode', 
-      headerName: 'Mã ý tưởng', 
+    {
+      field: 'ideaCode',
+      headerName: 'Mã ý tưởng',
       width: 150,
       align: 'center',
       headerAlign: 'center',
       renderCell: (params) => (
         <div
-        style={{
-          whiteSpace: 'normal',
-          wordWrap: 'break-word',
-          width: '100%',
-          textAlign: 'center'
-        }}
-      >
+          style={{
+            whiteSpace: 'normal',
+            wordWrap: 'break-word',
+            width: '100%',
+            textAlign: 'center'
+          }}
+        >
           {params.value || '-'}
         </div>
       )
@@ -1553,9 +1569,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
         </div>
       )
     },
-    { 
-      field: 'fullName', 
-      headerName: 'Họ và tên', 
+    {
+      field: 'fullName',
+      headerName: 'Họ và tên',
       width: 200,
       align: 'center',
       headerAlign: 'center',
@@ -1572,9 +1588,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       )
 
     },
-    { 
-      field: 'department', 
-      headerName: 'Đơn vị', 
+    {
+      field: 'department',
+      headerName: 'Đơn vị',
       width: 200,
       align: 'center',
       headerAlign: 'center',
@@ -1780,7 +1796,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
         return new Date(params.value).toLocaleString('vi-VN');
       },
     },
-    
+
     {
       field: 'implementationDepartment',
       headerName: 'Phòng ban triển khai',
@@ -1872,12 +1888,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
           width: '100%',
           textAlign: 'center'
         }}>
-          {(params.row as any).rewardApprovalDate 
+          {(params.row as any).rewardApprovalDate
             ? (() => {
-                // Date is stored in UTC, convert to Vietnam timezone (GMT+7)
-                const date = new Date((params.row as any).rewardApprovalDate);
-                return date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
-              })()
+              // Date is stored in UTC, convert to Vietnam timezone (GMT+7)
+              const date = new Date((params.row as any).rewardApprovalDate);
+              return date.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+            })()
             : '-'}
         </div>
       )
@@ -1893,34 +1909,34 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     // Cột thao tác chỉ hiển thị trong chế độ admin đầy đủ
     ...(!isViewOnly
       ? [
-          {
-            field: 'actions',
-            headerName: 'Thao tác',
-            width: 120,
-            renderCell: (params: any) => (
-              <Box>
-                <Tooltip title="Sửa">
-                  <IconButton
-                    color="primary"
-                    onClick={() => handleEdit(params.row)}
-                    size="small"
-                  >
-                    <EditIcon />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="Xóa">
-                  <IconButton
-                    color="error"
-                    onClick={() => handleDelete(params.row._id)}
-                    size="small"
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                </Tooltip>
-              </Box>
-            ),
-          } as GridColDef
-        ]
+        {
+          field: 'actions',
+          headerName: 'Thao tác',
+          width: 120,
+          renderCell: (params: any) => (
+            <Box>
+              <Tooltip title="Sửa">
+                <IconButton
+                  color="primary"
+                  onClick={() => handleEdit(params.row)}
+                  size="small"
+                >
+                  <EditIcon />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Xóa">
+                <IconButton
+                  color="error"
+                  onClick={() => handleDelete(params.row._id)}
+                  size="small"
+                >
+                  <DeleteIcon />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          ),
+        } as GridColDef
+      ]
       : [])
   ];
 
@@ -2179,7 +2195,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
                       >
                         Tính thưởng
                       </Button>
-                      
+
                       {/* Nút Kết quả - link tới Google Sheets - màu tím */}
                       <Button
                         variant="contained"
@@ -2209,105 +2225,81 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
                       </Button>
                     </Box>
                   )}
-                  
+
                   {/* Box chứa các nút bên phải */}
                   <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                     {/* Quản lý cột chỉ dùng cho admin đầy đủ, không dùng trong chế độ chỉ xem */}
                     {!isViewOnly && (
-                    <>
-                      <Button
-                        variant="outlined"
-                        color="primary"
-                        onClick={openColMenu}
-                        sx={{
-                          py: 1.0,
-                          px: 2.0,
-                          fontSize: '0.95rem',
-                          fontWeight: 'bold',
-                          textTransform: 'none',
-                          whiteSpace: 'nowrap',
-                          minWidth: 'max-content'
-                        }}
-                      >
-                        Quản lý cột
-                      </Button>
-                      <Menu anchorEl={colMenuAnchor} open={isColMenuOpen} onClose={closeColMenu} PaperProps={{ sx: { maxHeight: 500 } }}>
-                        <MenuItem onClick={handleSelectAllColumns} sx={{ borderBottom: '1px solid #e0e0e0', fontWeight: 'bold' }}>
-                          <Checkbox 
-                            checked={allColumnsSelected} 
-                            indeterminate={!allColumnsSelected && allColumnFields.some(field => columnVisibilityModel[field])}
-                          />
-                          <ListItemText primary="Chọn tất cả" />
-                        </MenuItem>
-                        <Divider />
-                        {allColumnFields.map((field) => (
-                          <MenuItem key={field} onClick={() => handleToggleColumn(field)}>
-                            <Checkbox checked={!!columnVisibilityModel[field]} />
-                            <ListItemText
-                              primary={
-                                (
-                                  {
-                                    ideaCode: 'Mã ý tưởng',
-                                    fullName: 'Họ và tên',
-                                    department: 'Đơn vị',
-                                    idea: 'Ý tưởng',
-                                    solution: 'Thực trạng',
-                                    benefit: 'Giải pháp',
-                                    benefitOutcome: 'Lợi ích mang lại',
-                                    resourcesUsed: 'Nguồn lực sử dụng',
-                                    calculationDescription: 'Mô tả cách tính',
-                                    scalingOpportunity: 'Cơ hội nhân rộng phát triển',
-                                    beforeImage: 'Hình ảnh trước',
-                                    afterImage: 'Hình ảnh sau',
-                                    status: 'Quyết định phê duyệt',
-                                    rewardStatuses: 'Tình trạng khen thưởng',
-                                    implementationStatus: 'Trạng thái',
-                                    submissionDate: 'Thời gian nộp',
-                                    implementationDepartment: 'Phòng ban triển khai',
-                                    note: 'Ghi chú',
-                                    benefitValue: 'Giá trị làm lợi (VND)',
-                                    rewardAmount: 'Tiền thưởng (VND)',
-                                    rewardApprovalDate: 'Ngày duyệt khen thưởng',
-                                    rewardCalculationMethod: 'Phương thức tính thưởng',
-                                    actions: 'Thao tác'
-                                  } as Record<string, string>
-                                )[field]
-                              }
+                      <>
+                        <Button
+                          variant="outlined"
+                          color="primary"
+                          onClick={openColMenu}
+                          sx={{
+                            py: 1.0,
+                            px: 2.0,
+                            fontSize: '0.95rem',
+                            fontWeight: 'bold',
+                            textTransform: 'none',
+                            whiteSpace: 'nowrap',
+                            minWidth: 'max-content'
+                          }}
+                        >
+                          Quản lý cột
+                        </Button>
+                        <Menu anchorEl={colMenuAnchor} open={isColMenuOpen} onClose={closeColMenu} PaperProps={{ sx: { maxHeight: 500 } }}>
+                          <MenuItem onClick={handleSelectAllColumns} sx={{ borderBottom: '1px solid #e0e0e0', fontWeight: 'bold' }}>
+                            <Checkbox
+                              checked={allColumnsSelected}
+                              indeterminate={!allColumnsSelected && allColumnFields.some(field => columnVisibilityModel[field])}
                             />
+                            <ListItemText primary="Chọn tất cả" />
                           </MenuItem>
-                        ))}
-                      </Menu>
-                    </>
-                  )}
-                  <Button
-                    variant="contained"
-                    color="info"
-                    startIcon={<BarChartIcon />}
-                    onClick={handleGoToStatistics}
-                    sx={{
-                      py: 1.0,
-                      px: 2.0,
-                      fontSize: '0.95rem',
-                      fontWeight: 'bold',
-                      textTransform: 'none',
-                      boxShadow: 2,
-                      whiteSpace: 'nowrap',
-                      minWidth: 'max-content',
-                      '&:hover': {
-                        boxShadow: 4,
-                        transform: 'translateY(-2px)',
-                        transition: 'all 0.2s'
-                      }
-                    }}
-                  >
-                    {isViewOnly ? 'Quay lại Thống kê' : 'Dashboard Thống kê'}
-                  </Button>
-                  {isViewOnly && (
+                          <Divider />
+                          {allColumnFields.map((field) => (
+                            <MenuItem key={field} onClick={() => handleToggleColumn(field)}>
+                              <Checkbox checked={!!columnVisibilityModel[field]} />
+                              <ListItemText
+                                primary={
+                                  (
+                                    {
+                                      ideaCode: 'Mã ý tưởng',
+                                      fullName: 'Họ và tên',
+                                      department: 'Đơn vị',
+                                      idea: 'Ý tưởng',
+                                      solution: 'Thực trạng',
+                                      benefit: 'Giải pháp',
+                                      benefitOutcome: 'Lợi ích mang lại',
+                                      resourcesUsed: 'Nguồn lực sử dụng',
+                                      calculationDescription: 'Mô tả cách tính',
+                                      scalingOpportunity: 'Cơ hội nhân rộng phát triển',
+                                      beforeImage: 'Hình ảnh trước',
+                                      afterImage: 'Hình ảnh sau',
+                                      status: 'Quyết định phê duyệt',
+                                      rewardStatuses: 'Tình trạng khen thưởng',
+                                      implementationStatus: 'Trạng thái',
+                                      submissionDate: 'Thời gian nộp',
+                                      implementationDepartment: 'Phòng ban triển khai',
+                                      note: 'Ghi chú',
+                                      benefitValue: 'Giá trị làm lợi (VND)',
+                                      rewardAmount: 'Tiền thưởng (VND)',
+                                      rewardApprovalDate: 'Ngày duyệt khen thưởng',
+                                      rewardCalculationMethod: 'Phương thức tính thưởng',
+                                      actions: 'Thao tác'
+                                    } as Record<string, string>
+                                  )[field]
+                                }
+                              />
+                            </MenuItem>
+                          ))}
+                        </Menu>
+                      </>
+                    )}
                     <Button
                       variant="contained"
-                      color="success"
-                      startIcon={<FileDownloadIcon />}
-                      onClick={handleExportExcelViewOnly}
+                      color="info"
+                      startIcon={<BarChartIcon />}
+                      onClick={handleGoToStatistics}
                       sx={{
                         py: 1.0,
                         px: 2.0,
@@ -2324,16 +2316,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
                         }
                       }}
                     >
-                      Xuất Excel
+                      {isViewOnly ? 'Quay lại Thống kê' : 'Dashboard Thống kê'}
                     </Button>
-                  )}
-                  {!isViewOnly && (
-                    <>
+                    {isViewOnly && (
                       <Button
                         variant="contained"
                         color="success"
                         startIcon={<FileDownloadIcon />}
-                        onClick={handleExportExcel}
+                        onClick={handleExportExcelViewOnly}
                         sx={{
                           py: 1.0,
                           px: 2.0,
@@ -2352,70 +2342,96 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
                       >
                         Xuất Excel
                       </Button>
-                      <Button
-                        variant="contained"
-                        color="primary"
-                        startIcon={<FileDownloadIcon />}
-                        onClick={() => setIsExportDialogOpen(true)}
-                        sx={{
-                          py: 1.0,
-                          px: 2.0,
-                          fontSize: '0.95rem',
-                          fontWeight: 'bold',
-                          textTransform: 'none',
-                          boxShadow: 2,
-                          whiteSpace: 'nowrap',
-                          minWidth: 'max-content',
-                          '&:hover': {
-                            boxShadow: 4,
-                            transform: 'translateY(-2px)',
-                            transition: 'all 0.2s'
-                          }
-                        }}
-                      >
-                        Export Báo Cáo
-                      </Button>
-                      <Button
-                        variant="contained"
-                        color="info"
-                        startIcon={<UploadIcon />}
-                        onClick={() => setIsImportDialogOpen(true)}
-                        sx={{
-                          py: 1.0,
-                          px: 2.0,
-                          fontSize: '0.95rem',
-                          fontWeight: 'bold',
-                          textTransform: 'none',
-                          boxShadow: 2,
-                          whiteSpace: 'nowrap',
-                          minWidth: 'max-content',
-                          '&:hover': {
-                            boxShadow: 4,
-                            transform: 'translateY(-2px)',
-                            transition: 'all 0.2s'
-                          }
-                        }}
-                      >
-                        Import
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        color="error"
-                        onClick={handleLogout}
-                        sx={{
-                          py: 1.0,
-                          px: 2.0,
-                          fontSize: '0.95rem',
-                          fontWeight: 'bold',
-                          textTransform: 'none',
-                          whiteSpace: 'nowrap',
-                          minWidth: 'max-content'
-                        }}
-                      >
-                        Đăng xuất
-                      </Button>
-                    </>
-                  )}
+                    )}
+                    {!isViewOnly && (
+                      <>
+                        <Button
+                          variant="contained"
+                          color="success"
+                          startIcon={<FileDownloadIcon />}
+                          onClick={handleExportExcel}
+                          sx={{
+                            py: 1.0,
+                            px: 2.0,
+                            fontSize: '0.95rem',
+                            fontWeight: 'bold',
+                            textTransform: 'none',
+                            boxShadow: 2,
+                            whiteSpace: 'nowrap',
+                            minWidth: 'max-content',
+                            '&:hover': {
+                              boxShadow: 4,
+                              transform: 'translateY(-2px)',
+                              transition: 'all 0.2s'
+                            }
+                          }}
+                        >
+                          Xuất Excel
+                        </Button>
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          startIcon={<FileDownloadIcon />}
+                          onClick={() => setIsExportDialogOpen(true)}
+                          sx={{
+                            py: 1.0,
+                            px: 2.0,
+                            fontSize: '0.95rem',
+                            fontWeight: 'bold',
+                            textTransform: 'none',
+                            boxShadow: 2,
+                            whiteSpace: 'nowrap',
+                            minWidth: 'max-content',
+                            '&:hover': {
+                              boxShadow: 4,
+                              transform: 'translateY(-2px)',
+                              transition: 'all 0.2s'
+                            }
+                          }}
+                        >
+                          Export Báo Cáo
+                        </Button>
+                        <Button
+                          variant="contained"
+                          color="info"
+                          startIcon={<UploadIcon />}
+                          onClick={() => setIsImportDialogOpen(true)}
+                          sx={{
+                            py: 1.0,
+                            px: 2.0,
+                            fontSize: '0.95rem',
+                            fontWeight: 'bold',
+                            textTransform: 'none',
+                            boxShadow: 2,
+                            whiteSpace: 'nowrap',
+                            minWidth: 'max-content',
+                            '&:hover': {
+                              boxShadow: 4,
+                              transform: 'translateY(-2px)',
+                              transition: 'all 0.2s'
+                            }
+                          }}
+                        >
+                          Import
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          onClick={handleLogout}
+                          sx={{
+                            py: 1.0,
+                            px: 2.0,
+                            fontSize: '0.95rem',
+                            fontWeight: 'bold',
+                            textTransform: 'none',
+                            whiteSpace: 'nowrap',
+                            minWidth: 'max-content'
+                          }}
+                        >
+                          Đăng xuất
+                        </Button>
+                      </>
+                    )}
                   </Box>
                 </Box>
               </Box>
@@ -2431,9 +2447,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
         </Alert>
       )}
 
-      <Paper 
-        elevation={3} 
-        sx={{ 
+      <Paper
+        elevation={3}
+        sx={{
           width: '100%',
           borderRadius: 2,
           height: 'auto', // Ensure Paper expands
@@ -2518,13 +2534,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
             }}
           />
         </Box>
-        
+
         {/* Thông tin số lượng kết quả */}
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          mb: 2, 
+        <Box sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          mb: 2,
           px: 1,
           backgroundColor: '#f8f9fa',
           borderRadius: 1,
@@ -2539,7 +2555,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
             )}
           </Typography>
         </Box>
-        
+
         <Box ref={dataGridRef} sx={{ width: '100%', overflow: 'auto' }}>
           <DataGrid
             rows={filteredIdeas}
