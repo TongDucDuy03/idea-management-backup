@@ -61,9 +61,12 @@ router.get('/realtime', makeAuth, makeRateLimit, async (req, res) => {
     const sourceValue: RealtimeSource =
       (typeof source === 'string' && (source as RealtimeSource)) || 'ideas';
 
-    const publicBaseUrl =
-      process.env.PUBLIC_BASE_URL ||
+    const requestBaseUrl =
       `${req.protocol}://${req.get('host') || req.get('x-forwarded-host') || 'localhost:' + (process.env.PORT || 5000)}`;
+    const assetBaseUrl =
+      process.env.PUBLIC_ASSET_BASE_URL ||
+      process.env.PUBLIC_BASE_URL ||
+      requestBaseUrl;
     const includeBase64 = req.query.includeBase64 === 'true';
 
     const result = await fetchRealtimeData({
@@ -74,7 +77,7 @@ router.get('/realtime', makeAuth, makeRateLimit, async (req, res) => {
       status: typeof status === 'string' ? status : undefined,
       department: typeof department === 'string' ? department : undefined,
       source: sourceValue,
-      baseUrl: publicBaseUrl,
+      baseUrl: assetBaseUrl,
       includeBase64,
     });
 

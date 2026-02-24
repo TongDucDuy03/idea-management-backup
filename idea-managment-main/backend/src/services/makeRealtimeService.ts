@@ -23,6 +23,23 @@ export interface RealtimeResult {
   cursor?: string;
 }
 
+const buildImageUrl = (rawPath: string | undefined, assetBaseUrl: string): string | null => {
+  if (!rawPath) return null;
+  const trimmed = rawPath.trim();
+  if (!trimmed) return null;
+
+  // Nếu DB đã lưu full URL: chuẩn hóa http:// thành https://
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed.replace(/^http:\/\//i, 'https://');
+  }
+
+  const base = (assetBaseUrl || '').replace(/\/$/, '');
+  if (!base) return null;
+
+  const pathPart = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  return `${base}${pathPart}`;
+};
+
 export const fetchRealtimeData = async (
   params: RealtimeQueryParams
 ): Promise<RealtimeResult> => {
@@ -68,7 +85,7 @@ const fetchIdeas = async (params: RealtimeQueryParams): Promise<RealtimeResult> 
     ideas.length > 0 ? new Date(ideas[ideas.length - 1].submissionDate).toISOString() : undefined;
 
   const includeBase64 = params.includeBase64 === true;
-  const baseUrl = (params.baseUrl || '').replace(/\/$/, '');
+  const assetBaseUrl = params.baseUrl;
 
   const data = await Promise.all(
     ideas.map(async (raw) => {
@@ -77,8 +94,16 @@ const fetchIdeas = async (params: RealtimeQueryParams): Promise<RealtimeResult> 
       const afterImagePath = paths.afterImagePath ?? (raw as any).afterImagePath;
 
       const item: Record<string, any> = { ...raw };
-      item.beforeImageUrl = beforeImagePath ? `${baseUrl}${beforeImagePath}` : null;
-      item.afterImageUrl = afterImagePath ? `${baseUrl}${afterImagePath}` : null;
+
+      // Ưu tiên path; nếu path là full URL http:// thì buildImageUrl sẽ chuẩn hóa sang https://
+      item.beforeImageUrl = buildImageUrl(
+        beforeImagePath ?? (raw as any).beforeImagePath,
+        assetBaseUrl
+      );
+      item.afterImageUrl = buildImageUrl(
+        afterImagePath ?? (raw as any).afterImagePath,
+        assetBaseUrl
+      );
       if (!includeBase64) {
         delete item.beforeImage;
         delete item.afterImage;
