@@ -1,17 +1,24 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
+import path from 'path';
+import fs from 'fs';
 import dotenv from 'dotenv';
 import ideaRoutes from './routes/ideaRoutes';
 import authRoutes from './routes/authRoutes';
 import a3ReportRoutes from './routes/a3ReportRoutes';
 import aiRoutes from './routes/aiRoutes';
 import importRoutes from './routes/importRoutes';
+import makeRoutes from './routes/makeRoutes';
 
 dotenv.config();
 console.log(">>> ENV MONGODB_URI:", process.env.MONGODB_URI);
 const app = express();
 const port = process.env.PORT || 5000;
+
+const uploadsDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+app.use('/uploads', express.static(uploadsDir));
 
 // Middleware - CORS configuration
 // Cho phép credentials và origin cụ thể (không được dùng wildcard * khi có credentials)
@@ -21,7 +28,7 @@ const corsOptions = {
     : 'http://localhost:3000', // Development origin
   credentials: true, // Cho phép gửi cookies và credentials
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-API-KEY'],
   exposedHeaders: ['Content-Range', 'X-Content-Range'],
 };
 
@@ -36,6 +43,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/a3-reports', a3ReportRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/imports', importRoutes);
+app.use('/api/make', makeRoutes);
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/idea-management')
