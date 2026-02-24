@@ -5,6 +5,7 @@ Cấu hình này cho phép:
 - Frontend chạy tại `http://172.104.39.94` (port 80)
 - Backend chạy tại `127.0.0.1:5000` (local)
 - Nginx tự động proxy các request `/api` từ frontend đến backend
+- Nginx xử lý `/uploads/*` để trả file ảnh upload (tránh bị SPA fallback trả `index.html`)
 
 ## 1. Cài đặt và cấu hình Nginx
 
@@ -94,7 +95,16 @@ PORT=5000
 
 1. **Frontend**: Truy cập `http://172.104.39.94`
 2. **API**: Test endpoint `http://172.104.39.94/api/ideas`
+3. **Uploads**: Test ảnh `http://172.104.39.94/uploads/<file>.jpg` (phải trả Content-Type image/*, không phải HTML)
 3. **Backend logs**: `pm2 logs idea-management-backend`
+
+### Kiểm tra headers của ảnh (quan trọng)
+```bash
+curl -I "https://idea.ducthangloi.com/uploads/<file>.jpg"
+```
+Kỳ vọng:
+- `Content-Type: image/jpeg` (hoặc `image/png`, `image/webp`...)
+- `Content-Length` đúng (không quá nhỏ như HTML/index.html)
 
 ## 6. Troubleshooting
 
