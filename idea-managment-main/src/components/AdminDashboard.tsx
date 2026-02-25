@@ -1499,7 +1499,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       headerAlign: 'center',
       renderCell: (params) => {
         const row = params.row as any;
+        const isBase64Before =
+          typeof row.beforeImage === 'string' && row.beforeImage.startsWith('data:image');
         const imageUrl =
+          (isBase64Before ? row.beforeImage : null) ||
           row.beforeImageUrl ||
           (row.beforeImagePath ? `${window.location.origin}${row.beforeImagePath}` : null) ||
           row.beforeImage;
@@ -1545,7 +1548,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       headerAlign: 'center',
       renderCell: (params) => {
         const row = params.row as any;
+        const isBase64After =
+          typeof row.afterImage === 'string' && row.afterImage.startsWith('data:image');
         const imageUrl =
+          (isBase64After ? row.afterImage : null) ||
           row.afterImageUrl ||
           (row.afterImagePath ? `${window.location.origin}${row.afterImagePath}` : null) ||
           row.afterImage;

@@ -4,6 +4,7 @@ import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
+import { resolveUploadDir, ensureUploadDirExists } from './utils/uploadDir';
 import ideaRoutes from './routes/ideaRoutes';
 import authRoutes from './routes/authRoutes';
 import a3ReportRoutes from './routes/a3ReportRoutes';
@@ -16,8 +17,9 @@ console.log(">>> ENV MONGODB_URI:", process.env.MONGODB_URI);
 const app = express();
 const port = process.env.PORT || 5000;
 
-const uploadsDir = path.join(process.cwd(), 'uploads');
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+const uploadsDir = resolveUploadDir();
+ensureUploadDirExists(uploadsDir);
+console.log('[UPLOAD] static dir =', uploadsDir);
 app.use('/uploads', express.static(uploadsDir));
 
 // Middleware - CORS configuration

@@ -155,6 +155,32 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
         }
       }
 
+      const anyIdea = idea as any;
+      const isBase64Before =
+        typeof anyIdea.beforeImage === 'string' &&
+        anyIdea.beforeImage.startsWith('data:image');
+      const isBase64After =
+        typeof anyIdea.afterImage === 'string' &&
+        anyIdea.afterImage.startsWith('data:image');
+
+      const beforeImageUrl =
+        (isBase64Before ? anyIdea.beforeImage : null) ||
+        anyIdea.beforeImageUrl ||
+        (anyIdea.beforeImagePath
+          ? `${window.location.origin}${anyIdea.beforeImagePath}`
+          : null) ||
+        anyIdea.beforeImage ||
+        '';
+
+      const afterImageUrl =
+        (isBase64After ? anyIdea.afterImage : null) ||
+        anyIdea.afterImageUrl ||
+        (anyIdea.afterImagePath
+          ? `${window.location.origin}${anyIdea.afterImagePath}`
+          : null) ||
+        anyIdea.afterImage ||
+        '';
+
       setFormData({
         ...idea,
         // Ensure problem text is pure, without solution/benefit lines
@@ -177,8 +203,8 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
         resourcesUsed: (idea as any).resourcesUsed || '',
         calculationDescription: (idea as any).calculationDescription || '',
         scalingOpportunity: (idea as any).scalingOpportunity || '',
-        beforeImage: (idea as any).beforeImage || '',
-        afterImage: (idea as any).afterImage || ''
+        beforeImage: beforeImageUrl,
+        afterImage: afterImageUrl
       });
     } else {
       setFormData({

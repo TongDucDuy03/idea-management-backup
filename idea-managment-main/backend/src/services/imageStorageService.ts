@@ -1,8 +1,7 @@
 import path from 'path';
 import fs from 'fs/promises';
 import Idea from '../models/Idea';
-
-const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
+import { resolveUploadDir, ensureUploadDirExists } from '../utils/uploadDir';
 
 const MIME_TO_EXT: Record<string, string> = {
   'image/jpeg': '.jpg',
@@ -38,11 +37,6 @@ export function parseDataUrl(dataUrl: string): ParsedDataUrl | null {
   }
 }
 
-async function ensureUploadsDir(): Promise<string> {
-  await fs.mkdir(UPLOADS_DIR, { recursive: true });
-  return UPLOADS_DIR;
-}
-
 /**
  * Decode base64 data URL, save to uploads/, return path like "/uploads/ideaCode-before-1234567890.jpg"
  */
@@ -54,12 +48,18 @@ export async function saveBase64ToFile(
   const parsed = parseDataUrl(dataUrl);
   if (!parsed) throw new Error('Invalid base64 data URL for image');
 
-  await ensureUploadsDir();
+  const uploadDir = resolveUploadDir();
+  ensureUploadDirExists(uploadDir);
 
   const safeCode = (ideaCode || 'unknown').replace(/[^a-zA-Z0-9-_]/g, '_');
   const ts = Date.now();
   const fileName = `${safeCode}-${kind}-${ts}${parsed.ext}`;
-  const filePath = path.join(UPLOADS_DIR, fileName);
+  const filePath = path.join(uploadDir, fileName);
+  console.log('[UPLOAD]', {
+    env: process.env.NODE_ENV,
+    dir: uploadDir,
+    file: fileName,
+  });
   await fs.writeFile(filePath, parsed.buffer);
 
   return `/uploads/${fileName}`;
