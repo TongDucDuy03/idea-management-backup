@@ -1497,38 +1497,44 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       width: 180,
       align: 'center',
       headerAlign: 'center',
-      renderCell: (params) => (
-        <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-          {(params.row as any).beforeImage ? (
-            <img
-              src={(params.row as any).beforeImage}
-              alt="Trước"
-              onClick={() => handleImageClick(
-                (params.row as any).beforeImage,
-                `Hình trước - ${(params.row as any).ideaCode || 'N/A'}`
-              )}
-              style={{
-                maxWidth: 160,
-                maxHeight: 100,
-                objectFit: 'contain',
-                borderRadius: 6,
-                cursor: 'pointer',
-                transition: 'transform 0.2s, box-shadow 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'scale(1.05)';
-                e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'scale(1)';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
-            />
-          ) : (
-            <span style={{ color: '#999' }}>—</span>
-          )}
-        </div>
-      )
+      renderCell: (params) => {
+        const imageUrl = (params.row as any).beforeImageUrl || 
+                         (params.row as any).beforeImagePath ? 
+                           `${window.location.origin}${(params.row as any).beforeImagePath}` : 
+                           (params.row as any).beforeImage;
+        return (
+          <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+            {imageUrl ? (
+              <img
+                src={imageUrl}
+                alt="Trước"
+                onClick={() => handleImageClick(
+                  imageUrl,
+                  `Hình trước - ${(params.row as any).ideaCode || 'N/A'}`
+                )}
+                style={{
+                  maxWidth: 160,
+                  maxHeight: 100,
+                  objectFit: 'contain',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              />
+            ) : (
+              <span style={{ color: '#999' }}>—</span>
+            )}
+          </div>
+        );
+      }
     },
     {
       field: 'afterImage',
@@ -1536,38 +1542,44 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       width: 180,
       align: 'center',
       headerAlign: 'center',
-      renderCell: (params) => (
-        <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-          {(params.row as any).afterImage ? (
-            <img
-              src={(params.row as any).afterImage}
-              alt="Sau"
-              onClick={() => handleImageClick(
-                (params.row as any).afterImage,
-                `Hình sau - ${(params.row as any).ideaCode || 'N/A'}`
-              )}
-              style={{
-                maxWidth: 160,
-                maxHeight: 100,
-                objectFit: 'contain',
-                borderRadius: 6,
-                cursor: 'pointer',
-                transition: 'transform 0.2s, box-shadow 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'scale(1.05)';
-                e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'scale(1)';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
-            />
-          ) : (
-            <span style={{ color: '#999' }}>—</span>
-          )}
-        </div>
-      )
+      renderCell: (params) => {
+        const imageUrl = (params.row as any).afterImageUrl || 
+                         (params.row as any).afterImagePath ? 
+                           `${window.location.origin}${(params.row as any).afterImagePath}` : 
+                           (params.row as any).afterImage;
+        return (
+          <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+            {imageUrl ? (
+              <img
+                src={imageUrl}
+                alt="Sau"
+                onClick={() => handleImageClick(
+                  imageUrl,
+                  `Hình sau - ${(params.row as any).ideaCode || 'N/A'}`
+                )}
+                style={{
+                  maxWidth: 160,
+                  maxHeight: 100,
+                  objectFit: 'contain',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              />
+            ) : (
+              <span style={{ color: '#999' }}>—</span>
+            )}
+          </div>
+        );
+      }
     },
     {
       field: 'fullName',

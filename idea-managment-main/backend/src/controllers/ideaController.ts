@@ -6,6 +6,46 @@ import {
   saveBase64ToFile,
 } from '../services/imageStorageService';
 
+function buildImageUrl(rawPath: string | undefined, baseUrl: string): string | null {
+  if (!rawPath) return null;
+  const trimmed = rawPath.trim();
+  if (!trimmed) return null;
+
+  // Nếu DB đã lưu full URL: chuẩn hóa http:// thành https://
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed.replace(/^http:\/\//i, 'https://');
+  }
+
+  const base = (baseUrl || '').replace(/\/$/, '');
+  if (!base) return null;
+
+  const pathPart = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  return `${base}${pathPart}`;
+}
+
+function transformIdeaWithImageUrls(idea: any, baseUrl: string): any {
+  const result = { ...idea.toObject ? idea.toObject() : idea };
+  
+  // Ưu tiên: beforeImageUrl/afterImageUrl (nếu có), sau đó build từ path, cuối cùng fallback về base64 cũ
+  result.beforeImageUrl = result.beforeImageUrl || 
+    buildImageUrl(result.beforeImagePath, baseUrl) ||
+    (result.beforeImage && !isBase64DataUrl(result.beforeImage) ? result.beforeImage : null);
+  
+  result.afterImageUrl = result.afterImageUrl ||
+    buildImageUrl(result.afterImagePath, baseUrl) ||
+    (result.afterImage && !isBase64DataUrl(result.afterImage) ? result.afterImage : null);
+
+  // Giữ lại beforeImage/afterImage nếu là base64 (cho backward compat)
+  if (!result.beforeImageUrl && isBase64DataUrl(result.beforeImage)) {
+    result.beforeImageUrl = result.beforeImage;
+  }
+  if (!result.afterImageUrl && isBase64DataUrl(result.afterImage)) {
+    result.afterImageUrl = result.afterImage;
+  }
+
+  return result;
+}
+
 export const createIdea = async (req: Request, res: Response) => {
   try {
     const { 
@@ -78,7 +118,12 @@ export const createIdea = async (req: Request, res: Response) => {
       console.error('Failed to send idea notification email:', err);
     });
 
-    res.status(201).json(savedIdea);
+    // Transform response với image URLs
+    const requestBaseUrl = `${req.protocol}://${req.get('host') || req.get('x-forwarded-host') || 'localhost:' + (process.env.PORT || 5000)}`;
+    const assetBaseUrl = process.env.PUBLIC_ASSET_BASE_URL || process.env.PUBLIC_BASE_URL || requestBaseUrl;
+    const transformed = transformIdeaWithImageUrls(savedIdea, assetBaseUrl);
+
+    res.status(201).json(transformed);
   } catch (error) {
     res.status(500).json({ message: 'Error creating idea', error });
   }
@@ -108,7 +153,15 @@ export const getAllIdeas = async (req: Request, res: Response) => {
     }
 
     const ideas = await Idea.find(query).sort({ submissionDate: -1 });
-    res.json(ideas);
+    
+    // Build base URL cho image URLs
+    const requestBaseUrl = `${req.protocol}://${req.get('host') || req.get('x-forwarded-host') || 'localhost:' + (process.env.PORT || 5000)}`;
+    const assetBaseUrl = process.env.PUBLIC_ASSET_BASE_URL || process.env.PUBLIC_BASE_URL || requestBaseUrl;
+    
+    // Transform mỗi idea để có beforeImageUrl/afterImageUrl
+    const transformedIdeas = ideas.map(idea => transformIdeaWithImageUrls(idea, assetBaseUrl));
+    
+    res.json(transformedIdeas);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching ideas', error });
   }
@@ -208,7 +261,12 @@ export const updateIdea = async (req: Request, res: Response) => {
       rewardApprovalDate: (idea as any).rewardApprovalDate ? 'Present' : 'Missing'
     });
     
-    res.json(idea);
+    // Transform response với image URLs
+    const requestBaseUrl = `${req.protocol}://${req.get('host') || req.get('x-forwarded-host') || 'localhost:' + (process.env.PORT || 5000)}`;
+    const assetBaseUrl = process.env.PUBLIC_ASSET_BASE_URL || process.env.PUBLIC_BASE_URL || requestBaseUrl;
+    const transformed = transformIdeaWithImageUrls(idea, assetBaseUrl);
+    
+    res.json(transformed);
   } catch (error) {
     console.error('Error updating idea:', error);
     res.status(500).json({ message: 'Lỗi server', error });
