@@ -105,8 +105,10 @@ export const createIdea = async (req: Request, res: Response) => {
       benefitValue: benefitValue || 0,
       rewardAmount: rewardAmount || 0,
       rewardApprovalDate: rewardApprovalDate ? new Date(rewardApprovalDate) : undefined,
-      beforeImage: beforeImagePath ? undefined : (beforeImage || undefined),
-      afterImage: afterImagePath ? undefined : (afterImage || undefined),
+      // Giữ lại base64 trong beforeImage/afterImage để admin-view & admin luôn xem được
+      beforeImage: beforeImage || undefined,
+      afterImage: afterImage || undefined,
+      // Đồng thời lưu đường dẫn file để Make/API realtime dùng
       beforeImagePath: beforeImagePath || undefined,
       afterImagePath: afterImagePath || undefined,
     });
@@ -223,7 +225,7 @@ export const updateIdea = async (req: Request, res: Response) => {
           existing.ideaCode,
           'before'
         );
-        updateData.beforeImage = undefined; // không lưu base64
+        // KHÔNG xóa base64: giữ lại để admin/admin-view luôn xem được
       } catch (e) {
         console.error('Failed to save beforeImage on update:', e);
       }
@@ -239,7 +241,7 @@ export const updateIdea = async (req: Request, res: Response) => {
           existing.ideaCode,
           'after'
         );
-        updateData.afterImage = undefined;
+        // KHÔNG xóa base64: giữ lại để admin/admin-view luôn xem được
       } catch (e) {
         console.error('Failed to save afterImage on update:', e);
       }
