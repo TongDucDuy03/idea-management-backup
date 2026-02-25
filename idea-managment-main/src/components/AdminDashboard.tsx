@@ -1498,10 +1498,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       align: 'center',
       headerAlign: 'center',
       renderCell: (params) => {
-        const imageUrl = (params.row as any).beforeImageUrl || 
-                         (params.row as any).beforeImagePath ? 
-                           `${window.location.origin}${(params.row as any).beforeImagePath}` : 
-                           (params.row as any).beforeImage;
+        const row = params.row as any;
+        const imageUrl =
+          row.beforeImageUrl ||
+          (row.beforeImagePath ? `${window.location.origin}${row.beforeImagePath}` : null) ||
+          row.beforeImage;
         return (
           <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
             {imageUrl ? (
@@ -1543,10 +1544,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       align: 'center',
       headerAlign: 'center',
       renderCell: (params) => {
-        const imageUrl = (params.row as any).afterImageUrl || 
-                         (params.row as any).afterImagePath ? 
-                           `${window.location.origin}${(params.row as any).afterImagePath}` : 
-                           (params.row as any).afterImage;
+        const row = params.row as any;
+        const imageUrl =
+          row.afterImageUrl ||
+          (row.afterImagePath ? `${window.location.origin}${row.afterImagePath}` : null) ||
+          row.afterImage;
         return (
           <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
             {imageUrl ? (
