@@ -91,7 +91,16 @@ const DEFAULT_COLUMN_MAPPING = {
     'Hình trước': 'beforeImage',
     'Before Image': 'beforeImage',
     'Hình sau': 'afterImage',
-    'After Image': 'afterImage'
+    'After Image': 'afterImage',
+    // 4 trường mới
+    'Trạng thái triển khai': 'implementationStatus',
+    'Implementation Status': 'implementationStatus',
+    'Hạn dự kiến hoàn thành': 'expectedCompletionDate',
+    'Expected Completion Date': 'expectedCompletionDate',
+    'Trạng thái dự trữ ròng': 'netReserveStatus',
+    'Net Reserve Status': 'netReserveStatus',
+    'Ghi chú lý do (Dừng/Hủy)': 'reasonNote',
+    'Reason Note': 'reasonNote'
 };
 // Validate và parse một row
 function validateAndParseRow(row, rowIndex, columnMapping) {
@@ -434,6 +443,73 @@ function validateAndParseRow(row, rowIndex, columnMapping) {
                         if (status === ImportSession_1.ImportRowStatus.OK) {
                             status = ImportSession_1.ImportRowStatus.WARNING;
                         }
+                    }
+                }
+            }
+        }
+        // Implementation Status (Trạng thái triển khai)
+        if (row[columnMapping['implementationStatus']] !== undefined || row['Trạng thái triển khai'] !== undefined || row['Implementation Status'] !== undefined) {
+            const statusValue = row[columnMapping['implementationStatus']] || row['Trạng thái triển khai'] || row['Implementation Status'];
+            if (statusValue !== null && statusValue !== undefined) {
+                const trimmedValue = statusValue.toString().trim();
+                const currentValue = idea.implementationStatus || '';
+                if (trimmedValue !== currentValue) {
+                    payload.implementationStatus = trimmedValue || '';
+                    diff.current.implementationStatus = currentValue;
+                    diff.new.implementationStatus = trimmedValue;
+                    if (status === ImportSession_1.ImportRowStatus.OK) {
+                        status = ImportSession_1.ImportRowStatus.WARNING;
+                    }
+                }
+            }
+        }
+        // Expected Completion Date (Hạn dự kiến hoàn thành)
+        if (row[columnMapping['expectedCompletionDate']] !== undefined || row['Hạn dự kiến hoàn thành'] !== undefined || row['Expected Completion Date'] !== undefined) {
+            const dateValue = row[columnMapping['expectedCompletionDate']] || row['Hạn dự kiến hoàn thành'] || row['Expected Completion Date'];
+            if (dateValue !== null && dateValue !== undefined && dateValue.toString().trim() !== '') {
+                const date = new Date(dateValue);
+                if (!isNaN(date.getTime())) {
+                    const currentDate = idea.expectedCompletionDate ? new Date(idea.expectedCompletionDate).getTime() : null;
+                    const newDate = date.getTime();
+                    if (currentDate !== newDate) {
+                        payload.expectedCompletionDate = date;
+                        diff.current.expectedCompletionDate = idea.expectedCompletionDate || null;
+                        diff.new.expectedCompletionDate = date;
+                        if (status === ImportSession_1.ImportRowStatus.OK) {
+                            status = ImportSession_1.ImportRowStatus.WARNING;
+                        }
+                    }
+                }
+            }
+        }
+        // Net Reserve Status (Trạng thái dự trữ ròng)
+        if (row[columnMapping['netReserveStatus']] !== undefined || row['Trạng thái dự trữ ròng'] !== undefined || row['Net Reserve Status'] !== undefined) {
+            const statusValue = row[columnMapping['netReserveStatus']] || row['Trạng thái dự trữ ròng'] || row['Net Reserve Status'];
+            if (statusValue !== null && statusValue !== undefined) {
+                const trimmedValue = statusValue.toString().trim();
+                const currentValue = idea.netReserveStatus || '';
+                if (trimmedValue !== currentValue) {
+                    payload.netReserveStatus = trimmedValue || '';
+                    diff.current.netReserveStatus = currentValue;
+                    diff.new.netReserveStatus = trimmedValue;
+                    if (status === ImportSession_1.ImportRowStatus.OK) {
+                        status = ImportSession_1.ImportRowStatus.WARNING;
+                    }
+                }
+            }
+        }
+        // Reason Note (Ghi chú lý do Dừng/Hủy)
+        if (row[columnMapping['reasonNote']] !== undefined || row['Ghi chú lý do (Dừng/Hủy)'] !== undefined || row['Reason Note'] !== undefined) {
+            const noteValue = row[columnMapping['reasonNote']] || row['Ghi chú lý do (Dừng/Hủy)'] || row['Reason Note'];
+            if (noteValue !== null && noteValue !== undefined) {
+                const trimmedValue = noteValue.toString().trim();
+                const currentValue = idea.reasonNote || '';
+                if (trimmedValue !== currentValue) {
+                    payload.reasonNote = trimmedValue || '';
+                    diff.current.reasonNote = currentValue;
+                    diff.new.reasonNote = trimmedValue;
+                    if (status === ImportSession_1.ImportRowStatus.OK) {
+                        status = ImportSession_1.ImportRowStatus.WARNING;
                     }
                 }
             }
