@@ -791,7 +791,7 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
             />
             <TextField
               name="reasonNote"
-              label="Ghi chú lý do (Đăng/Huy)"
+              label="Ghi chú lý do (Dừng/Hủy)"
               value={(formData as any).reasonNote || ''}
               onChange={handleTextChange}
               fullWidth

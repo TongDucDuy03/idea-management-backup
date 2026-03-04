@@ -816,7 +816,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       'implementationStatus': 'Trạng thái triển khai',
       'expectedCompletionDate': 'Hạn dự kiến hoàn thành',
       'netReserveStatus': 'Trạng thái dự trữ ròng',
-      'reasonNote': 'Ghi chú lý do (Đăng/Huy)',
+      'reasonNote': 'Ghi chú lý do (Dừng/Hủy)',
       'implementationDepartment': 'Phòng ban triển khai',
       'note': 'Ghi chú',
       'benefitValue': 'Giá trị làm lợi (VND)',
@@ -2078,7 +2078,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     },
     {
       field: 'reasonNote',
-      headerName: 'Ghi chú lý do (Đăng/Huy)',
+      headerName: 'Ghi chú lý do (Dừng/Hủy)',
       width: 200,
       align: 'center',
       headerAlign: 'center',
@@ -2493,7 +2493,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
                                       implementationStatus: 'Trạng thái triển khai',
                                       expectedCompletionDate: 'Hạn dự kiến hoàn thành',
                                       netReserveStatus: 'Trạng thái dự trữ ròng',
-                                      reasonNote: 'Ghi chú lý do (Đăng/Huy)',
+                                      reasonNote: 'Ghi chú lý do (Dừng/Hủy)',
                                       actions: 'Thao tác'
                                     } as Record<string, string>
                                   )[field]
@@ -3038,6 +3038,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
                 '& .MuiDataGrid-columnHeaderTitle': {
                   whiteSpace: 'normal',
                   wordWrap: 'break-word'
+                },
+                '& .MuiDataGrid-pinnedColumns': {
+                  backgroundColor: '#fafafa',
+                },
+                '& .MuiDataGrid-pinnedColumns-Footer': {
+                  backgroundColor: '#fafafa',
                 }
               }}
             />
