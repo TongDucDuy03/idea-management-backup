@@ -815,7 +815,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       'rewardCalculationMethod': 'Phương thức tính thưởng',
       'implementationStatus': 'Trạng thái triển khai',
       'expectedCompletionDate': 'Hạn dự kiến hoàn thành',
-      'netReserveStatus': 'Trạng thái dự trữ ròng',
+      'netReserveStatus': 'Trạng thái duy trì/mở rộng',
       'reasonNote': 'Ghi chú lý do (Dừng/Hủy)',
       'implementationDepartment': 'Phòng ban triển khai',
       'note': 'Ghi chú',
@@ -2061,7 +2061,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     },
     {
       field: 'netReserveStatus',
-      headerName: 'Trạng thái dự trữ ròng',
+      headerName: 'Trạng thái duy trì/mở rộng',
       width: 180,
       align: 'center',
       headerAlign: 'center',
@@ -2492,7 +2492,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
                                       // 4 trường mới
                                       implementationStatus: 'Trạng thái triển khai',
                                       expectedCompletionDate: 'Hạn dự kiến hoàn thành',
-                                      netReserveStatus: 'Trạng thái dự trữ ròng',
+                                      netReserveStatus: 'Trạng thái duy trì/mở rộng',
                                       reasonNote: 'Ghi chú lý do (Dừng/Hủy)',
                                       actions: 'Thao tác'
                                     } as Record<string, string>
@@ -2931,15 +2931,35 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
                   )}
                 </Box>
               ) : (
-                // Simple Table View for Mobile
+                // Table View for Mobile - use columnVisibilityModel
                 <TableContainer component={Paper} elevation={0}>
                   <Table size="small">
                     <TableHead>
                       <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                        <TableCell sx={{ fontWeight: 'bold', py: 1.5 }}>Mã</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold', py: 1.5 }}>Người đề xuất</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold', py: 1.5 }}>Trạng thái</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold', py: 1.5 }}>Thao tác</TableCell>
+                        {columnVisibilityModel.ideaCode && (
+                          <TableCell sx={{ fontWeight: 'bold', py: 1.5 }}>Mã</TableCell>
+                        )}
+                        {columnVisibilityModel.fullName && (
+                          <TableCell sx={{ fontWeight: 'bold', py: 1.5 }}>Người đề xuất</TableCell>
+                        )}
+                        {columnVisibilityModel.department && (
+                          <TableCell sx={{ fontWeight: 'bold', py: 1.5 }}>Đơn vị</TableCell>
+                        )}
+                        {columnVisibilityModel.status && (
+                          <TableCell sx={{ fontWeight: 'bold', py: 1.5 }}>Trạng thái</TableCell>
+                        )}
+                        {columnVisibilityModel.implementationStatus && (
+                          <TableCell sx={{ fontWeight: 'bold', py: 1.5 }}>TT Triển khai</TableCell>
+                        )}
+                        {columnVisibilityModel.benefitValue && (
+                          <TableCell sx={{ fontWeight: 'bold', py: 1.5 }}>Giá trị lợi</TableCell>
+                        )}
+                        {columnVisibilityModel.rewardAmount && (
+                          <TableCell sx={{ fontWeight: 'bold', py: 1.5 }}>Tiền thưởng</TableCell>
+                        )}
+                        {!isViewOnly && (
+                          <TableCell sx={{ fontWeight: 'bold', py: 1.5 }}>Thao tác</TableCell>
+                        )}
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -2953,16 +2973,46 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
                             setDetailModalOpen(true);
                           }}
                         >
-                          <TableCell sx={{ py: 1.5 }}>{(idea as any).ideaCode || '-'}</TableCell>
-                          <TableCell sx={{ py: 1.5 }}>
-                            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{idea.fullName || '-'}</Typography>
-                            <Typography variant="caption" color="text.secondary">{idea.department || '-'}</Typography>
-                          </TableCell>
-                          <TableCell sx={{ py: 1.5 }}>
-                            <StatusCell row={idea} />
-                          </TableCell>
-                          <TableCell sx={{ py: 1.5 }}>
-                            {!isViewOnly && (
+                          {columnVisibilityModel.ideaCode && (
+                            <TableCell sx={{ py: 1.5 }}>{(idea as any).ideaCode || '-'}</TableCell>
+                          )}
+                          {columnVisibilityModel.fullName && (
+                            <TableCell sx={{ py: 1.5 }}>
+                              <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{idea.fullName || '-'}</Typography>
+                              {columnVisibilityModel.department && (
+                                <Typography variant="caption" color="text.secondary">{idea.department || '-'}</Typography>
+                              )}
+                            </TableCell>
+                          )}
+                          {columnVisibilityModel.department && !columnVisibilityModel.fullName && (
+                            <TableCell sx={{ py: 1.5 }}>{idea.department || '-'}</TableCell>
+                          )}
+                          {columnVisibilityModel.status && (
+                            <TableCell sx={{ py: 1.5 }}>
+                              <StatusCell row={idea} />
+                            </TableCell>
+                          )}
+                          {columnVisibilityModel.implementationStatus && (
+                            <TableCell sx={{ py: 1.5 }}>
+                              <ImplementationStatusCell row={idea} />
+                            </TableCell>
+                          )}
+                          {columnVisibilityModel.benefitValue && (
+                            <TableCell sx={{ py: 1.5 }}>
+                              {((idea as any).benefitValue > 0)
+                                ? `${(idea as any).benefitValue.toLocaleString('vi-VN')} đ`
+                                : '-'}
+                            </TableCell>
+                          )}
+                          {columnVisibilityModel.rewardAmount && (
+                            <TableCell sx={{ py: 1.5 }}>
+                              {((idea as any).rewardAmount > 0)
+                                ? `${(idea as any).rewardAmount.toLocaleString('vi-VN')} đ`
+                                : '-'}
+                            </TableCell>
+                          )}
+                          {!isViewOnly && (
+                            <TableCell sx={{ py: 1.5 }}>
                               <Box sx={{ display: 'flex', gap: 0.5 }}>
                                 <IconButton
                                   size="small"
@@ -2985,8 +3035,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
                                   <DeleteIcon fontSize="small" />
                                 </IconButton>
                               </Box>
-                            )}
-                          </TableCell>
+                            </TableCell>
+                          )}
                         </TableRow>
                       ))}
                     </TableBody>
@@ -3111,6 +3161,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
                       <Typography variant="body2">{(selectedIdeaForDetail as any).benefit}</Typography>
                     </Box>
                   )}
+                  <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid #eee' }}>
+                    <Typography variant="caption" color="text.secondary">Ngày nộp:</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                      {selectedIdeaForDetail.submissionDate ? new Date(selectedIdeaForDetail.submissionDate).toLocaleDateString('vi-VN') : '-'}
+                    </Typography>
+                  </Box>
                 </AccordionDetails>
               </Accordion>
 
@@ -3202,26 +3258,42 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
               </Accordion>
 
               {/* Implementation Info */}
-              <Accordion>
+              <Accordion defaultExpanded>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                   <Typography sx={{ fontWeight: 'bold' }}>Triển khai</Typography>
                 </AccordionSummary>
                 <AccordionDetails>
                   <Grid container spacing={2}>
-                    <Grid item xs={12}>
+                    <Grid item xs={12} sm={6}>
                       <Typography variant="caption" color="text.secondary">Trạng thái triển khai:</Typography>
                       <Box sx={{ mt: 0.5 }}>
                         <ImplementationStatusCell row={selectedIdeaForDetail} />
                       </Box>
                     </Grid>
-                    <Grid item xs={6}>
-                      <Typography variant="caption" color="text.secondary">Phòng ban triển khai:</Typography>
-                      <Typography variant="body2">{(selectedIdeaForDetail as any).implementationDepartment || '-'}</Typography>
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="caption" color="text.secondary">Hạn dự kiến hoàn thành:</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 'bold', mt: 0.5 }}>
+                        {(selectedIdeaForDetail as any).expectedCompletionDate
+                          ? new Date((selectedIdeaForDetail as any).expectedCompletionDate).toLocaleDateString('vi-VN')
+                          : '-'}
+                      </Typography>
                     </Grid>
-                    <Grid item xs={6}>
-                      <Typography variant="caption" color="text.secondary">Ngày nộp:</Typography>
-                      <Typography variant="body2">
-                        {selectedIdeaForDetail.submissionDate ? new Date(selectedIdeaForDetail.submissionDate).toLocaleDateString('vi-VN') : '-'}
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="caption" color="text.secondary">Trạng thái duy trì/mở rộng:</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 'bold', mt: 0.5 }}>
+                        {(selectedIdeaForDetail as any).netReserveStatus || '-'}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="caption" color="text.secondary">Phòng ban triển khai:</Typography>
+                      <Typography variant="body2" sx={{ mt: 0.5 }}>
+                        {(selectedIdeaForDetail as any).implementationDepartment || '-'}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Typography variant="caption" color="text.secondary">Ghi chú lý do (Dừng/Hủy):</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 'bold', mt: 0.5, whiteSpace: 'pre-wrap' }}>
+                        {(selectedIdeaForDetail as any).reasonNote || '-'}
                       </Typography>
                     </Grid>
                   </Grid>

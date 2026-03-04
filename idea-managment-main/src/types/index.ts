@@ -81,7 +81,7 @@ export interface Idea {
   // 4 trường mới theo yêu cầu
   implementationStatus?: string; // Trạng thái triển khai
   expectedCompletionDate?: Date; // Hạn dự kiến hoàn thành (dự kiến)
-  netReserveStatus?: string; // Trạng thái dự trữ ròng
+  netReserveStatus?: string; // Trạng thái duy trì/mở rộng
   reasonNote?: string; // Ghi chú lý do (Đăng/Huy)
 }
 
