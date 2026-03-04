@@ -78,6 +78,11 @@ export interface Idea {
   scalingOpportunity?: string; // Cơ hội nhân rộng phát triển
   beforeImage?: string; // Hình ảnh trước (data URL hoặc URL)
   afterImage?: string; // Hình ảnh sau (data URL hoặc URL)
+  // 4 trường mới theo yêu cầu
+  implementationStatus?: string; // Trạng thái triển khai
+  expectedCompletionDate?: Date; // Hạn dự kiến hoàn thành (dự kiến)
+  netReserveStatus?: string; // Trạng thái dự trữ ròng
+  reasonNote?: string; // Ghi chú lý do (Đăng/Huy)
 }
 
 export interface IdeaFormData {
@@ -93,6 +98,11 @@ export interface IdeaFormData {
   scalingOpportunity?: string;
   beforeImage?: string;
   afterImage?: string;
+  // 4 trường mới theo yêu cầu
+  implementationStatus?: string;
+  expectedCompletionDate?: Date;
+  netReserveStatus?: string;
+  reasonNote?: string;
 }
 
 export interface A3Report {

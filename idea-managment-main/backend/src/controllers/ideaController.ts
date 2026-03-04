@@ -48,20 +48,24 @@ function transformIdeaWithImageUrls(idea: any, baseUrl: string): any {
 
 export const createIdea = async (req: Request, res: Response) => {
   try {
-    const { 
-      fullName, 
-      department, 
-      idea, 
-      solution, 
-      benefit, 
-      status, 
-      implementationDepartment, 
+    const {
+      fullName,
+      department,
+      idea,
+      solution,
+      benefit,
+      status,
+      implementationDepartment,
       note,
       benefitValue,
       rewardAmount,
       rewardApprovalDate,
       beforeImage,
-      afterImage
+      afterImage,
+      implementationStatus,
+      expectedCompletionDate,
+      netReserveStatus,
+      reasonNote
     } = req.body;
     
     // Generate idea code (without name prefix)
@@ -105,6 +109,10 @@ export const createIdea = async (req: Request, res: Response) => {
       benefitValue: benefitValue || 0,
       rewardAmount: rewardAmount || 0,
       rewardApprovalDate: rewardApprovalDate ? new Date(rewardApprovalDate) : undefined,
+      implementationStatus,
+      expectedCompletionDate: expectedCompletionDate ? new Date(expectedCompletionDate) : undefined,
+      netReserveStatus,
+      reasonNote,
       // Giữ lại base64 trong beforeImage/afterImage để admin-view & admin luôn xem được
       beforeImage: beforeImage || undefined,
       afterImage: afterImage || undefined,
@@ -212,6 +220,13 @@ export const updateIdea = async (req: Request, res: Response) => {
       updateData.rewardApprovalDate = new Date(updateData.rewardApprovalDate);
     } else if (updateData.rewardApprovalDate === null || updateData.rewardApprovalDate === '') {
       updateData.rewardApprovalDate = null;
+    }
+
+    // Convert expectedCompletionDate to Date if it's a string
+    if (updateData.expectedCompletionDate) {
+      updateData.expectedCompletionDate = new Date(updateData.expectedCompletionDate);
+    } else if (updateData.expectedCompletionDate === null || updateData.expectedCompletionDate === '') {
+      updateData.expectedCompletionDate = null;
     }
 
     // beforeImage: clear, or base64 -> save file and set path

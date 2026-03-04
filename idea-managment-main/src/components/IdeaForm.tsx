@@ -41,6 +41,7 @@ const departments = [
   'PX Cơ điện',
   'PX GCCK',
   'Nhà máy DISA',
+  'Tổ liệu',
   'Thư ký ISO',
   'Thư ký An toàn 5S'
 ];

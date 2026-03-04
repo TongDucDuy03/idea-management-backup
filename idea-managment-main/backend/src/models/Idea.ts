@@ -98,6 +98,11 @@ const IdeaSchema: Schema = new Schema({
   afterImage: { type: String, required: false },
   beforeImagePath: { type: String, required: false },
   afterImagePath: { type: String, required: false },
+  // 4 trường mới theo yêu cầu
+  implementationStatus: { type: String, required: false }, // Trạng thái triển khai
+  expectedCompletionDate: { type: Date, required: false }, // Hạn dự kiến hoàn thành (dự kiến)
+  netReserveStatus: { type: String, required: false }, // Trạng thái dự trữ ròng
+  reasonNote: { type: String, required: false }, // Ghi chú lý do (Đăng/Huy)
 });
 
 export default mongoose.model<IIdea>('Idea', IdeaSchema); 

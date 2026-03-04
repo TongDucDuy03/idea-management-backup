@@ -59,6 +59,7 @@ const departments = [
   'PX Cơ điện',
   'PX GCCK',
   'Nhà máy DISA',
+  'Tổ liệu',
   'Thư ký ISO',
   'Thư ký An toàn 5S'
 ];
@@ -112,7 +113,12 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
     calculationDescription: '',
     scalingOpportunity: '',
     beforeImage: '',
-    afterImage: ''
+    afterImage: '',
+    // 4 trường mới theo yêu cầu
+    implementationStatus: '',
+    expectedCompletionDate: undefined,
+    netReserveStatus: '',
+    reasonNote: ''
   });
   const [error, setError] = useState('');
   
@@ -204,7 +210,15 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
         calculationDescription: (idea as any).calculationDescription || '',
         scalingOpportunity: (idea as any).scalingOpportunity || '',
         beforeImage: beforeImageUrl,
-        afterImage: afterImageUrl
+        afterImage: afterImageUrl,
+        // 4 trường mới
+        implementationStatus: (idea as any).implementationStatus || '',
+        expectedCompletionDate: (idea as any).expectedCompletionDate ? (() => {
+          const date = new Date((idea as any).expectedCompletionDate);
+          return date;
+        })() : undefined,
+        netReserveStatus: (idea as any).netReserveStatus || '',
+        reasonNote: (idea as any).reasonNote || ''
       });
     } else {
       setFormData({
@@ -226,7 +240,12 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
         calculationDescription: '',
         scalingOpportunity: '',
         beforeImage: '',
-        afterImage: ''
+        afterImage: '',
+        // 4 trường mới
+        implementationStatus: '',
+        expectedCompletionDate: undefined,
+        netReserveStatus: '',
+        reasonNote: ''
       });
     }
   }, [idea]);
@@ -345,6 +364,21 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
       } else {
         // Explicitly set to null if it was cleared
         submitData.rewardApprovalDate = null;
+      }
+
+      // Convert expectedCompletionDate to ISO string if it exists
+      if (submitData.expectedCompletionDate) {
+        if (submitData.expectedCompletionDate instanceof Date) {
+          // Convert to ISO string (will be in UTC)
+          submitData.expectedCompletionDate = submitData.expectedCompletionDate.toISOString();
+        } else if (typeof submitData.expectedCompletionDate === 'string') {
+          // If it's already a string (from input), convert to Date then to ISO
+          const dateObj = new Date(submitData.expectedCompletionDate);
+          submitData.expectedCompletionDate = dateObj.toISOString();
+        }
+      } else {
+        // Explicitly set to null if it was cleared
+        submitData.expectedCompletionDate = null;
       }
       
       // Handle images - always include them (null or base64)
@@ -697,6 +731,73 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
                 ))}
               </Select>
             </FormControl>
+            {/* 4 trường mới theo yêu cầu */}
+            <TextField
+              name="implementationStatus"
+              label="Trạng thái triển khai"
+              value={(formData as any).implementationStatus || ''}
+              onChange={handleTextChange}
+              fullWidth
+              multiline
+              rows={2}
+            />
+            <TextField
+              name="expectedCompletionDate"
+              label="Hạn dự kiến hoàn thành (dự kiến)"
+              type="date"
+              value={(formData as any).expectedCompletionDate ? (() => {
+                let date: Date;
+                if ((formData as any).expectedCompletionDate instanceof Date) {
+                  date = new Date((formData as any).expectedCompletionDate);
+                } else if (typeof (formData as any).expectedCompletionDate === 'string') {
+                  date = new Date((formData as any).expectedCompletionDate);
+                } else {
+                  return '';
+                }
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+              })() : ''}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value) {
+                  const date = new Date(value);
+                  setFormData(prev => ({
+                    ...prev,
+                    expectedCompletionDate: date
+                  }));
+                } else {
+                  setFormData(prev => ({
+                    ...prev,
+                    expectedCompletionDate: undefined
+                  }));
+                }
+              }}
+              fullWidth
+              InputLabelProps={{
+                shrink: true,
+              }}
+              sx={textFieldStyle}
+            />
+            <TextField
+              name="netReserveStatus"
+              label="Trạng thái dự trữ ròng"
+              value={(formData as any).netReserveStatus || ''}
+              onChange={handleTextChange}
+              fullWidth
+              multiline
+              rows={2}
+            />
+            <TextField
+              name="reasonNote"
+              label="Ghi chú lý do (Đăng/Huy)"
+              value={(formData as any).reasonNote || ''}
+              onChange={handleTextChange}
+              fullWidth
+              multiline
+              rows={2}
+            />
             {isEdit && (
               <FormControl fullWidth>
                 {/* Additional edit-only controls can be added here */}

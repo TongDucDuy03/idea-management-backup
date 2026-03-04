@@ -20,7 +20,11 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   TextField,
-  Snackbar
+  Snackbar,
+  useMediaQuery,
+  useTheme,
+  Tabs,
+  Tab
 } from '@mui/material';
 import {
   Chart as ChartJS,
@@ -40,7 +44,8 @@ import {
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
   CompareArrows as CompareArrowsIcon,
-  BarChart as BarChartIcon
+  BarChart as BarChartIcon,
+  Assessment as AssessmentIcon
 } from '@mui/icons-material';
 import api from '../api/config';
 import { Idea, IdeaStatus, IdeaStatusLabels, RewardStatus } from '../types';
@@ -67,6 +72,13 @@ interface StatisticsDashboardProps {
 
 const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = false }) => {
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isSmallMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  // Mobile tab state
+  const [mobileTab, setMobileTab] = useState(0);
+
   const [showLoginMessage, setShowLoginMessage] = React.useState(false);
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1063,11 +1075,27 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
       {/* Header */}
       <Card elevation={3} sx={{ mb: 4, borderRadius: 2 }}>
         <CardContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h4" component="h1" sx={{ color: '#1976d2', fontWeight: 'bold' }}>
-              Dashboard Thống kê Ý tưởng Cải tiến
+          {/* Mobile Tabs */}
+          {isMobile && (
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+              <Tabs
+                value={mobileTab}
+                onChange={(e, newValue) => setMobileTab(newValue)}
+                variant="fullWidth"
+                textColor="primary"
+                indicatorColor="primary"
+              >
+                <Tab label="Tổng quan" icon={<BarChartIcon />} iconPosition="start" />
+                <Tab label="Biểu đồ" icon={<AssessmentIcon />} iconPosition="start" />
+              </Tabs>
+            </Box>
+          )}
+
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+            <Typography variant={isSmallMobile ? "h5" : "h4"} component="h1" sx={{ color: '#1976d2', fontWeight: 'bold' }}>
+              Dashboard Thống kê
             </Typography>
-            <Box sx={{ display: 'flex', gap: 2 }}>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
               {!isViewOnly && (
                 <Button
                   variant="outlined"

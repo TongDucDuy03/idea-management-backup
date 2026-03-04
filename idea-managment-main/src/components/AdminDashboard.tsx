@@ -21,10 +21,70 @@ import {
   SelectChangeEvent,
   Checkbox,
   ListItemText,
-  FormControlLabel
+  FormControlLabel,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  useMediaQuery,
+  useTheme,
+  Drawer,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Tabs,
+  Tab,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Collapse,
+  Fab
 } from '@mui/material';
-import { DataGrid, GridColDef, GridRowHeightParams } from '@mui/x-data-grid';
-import { Edit as EditIcon, Delete as DeleteIcon, FileDownload as FileDownloadIcon, BarChart as BarChartIcon, Upload as UploadIcon } from '@mui/icons-material';
+import { DataGrid, GridColDef } from '@mui/x-data-grid';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip as ChartTooltip,
+  Legend,
+  ArcElement,
+  PointElement,
+  LineElement,
+  Filler
+} from 'chart.js';
+import { Bar, Doughnut, Line, getElementAtEvent } from 'react-chartjs-2';
+import {
+  TrendingUp as TrendingUpIcon,
+  TrendingDown as TrendingDownIcon,
+  CompareArrows as CompareArrowsIcon,
+  BarChart as BarChartIcon,
+  ViewList as ViewListIcon,
+  ViewModule as ViewModuleIcon,
+  FilterList as FilterListIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+  Close as CloseIcon,
+  Person as PersonIcon,
+  Business as BusinessIcon,
+  CalendarToday as CalendarTodayIcon,
+  AttachMoney as AttachMoneyIcon,
+  Assessment as AssessmentIcon,
+  Image as ImageIcon,
+  Description as DescriptionIcon,
+  CheckCircle as CheckCircleIcon,
+  Schedule as ScheduleIcon,
+  Visibility as VisibilityIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  FileDownload as FileDownloadIcon,
+  Upload as UploadIcon,
+  Add as AddIcon
+} from '@mui/icons-material';
 import * as XLSX from 'xlsx';
 import { Idea, IdeaStatus, IdeaStatusLabels, RewardStatus, RewardStatusLabels, RewardCalculationMethod, RewardCalculationMethodLabels } from '../types';
 import IdeaDialog from './IdeaDialog';
@@ -33,6 +93,7 @@ import ImageLightbox from './ImageLightbox';
 import RewardStatusDialog from './RewardStatusDialog';
 import ImportDialog from './ImportDialog';
 import api from '../api/config';
+import useIsMobile from '../hooks/useIsMobile';
 
 interface AdminDashboardProps {
   // Chế độ chỉ xem (dùng cho /admin-view từ statistics-view)
@@ -42,6 +103,22 @@ interface AdminDashboardProps {
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isSmallMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  // Mobile view mode: 'cards' or 'table'
+  const [mobileViewMode, setMobileViewMode] = useState<'cards' | 'table'>('cards');
+
+  // Detail modal for mobile
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedIdeaForDetail, setSelectedIdeaForDetail] = useState<Idea | null>(null);
+
+  // Filter drawer for mobile
+  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
+  // Filter collapse state
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
+
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -104,6 +181,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     'rewardAmount',
     'rewardApprovalDate',
     'rewardCalculationMethod',
+    // 4 trường mới
+    'implementationStatus',
+    'expectedCompletionDate',
+    'netReserveStatus',
+    'reasonNote',
     'actions'
   ] as const;
 
@@ -732,6 +814,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       'rewardStatuses': 'Tình trạng khen thưởng',
       'rewardCalculationMethod': 'Phương thức tính thưởng',
       'implementationStatus': 'Trạng thái triển khai',
+      'expectedCompletionDate': 'Hạn dự kiến hoàn thành',
+      'netReserveStatus': 'Trạng thái dự trữ ròng',
+      'reasonNote': 'Ghi chú lý do (Đăng/Huy)',
       'implementationDepartment': 'Phòng ban triển khai',
       'note': 'Ghi chú',
       'benefitValue': 'Giá trị làm lợi (VND)',
@@ -761,6 +846,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
         } else if (field === 'rewardApprovalDate') {
           const date = (idea as any)[field];
           row[displayName] = date ? new Date(date).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '';
+        } else if (field === 'expectedCompletionDate') {
+          const date = (idea as any)[field];
+          row[displayName] = date ? new Date(date).toLocaleDateString('vi-VN') : '';
         } else if (field === 'submissionDate') {
           row[displayName] = new Date((idea as any)[field]).toLocaleDateString('vi-VN');
         } else if (field === 'idea') {
@@ -1030,6 +1118,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       180 + 180 +
       180 + 180 +
       200 + 200 +
+      180 + 180 +
+      180 + 180 +
       180 + 180 +
       120; // Tổng chiều rộng các cột (bao gồm cột hình ảnh)
 
@@ -1926,6 +2016,83 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       headerAlign: 'center',
       renderCell: (params) => <RewardCalculationMethodCell row={params.row as Idea} />
     },
+    // 4 trường mới theo yêu cầu
+    {
+      field: 'implementationStatus',
+      headerName: 'Trạng thái triển khai',
+      width: 180,
+      align: 'center',
+      headerAlign: 'center',
+      renderCell: (params) => (
+        <div style={{
+          width: '100%',
+          textAlign: 'left',
+          whiteSpace: 'normal',
+          wordBreak: 'break-word'
+        }}>
+          {(params.row as any).implementationStatus || '-'}
+        </div>
+      )
+    },
+    {
+      field: 'expectedCompletionDate',
+      headerName: 'Hạn dự kiến hoàn thành',
+      width: 180,
+      align: 'center',
+      headerAlign: 'center',
+      valueGetter: (params) => {
+        if (!params.value) return '';
+        const date = new Date(params.value);
+        return date.toLocaleDateString('vi-VN');
+      },
+      renderCell: (params) => (
+        <div style={{
+          width: '100%',
+          textAlign: 'center'
+        }}>
+          {(params.row as any).expectedCompletionDate
+            ? (() => {
+              const date = new Date((params.row as any).expectedCompletionDate);
+              return date.toLocaleDateString('vi-VN');
+            })()
+            : '-'}
+        </div>
+      )
+    },
+    {
+      field: 'netReserveStatus',
+      headerName: 'Trạng thái dự trữ ròng',
+      width: 180,
+      align: 'center',
+      headerAlign: 'center',
+      renderCell: (params) => (
+        <div style={{
+          width: '100%',
+          textAlign: 'left',
+          whiteSpace: 'normal',
+          wordBreak: 'break-word'
+        }}>
+          {(params.row as any).netReserveStatus || '-'}
+        </div>
+      )
+    },
+    {
+      field: 'reasonNote',
+      headerName: 'Ghi chú lý do (Đăng/Huy)',
+      width: 200,
+      align: 'center',
+      headerAlign: 'center',
+      renderCell: (params) => (
+        <div style={{
+          width: '100%',
+          textAlign: 'left',
+          whiteSpace: 'normal',
+          wordBreak: 'break-word'
+        }}>
+          {(params.row as any).reasonNote || '-'}
+        </div>
+      )
+    },
     // Cột thao tác chỉ hiển thị trong chế độ admin đầy đủ
     ...(!isViewOnly
       ? [
@@ -1964,15 +2131,32 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     <Container maxWidth={false} sx={{ py: 2, px: 1, width: '100%' }}>
       <Card elevation={3} sx={{ mb: 4, borderRadius: 2 }}>
         <CardContent sx={{ p: 2 }}>
-          <Typography variant="h4" component="h1" gutterBottom align="center" sx={{ color: '#1976d2', fontWeight: 'bold' }}>
-            Quản lý Ý tưởng Cải tiến
-          </Typography>
+          {/* Header with toggle filter button for mobile */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+            <Typography variant={isMobile ? "h5" : "h4"} component="h1" sx={{ color: '#1976d2', fontWeight: 'bold' }}>
+              Quản lý Ý tưởng Cải tiến
+            </Typography>
+            {isMobile && (
+              <Button
+                variant="outlined"
+                color="primary"
+                size="small"
+                onClick={() => setFiltersExpanded(!filtersExpanded)}
+                startIcon={filtersExpanded ? <ExpandLessIcon /> : <FilterListIcon />}
+                sx={{ textTransform: 'none' }}
+              >
+                {filtersExpanded ? 'Ẩn lọc' : 'Lọc'}
+              </Button>
+            )}
+          </Box>
           <Divider sx={{ my: 2 }} />
           <Grid container spacing={3} alignItems="flex-start">
             <Grid item xs={12} md={12}>
               <Box sx={{ display: 'flex', flexDirection: 'column', rowGap: 2 }}>
-                {/* Hàng 1 */}
-                <Box sx={{ display: 'flex', columnGap: 2, rowGap: 1.5, flexWrap: 'wrap' }}>
+                {/* Mobile Filter Toggle - Always show filter section but collapsible */}
+                <Collapse in={!isMobile || filtersExpanded}>
+                  {/* Hàng 1 */}
+                  <Box sx={{ display: 'flex', columnGap: 2, rowGap: 1.5, flexWrap: 'wrap' }}>
                   <TextField
                     label="Mã ý tưởng"
                     size="small"
@@ -2184,6 +2368,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
                     Xóa bộ lọc
                   </Button>
                 </Box>
+                </Collapse>
 
                 {/* Hàng 3 */}
                 <Box sx={{ display: 'flex', gap: 2, justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
@@ -2295,9 +2480,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
                                       scalingOpportunity: 'Cơ hội nhân rộng phát triển',
                                       beforeImage: 'Hình ảnh trước',
                                       afterImage: 'Hình ảnh sau',
-                                      status: 'Quyết định phê duyệt',
+                                      status: 'Trạng thái',
                                       rewardStatuses: 'Tình trạng khen thưởng',
-                                      implementationStatus: 'Trạng thái',
                                       submissionDate: 'Thời gian nộp',
                                       implementationDepartment: 'Phòng ban triển khai',
                                       note: 'Ghi chú',
@@ -2305,6 +2489,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
                                       rewardAmount: 'Tiền thưởng (VND)',
                                       rewardApprovalDate: 'Ngày duyệt khen thưởng',
                                       rewardCalculationMethod: 'Phương thức tính thưởng',
+                                      // 4 trường mới
+                                      implementationStatus: 'Trạng thái triển khai',
+                                      expectedCompletionDate: 'Hạn dự kiến hoàn thành',
+                                      netReserveStatus: 'Trạng thái dự trữ ròng',
+                                      reasonNote: 'Ghi chú lý do (Đăng/Huy)',
                                       actions: 'Thao tác'
                                     } as Record<string, string>
                                   )[field]
@@ -2577,37 +2766,497 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
         </Box>
 
         <Box ref={dataGridRef} sx={{ width: '100%', overflow: 'auto' }}>
-          <DataGrid
-            rows={filteredIdeas}
-            columns={columns}
-            columnVisibilityModel={columnVisibilityModel}
-            onColumnVisibilityModelChange={(model) => setColumnVisibilityModel(model)}
-            getRowId={(row) => row._id}
-            paginationModel={paginationModel}
-            onPaginationModelChange={setPaginationModel}
-            pageSizeOptions={[10, 25, 50]}
-            disableRowSelectionOnClick
-            loading={loading}
-            getRowHeight={() => 200}
-            sx={{
-              width: '100%',
-              '& .MuiDataGrid-columnHeader': {
-                backgroundColor: '#f5f5f5',
-              },
-              '& .MuiDataGrid-cell': {
-                overflow: 'hidden',
-                whiteSpace: 'normal',
-                wordWrap: 'break-word'
-              },
-              '& .MuiDataGrid-columnHeaderTitle': {
-                whiteSpace: 'normal',
-                wordWrap: 'break-word'
-              }
-            }}
-          />
+          {isMobile ? (
+            // Mobile View: Card Layout
+            <Box sx={{ px: 1, pb: 2 }}>
+              {/* View Mode Toggle for Mobile */}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Hiển thị {filteredIdeas.length} / {ideas.length} ý tưởng
+                  {filteredIdeas.length !== ideas.length && (
+                    <span style={{ color: '#1976d2', fontWeight: 'bold' }}> (đã lọc)</span>
+                  )}
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Button
+                    size="small"
+                    variant={mobileViewMode === 'cards' ? 'contained' : 'outlined'}
+                    onClick={() => setMobileViewMode('cards')}
+                    startIcon={<ViewModuleIcon />}
+                  >
+                    Cards
+                  </Button>
+                  <Button
+                    size="small"
+                    variant={mobileViewMode === 'table' ? 'contained' : 'outlined'}
+                    onClick={() => setMobileViewMode('table')}
+                    startIcon={<ViewListIcon />}
+                  >
+                    Table
+                  </Button>
+                </Box>
+              </Box>
+
+              {mobileViewMode === 'cards' ? (
+                // Card View for Mobile
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {filteredIdeas.length === 0 ? (
+                    <Typography variant="body1" color="text.secondary" align="center" sx={{ py: 4 }}>
+                      Không có ý tưởng nào
+                    </Typography>
+                  ) : (
+                    filteredIdeas.map((idea) => (
+                      <Card
+                        key={idea._id}
+                        elevation={2}
+                        sx={{
+                          borderRadius: 2,
+                          cursor: 'pointer',
+                          '&:hover': { boxShadow: 4 },
+                          transition: 'box-shadow 0.2s'
+                        }}
+                        onClick={() => {
+                          setSelectedIdeaForDetail(idea);
+                          setDetailModalOpen(true);
+                        }}
+                      >
+                        <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                          {/* Header: Mã ý tưởng + Status */}
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
+                            <Chip
+                              label={(idea as any).ideaCode || 'N/A'}
+                              size="small"
+                              sx={{ fontWeight: 'bold', backgroundColor: '#e3f2fd', color: '#1976d2' }}
+                            />
+                            <StatusCell row={idea} />
+                          </Box>
+
+                          {/* Người đề xuất + Đơn vị */}
+                          <Box sx={{ mb: 1.5 }}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              <PersonIcon fontSize="small" color="primary" />
+                              {idea.fullName || 'N/A'}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              <BusinessIcon fontSize="small" />
+                              {idea.department || 'N/A'}
+                            </Typography>
+                          </Box>
+
+                          {/* Nội dung ý tưởng */}
+                          <Box sx={{ mb: 1.5 }}>
+                            <Typography variant="body2" sx={{
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              lineHeight: 1.4
+                            }}>
+                              {(idea as any).idea || 'Không có nội dung'}
+                            </Typography>
+                          </Box>
+
+                          {/* Thông tin thêm */}
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              <CalendarTodayIcon fontSize="small" color="action" />
+                              <Typography variant="caption" color="text.secondary">
+                                {idea.submissionDate ? new Date(idea.submissionDate).toLocaleDateString('vi-VN') : 'N/A'}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', gap: 0.5 }}>
+                              {(idea as any).benefitValue > 0 && (
+                                <Chip
+                                  size="small"
+                                  label={`${(idea as any).benefitValue.toLocaleString('vi-VN')} đ`}
+                                  sx={{ backgroundColor: '#e8f5e9', color: '#2e7d32', fontWeight: 'bold', height: 24 }}
+                                />
+                              )}
+                              {(idea as any).rewardAmount > 0 && (
+                                <Chip
+                                  size="small"
+                                  label={`Thưởng: ${(idea as any).rewardAmount.toLocaleString('vi-VN')} đ`}
+                                  sx={{ backgroundColor: '#fff3e0', color: '#e65100', fontWeight: 'bold', height: 24 }}
+                                />
+                              )}
+                            </Box>
+                          </Box>
+
+                          {/* Actions - chỉ hiển thị khi không phải viewOnly */}
+                          {!isViewOnly && (
+                            <Box sx={{ display: 'flex', gap: 1, mt: 1.5, pt: 1.5, borderTop: '1px solid #eee' }}>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                color="primary"
+                                startIcon={<VisibilityIcon />}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedIdeaForDetail(idea);
+                                  setDetailModalOpen(true);
+                                }}
+                              >
+                                Xem
+                              </Button>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                color="secondary"
+                                startIcon={<EditIcon />}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEdit(idea);
+                                }}
+                              >
+                                Sửa
+                              </Button>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                color="error"
+                                startIcon={<DeleteIcon />}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDelete(idea._id);
+                                }}
+                              >
+                                Xóa
+                              </Button>
+                            </Box>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </Box>
+              ) : (
+                // Simple Table View for Mobile
+                <TableContainer component={Paper} elevation={0}>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+                        <TableCell sx={{ fontWeight: 'bold', py: 1.5 }}>Mã</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold', py: 1.5 }}>Người đề xuất</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold', py: 1.5 }}>Trạng thái</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold', py: 1.5 }}>Thao tác</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {filteredIdeas.map((idea) => (
+                        <TableRow
+                          key={idea._id}
+                          hover
+                          sx={{ cursor: 'pointer' }}
+                          onClick={() => {
+                            setSelectedIdeaForDetail(idea);
+                            setDetailModalOpen(true);
+                          }}
+                        >
+                          <TableCell sx={{ py: 1.5 }}>{(idea as any).ideaCode || '-'}</TableCell>
+                          <TableCell sx={{ py: 1.5 }}>
+                            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{idea.fullName || '-'}</Typography>
+                            <Typography variant="caption" color="text.secondary">{idea.department || '-'}</Typography>
+                          </TableCell>
+                          <TableCell sx={{ py: 1.5 }}>
+                            <StatusCell row={idea} />
+                          </TableCell>
+                          <TableCell sx={{ py: 1.5 }}>
+                            {!isViewOnly && (
+                              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                <IconButton
+                                  size="small"
+                                  color="primary"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEdit(idea);
+                                  }}
+                                >
+                                  <EditIcon fontSize="small" />
+                                </IconButton>
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDelete(idea._id);
+                                  }}
+                                >
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
+                              </Box>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+
+              {/* Mobile FAB for adding new idea */}
+              {!isViewOnly && (
+                <Fab
+                  color="primary"
+                  aria-label="add"
+                  onClick={handleAdd}
+                  sx={{
+                    position: 'fixed',
+                    bottom: 16,
+                    right: 16,
+                    zIndex: 1000
+                  }}
+                >
+                  <AddIcon />
+                </Fab>
+              )}
+            </Box>
+          ) : (
+            // Desktop View: DataGrid
+            <DataGrid
+              rows={filteredIdeas}
+              columns={columns}
+              columnVisibilityModel={columnVisibilityModel}
+              onColumnVisibilityModelChange={(model) => setColumnVisibilityModel(model)}
+              getRowId={(row) => row._id}
+              paginationModel={paginationModel}
+              onPaginationModelChange={setPaginationModel}
+              pageSizeOptions={[10, 25, 50]}
+              disableRowSelectionOnClick
+              loading={loading}
+              getRowHeight={() => 200}
+              sx={{
+                width: '100%',
+                '& .MuiDataGrid-columnHeader': {
+                  backgroundColor: '#f5f5f5',
+                },
+                '& .MuiDataGrid-cell': {
+                  overflow: 'hidden',
+                  whiteSpace: 'normal',
+                  wordWrap: 'break-word'
+                },
+                '& .MuiDataGrid-columnHeaderTitle': {
+                  whiteSpace: 'normal',
+                  wordWrap: 'break-word'
+                }
+              }}
+            />
+          )}
         </Box>
 
       </Paper>
+
+      {/* Mobile Detail Modal */}
+      <Dialog
+        open={detailModalOpen}
+        onClose={() => setDetailModalOpen(false)}
+        maxWidth="md"
+        fullWidth
+        fullScreen={isSmallMobile}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+            Chi tiết ý tưởng
+          </Typography>
+          <IconButton onClick={() => setDetailModalOpen(false)}>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          {selectedIdeaForDetail && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {/* Header Info */}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 1 }}>
+                <Box>
+                  <Chip
+                    label={(selectedIdeaForDetail as any).ideaCode || 'N/A'}
+                    sx={{ fontWeight: 'bold', backgroundColor: '#e3f2fd', color: '#1976d2', mb: 1 }}
+                  />
+                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                    {selectedIdeaForDetail.fullName || 'N/A'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {selectedIdeaForDetail.department || 'N/A'}
+                  </Typography>
+                </Box>
+                <StatusCell row={selectedIdeaForDetail} />
+              </Box>
+
+              <Divider />
+
+              {/* Content Sections */}
+              <Accordion defaultExpanded>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography sx={{ fontWeight: 'bold' }}>Nội dung ý tưởng</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                    {(selectedIdeaForDetail as any).idea || 'Không có'}
+                  </Typography>
+                  {(selectedIdeaForDetail as any).solution && (
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#1976d2' }}>Thực trạng:</Typography>
+                      <Typography variant="body2">{(selectedIdeaForDetail as any).solution}</Typography>
+                    </Box>
+                  )}
+                  {(selectedIdeaForDetail as any).benefit && (
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#2e7d32' }}>Giải pháp:</Typography>
+                      <Typography variant="body2">{(selectedIdeaForDetail as any).benefit}</Typography>
+                    </Box>
+                  )}
+                </AccordionDetails>
+              </Accordion>
+
+              {/* Images */}
+              <Accordion>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography sx={{ fontWeight: 'bold' }}>Hình ảnh</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                    {(selectedIdeaForDetail as any).beforeImage && (
+                      <Box sx={{ textAlign: 'center' }}>
+                        <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Trước</Typography>
+                        <Box
+                          component="img"
+                          src={typeof (selectedIdeaForDetail as any).beforeImage === 'string' && (selectedIdeaForDetail as any).beforeImage.startsWith('data:image')
+                            ? (selectedIdeaForDetail as any).beforeImage
+                            : (selectedIdeaForDetail as any).beforeImageUrl || (selectedIdeaForDetail as any).beforeImage}
+                          alt="Trước"
+                          sx={{ maxWidth: '100%', maxHeight: 200, borderRadius: 1, cursor: 'pointer', border: '1px solid #ddd' }}
+                          onClick={() => handleImageClick(
+                            typeof (selectedIdeaForDetail as any).beforeImage === 'string' && (selectedIdeaForDetail as any).beforeImage.startsWith('data:image')
+                              ? (selectedIdeaForDetail as any).beforeImage
+                              : (selectedIdeaForDetail as any).beforeImageUrl || (selectedIdeaForDetail as any).beforeImage,
+                            `Hình trước - ${(selectedIdeaForDetail as any).ideaCode}`
+                          )}
+                        />
+                      </Box>
+                    )}
+                    {(selectedIdeaForDetail as any).afterImage && (
+                      <Box sx={{ textAlign: 'center' }}>
+                        <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Sau</Typography>
+                        <Box
+                          component="img"
+                          src={typeof (selectedIdeaForDetail as any).afterImage === 'string' && (selectedIdeaForDetail as any).afterImage.startsWith('data:image')
+                            ? (selectedIdeaForDetail as any).afterImage
+                            : (selectedIdeaForDetail as any).afterImageUrl || (selectedIdeaForDetail as any).afterImage}
+                          alt="Sau"
+                          sx={{ maxWidth: '100%', maxHeight: 200, borderRadius: 1, cursor: 'pointer', border: '1px solid #ddd' }}
+                          onClick={() => handleImageClick(
+                            typeof (selectedIdeaForDetail as any).afterImage === 'string' && (selectedIdeaForDetail as any).afterImage.startsWith('data:image')
+                              ? (selectedIdeaForDetail as any).afterImage
+                              : (selectedIdeaForDetail as any).afterImageUrl || (selectedIdeaForDetail as any).afterImage,
+                            `Hình sau - ${(selectedIdeaForDetail as any).ideaCode}`
+                          )}
+                        />
+                      </Box>
+                    )}
+                    {!(selectedIdeaForDetail as any).beforeImage && !(selectedIdeaForDetail as any).afterImage && (
+                      <Typography variant="body2" color="text.secondary">Không có hình ảnh</Typography>
+                    )}
+                  </Box>
+                </AccordionDetails>
+              </Accordion>
+
+              {/* Reward Info */}
+              <Accordion>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography sx={{ fontWeight: 'bold' }}>Thông tin khen thưởng</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Grid container spacing={2}>
+                    <Grid item xs={6}>
+                      <Typography variant="caption" color="text.secondary">Giá trị làm lợi:</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#2e7d32' }}>
+                        {((selectedIdeaForDetail as any).benefitValue || 0).toLocaleString('vi-VN')} đ
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={6}>
+                      <Typography variant="caption" color="text.secondary">Tiền thưởng:</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#e65100' }}>
+                        {((selectedIdeaForDetail as any).rewardAmount || 0).toLocaleString('vi-VN')} đ
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Typography variant="caption" color="text.secondary">Tình trạng khen thưởng:</Typography>
+                      <Box sx={{ mt: 0.5 }}>
+                        <RewardStatusCell row={selectedIdeaForDetail} />
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Typography variant="caption" color="text.secondary">Phương thức tính thưởng:</Typography>
+                      <Box sx={{ mt: 0.5 }}>
+                        <RewardCalculationMethodCell row={selectedIdeaForDetail} />
+                      </Box>
+                    </Grid>
+                  </Grid>
+                </AccordionDetails>
+              </Accordion>
+
+              {/* Implementation Info */}
+              <Accordion>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography sx={{ fontWeight: 'bold' }}>Triển khai</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12}>
+                      <Typography variant="caption" color="text.secondary">Trạng thái triển khai:</Typography>
+                      <Box sx={{ mt: 0.5 }}>
+                        <ImplementationStatusCell row={selectedIdeaForDetail} />
+                      </Box>
+                    </Grid>
+                    <Grid item xs={6}>
+                      <Typography variant="caption" color="text.secondary">Phòng ban triển khai:</Typography>
+                      <Typography variant="body2">{(selectedIdeaForDetail as any).implementationDepartment || '-'}</Typography>
+                    </Grid>
+                    <Grid item xs={6}>
+                      <Typography variant="caption" color="text.secondary">Ngày nộp:</Typography>
+                      <Typography variant="body2">
+                        {selectedIdeaForDetail.submissionDate ? new Date(selectedIdeaForDetail.submissionDate).toLocaleDateString('vi-VN') : '-'}
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                </AccordionDetails>
+              </Accordion>
+
+              {/* Note */}
+              {(selectedIdeaForDetail as any).note && (
+                <Accordion>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography sx={{ fontWeight: 'bold' }}>Ghi chú</Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                      {(selectedIdeaForDetail as any).note}
+                    </Typography>
+                  </AccordionDetails>
+                </Accordion>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        {!isViewOnly && (
+          <DialogActions sx={{ p: 2, gap: 1 }}>
+            <Button onClick={() => setDetailModalOpen(false)} variant="outlined">
+              Đóng
+            </Button>
+            <Button
+              onClick={() => {
+                setDetailModalOpen(false);
+                handleEdit(selectedIdeaForDetail!);
+              }}
+              variant="contained"
+              color="primary"
+              startIcon={<EditIcon />}
+            >
+              Sửa
+            </Button>
+          </DialogActions>
+        )}
+      </Dialog>
 
       <IdeaDialog
         open={isDialogOpen}
