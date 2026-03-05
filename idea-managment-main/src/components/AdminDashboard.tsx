@@ -675,7 +675,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
 
   const handleImplementationStatusChange = async (
     id: string,
-    implementationStatus: 'Đề xuất mới' | 'Xem xét' | 'Phê duyệt' | 'Phản hồi phê duyệt' | 'Đang triển khai' | 'Lập báo cáo A3' | 'Phê duyệt khen thưởng' | 'Đã khen thưởng' | 'Không đạt'
+    implementationStatus: '' | 'Đề xuất mới' | 'Xem xét' | 'Phê duyệt' | 'Phản hồi phê duyệt' | 'Đang triển khai' | 'Lập báo cáo A3' | 'Phê duyệt khen thưởng' | 'Đã khen thưởng' | 'Không đạt'
   ) => {
     if (isViewOnly) return; // Không cho sửa ở chế độ chỉ xem
     try {
@@ -1477,22 +1477,25 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     const handleOpen = (e: React.MouseEvent<HTMLElement>) => setAnchorEl(e.currentTarget);
     const handleClose = () => setAnchorEl(null);
     const selectImplementationStatus = (
-      s: 'Đề xuất mới' | 'Xem xét' | 'Phê duyệt' | 'Phản hồi phê duyệt' | 'Đang triển khai' | 'Lập báo cáo A3' | 'Phê duyệt khen thưởng' | 'Đã khen thưởng' | 'Không đạt'
+      s: '' | 'Đề xuất mới' | 'Xem xét' | 'Phê duyệt' | 'Phản hồi phê duyệt' | 'Đang triển khai' | 'Lập báo cáo A3' | 'Phê duyệt khen thưởng' | 'Đã khen thưởng' | 'Không đạt'
     ) => {
       handleImplementationStatusChange(row._id, s);
       handleClose();
     };
 
-    const current = (row as any).implementationStatus || 'Đề xuất mới';
+    // Nếu không có dữ liệu thì hiển thị trống, không lấy giá trị mặc định
+    const current = (row as any).implementationStatus || '';
 
     // Ở chế độ chỉ xem: chỉ hiển thị chip, không mở menu
     if (isViewOnly) {
+      // Nếu trống thì hiển thị dấu gạch ngang
+      const displayText = current || '-';
       return (
         <Chip
-          label={current}
+          label={displayText}
           sx={{
-            backgroundColor: getImplementationStatusColor(current),
-            color: 'white',
+            backgroundColor: current ? getImplementationStatusColor(current) : '#e0e0e0',
+            color: current ? 'white' : '#757575',
             fontWeight: 'bold',
             fontSize: '0.75rem'
           }}
@@ -1504,10 +1507,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     return (
       <>
         <Chip
-          label={current}
+          label={current || 'Chọn trạng thái'}
           sx={{
-            backgroundColor: getImplementationStatusColor(current),
-            color: 'white',
+            backgroundColor: current ? getImplementationStatusColor(current) : '#e0e0e0',
+            color: current ? 'white' : '#757575',
             fontWeight: 'bold',
             fontSize: '0.75rem',
             cursor: 'pointer'
@@ -1516,6 +1519,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
           onClick={handleOpen}
         />
         <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
+          <MenuItem onClick={() => selectImplementationStatus('' as any)}>Xóa/Để trống</MenuItem>
           <MenuItem onClick={() => selectImplementationStatus('Đề xuất mới')}>Đề xuất mới</MenuItem>
           <MenuItem onClick={() => selectImplementationStatus('Xem xét')}>Xem xét</MenuItem>
           <MenuItem onClick={() => selectImplementationStatus('Phê duyệt')}>Phê duyệt</MenuItem>
