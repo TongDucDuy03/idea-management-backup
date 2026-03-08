@@ -97,7 +97,6 @@ const DEFAULT_COLUMN_MAPPING = {
     'Implementation Status': 'implementationStatus',
     'Hạn dự kiến hoàn thành': 'expectedCompletionDate',
     'Expected Completion Date': 'expectedCompletionDate',
-    'Trạng thái dự trữ ròng': 'netReserveStatus',
     'Trạng thái duy trì/mở rộng': 'netReserveStatus', // Alias
     'Ghi chú lý do (Dừng/Hủy)': 'reasonNote',
     'Reason Note': 'reasonNote'
@@ -271,11 +270,13 @@ function validateAndParseRow(row, rowIndex, columnMapping) {
         // Note
         if (row[columnMapping['note']] !== undefined || row['Ghi chú'] !== undefined || row['Note'] !== undefined || row['Lý do không duy trì'] !== undefined) {
             const noteValue = row[columnMapping['note']] || row['Ghi chú'] || row['Note'] || row['Lý do không duy trì'];
+            // Xử lý cả trường hợp để trống (xóa data)
             if (noteValue !== null && noteValue !== undefined) {
                 const trimmedValue = noteValue.toString().trim();
                 const currentNote = idea.note || '';
+                // Xử lý cả trường hợp muốn xóa data (để trống)
                 if (trimmedValue !== currentNote) {
-                    payload.note = trimmedValue || '';
+                    payload.note = trimmedValue;
                     diff.current.note = currentNote;
                     diff.new.note = trimmedValue;
                     if (currentNote) {
@@ -294,7 +295,7 @@ function validateAndParseRow(row, rowIndex, columnMapping) {
                 const trimmedValue = deptValue.toString().trim();
                 const currentImplDept = idea.implementationDepartment || '';
                 if (trimmedValue !== currentImplDept) {
-                    payload.implementationDepartment = trimmedValue || '';
+                    payload.implementationDepartment = trimmedValue;
                     diff.current.implementationDepartment = currentImplDept;
                     diff.new.implementationDepartment = trimmedValue;
                     if (status === ImportSession_1.ImportRowStatus.OK) {
@@ -310,7 +311,7 @@ function validateAndParseRow(row, rowIndex, columnMapping) {
                 const trimmedValue = fullNameValue.toString().trim();
                 const currentFullName = idea.fullName || '';
                 if (trimmedValue !== currentFullName) {
-                    payload.fullName = trimmedValue || '';
+                    payload.fullName = trimmedValue;
                     diff.current.fullName = currentFullName;
                     diff.new.fullName = trimmedValue;
                     if (status === ImportSession_1.ImportRowStatus.OK) {
@@ -326,7 +327,7 @@ function validateAndParseRow(row, rowIndex, columnMapping) {
                 const trimmedValue = deptValue.toString().trim();
                 const currentDept = idea.department || '';
                 if (trimmedValue !== currentDept) {
-                    payload.department = trimmedValue || '';
+                    payload.department = trimmedValue;
                     diff.current.department = currentDept;
                     diff.new.department = trimmedValue;
                     if (status === ImportSession_1.ImportRowStatus.OK) {
@@ -342,7 +343,7 @@ function validateAndParseRow(row, rowIndex, columnMapping) {
                 const trimmedValue = ideaValue.toString().trim();
                 const currentIdea = idea.idea || '';
                 if (trimmedValue !== currentIdea) {
-                    payload.idea = trimmedValue || '';
+                    payload.idea = trimmedValue;
                     diff.current.idea = currentIdea;
                     diff.new.idea = trimmedValue;
                     if (status === ImportSession_1.ImportRowStatus.OK) {
@@ -356,10 +357,9 @@ function validateAndParseRow(row, rowIndex, columnMapping) {
             const solutionValue = row[columnMapping['solution']] || row['Thực trạng'] || row['Solution'];
             if (solutionValue !== null && solutionValue !== undefined) {
                 const trimmedValue = solutionValue.toString().trim();
-                // Chỉ thêm vào diff nếu có thay đổi
                 const currentSolution = idea.solution || '';
                 if (trimmedValue !== currentSolution) {
-                    payload.solution = trimmedValue || '';
+                    payload.solution = trimmedValue;
                     diff.current.solution = currentSolution;
                     diff.new.solution = trimmedValue;
                     if (status === ImportSession_1.ImportRowStatus.OK) {
@@ -375,7 +375,7 @@ function validateAndParseRow(row, rowIndex, columnMapping) {
                 const trimmedValue = benefitValue.toString().trim();
                 const currentBenefit = idea.benefit || '';
                 if (trimmedValue !== currentBenefit) {
-                    payload.benefit = trimmedValue || '';
+                    payload.benefit = trimmedValue;
                     diff.current.benefit = currentBenefit;
                     diff.new.benefit = trimmedValue;
                     if (status === ImportSession_1.ImportRowStatus.OK) {
@@ -391,7 +391,7 @@ function validateAndParseRow(row, rowIndex, columnMapping) {
                 const trimmedValue = benefitOutcomeValue.toString().trim();
                 const currentBenefitOutcome = idea.benefitOutcome || '';
                 if (trimmedValue !== currentBenefitOutcome) {
-                    payload.benefitOutcome = trimmedValue || '';
+                    payload.benefitOutcome = trimmedValue;
                     diff.current.benefitOutcome = currentBenefitOutcome;
                     diff.new.benefitOutcome = trimmedValue;
                     if (status === ImportSession_1.ImportRowStatus.OK) {
@@ -407,7 +407,7 @@ function validateAndParseRow(row, rowIndex, columnMapping) {
                 const trimmedValue = resourcesValue.toString().trim();
                 const currentResourcesUsed = idea.resourcesUsed || '';
                 if (trimmedValue !== currentResourcesUsed) {
-                    payload.resourcesUsed = trimmedValue || '';
+                    payload.resourcesUsed = trimmedValue;
                     diff.current.resourcesUsed = currentResourcesUsed;
                     diff.new.resourcesUsed = trimmedValue;
                     if (status === ImportSession_1.ImportRowStatus.OK) {
@@ -423,7 +423,7 @@ function validateAndParseRow(row, rowIndex, columnMapping) {
                 const trimmedValue = calcValue.toString().trim();
                 const currentCalc = idea.calculationDescription || '';
                 if (trimmedValue !== currentCalc) {
-                    payload.calculationDescription = trimmedValue || '';
+                    payload.calculationDescription = trimmedValue;
                     diff.current.calculationDescription = currentCalc;
                     diff.new.calculationDescription = trimmedValue;
                     if (status === ImportSession_1.ImportRowStatus.OK) {
@@ -439,7 +439,7 @@ function validateAndParseRow(row, rowIndex, columnMapping) {
                 const trimmedValue = scalingValue.toString().trim();
                 const currentScaling = idea.scalingOpportunity || '';
                 if (trimmedValue !== currentScaling) {
-                    payload.scalingOpportunity = trimmedValue || '';
+                    payload.scalingOpportunity = trimmedValue;
                     diff.current.scalingOpportunity = currentScaling;
                     diff.new.scalingOpportunity = trimmedValue;
                     if (status === ImportSession_1.ImportRowStatus.OK) {
@@ -504,13 +504,30 @@ function validateAndParseRow(row, rowIndex, columnMapping) {
             }
         }
         // Implementation Status (Trạng thái triển khai)
-        if (row[columnMapping['implementationStatus']] !== undefined || row['Trạng thái triển khai'] !== undefined || row['Implementation Status'] !== undefined) {
-            const statusValue = row[columnMapping['implementationStatus']] || row['Trạng thái triển khai'] || row['Implementation Status'];
-            if (statusValue !== null && statusValue !== undefined) {
+        // Kiểm tra cột có tồn tại trong Excel không
+        const implStatusCol = columnMapping['implementationStatus'];
+        const hasImplStatusCol = implStatusCol && row[implStatusCol] !== undefined;
+        const hasImplStatusColVN = row['Trạng thái triển khai'] !== undefined;
+        const hasImplStatusColEN = row['Implementation Status'] !== undefined;
+        if (hasImplStatusCol || hasImplStatusColVN || hasImplStatusColEN) {
+            const statusValue = row[implStatusCol] || row['Trạng thái triển khai'] || row['Implementation Status'];
+            // Nếu giá trị là empty/null/undefined trong Excel → xóa data
+            if (statusValue === null || statusValue === undefined || statusValue.toString().trim() === '') {
+                const currentValue = idea.implementationStatus || '';
+                if (currentValue !== '') {
+                    payload.implementationStatus = '';
+                    diff.current.implementationStatus = currentValue;
+                    diff.new.implementationStatus = '';
+                    if (status === ImportSession_1.ImportRowStatus.OK) {
+                        status = ImportSession_1.ImportRowStatus.WARNING;
+                    }
+                }
+            }
+            else {
                 const trimmedValue = statusValue.toString().trim();
                 const currentValue = idea.implementationStatus || '';
                 if (trimmedValue !== currentValue) {
-                    payload.implementationStatus = trimmedValue || '';
+                    payload.implementationStatus = trimmedValue;
                     diff.current.implementationStatus = currentValue;
                     diff.new.implementationStatus = trimmedValue;
                     if (status === ImportSession_1.ImportRowStatus.OK) {
@@ -520,11 +537,26 @@ function validateAndParseRow(row, rowIndex, columnMapping) {
             }
         }
         // Expected Completion Date (Hạn dự kiến hoàn thành)
-        if (row[columnMapping['expectedCompletionDate']] !== undefined || row['Hạn dự kiến hoàn thành'] !== undefined || row['Expected Completion Date'] !== undefined) {
-            const dateValue = row[columnMapping['expectedCompletionDate']] || row['Hạn dự kiến hoàn thành'] || row['Expected Completion Date'];
+        const expectedDateCol = columnMapping['expectedCompletionDate'];
+        const hasExpectedDateCol = expectedDateCol && row[expectedDateCol] !== undefined;
+        const hasExpectedDateColVN = row['Hạn dự kiến hoàn thành'] !== undefined;
+        const hasExpectedDateColEN = row['Expected Completion Date'] !== undefined;
+        if (hasExpectedDateCol || hasExpectedDateColVN || hasExpectedDateColEN) {
+            const dateValue = row[expectedDateCol] || row['Hạn dự kiến hoàn thành'] || row['Expected Completion Date'];
             const date = parseExcelDate(dateValue);
-            if (date !== null) {
-                const currentDate = idea.expectedCompletionDate ? new Date(idea.expectedCompletionDate).getTime() : null;
+            const currentDate = idea.expectedCompletionDate ? new Date(idea.expectedCompletionDate).getTime() : null;
+            // Nếu giá trị là empty trong Excel → xóa data
+            if (dateValue === null || dateValue === undefined || dateValue.toString().trim() === '') {
+                if (currentDate !== null) {
+                    payload.expectedCompletionDate = null;
+                    diff.current.expectedCompletionDate = idea.expectedCompletionDate || null;
+                    diff.new.expectedCompletionDate = null;
+                    if (status === ImportSession_1.ImportRowStatus.OK) {
+                        status = ImportSession_1.ImportRowStatus.WARNING;
+                    }
+                }
+            }
+            else if (date !== null) {
                 const newDate = date.getTime();
                 if (currentDate !== newDate) {
                     payload.expectedCompletionDate = date;
@@ -536,14 +568,29 @@ function validateAndParseRow(row, rowIndex, columnMapping) {
                 }
             }
         }
-        // Net Reserve Status (Trạng thái dự trữ ròng / Trạng thái duy trì mở rộng)
-        if (row[columnMapping['netReserveStatus']] !== undefined || row['Trạng thái duy trì/mở rộng'] !== undefined) {
-            const statusValue = row[columnMapping['netReserveStatus']] || row['Trạng thái duy trì/mở rộng'];
-            if (statusValue !== null && statusValue !== undefined) {
+        // Net Reserve Status (Trạng thái duy trì mở rộng)
+        const netReserveCol = columnMapping['netReserveStatus'];
+        const hasNetReserveCol = netReserveCol && row[netReserveCol] !== undefined;
+        const hasNetReserveColVN = row['Trạng thái duy trì/mở rộng'] !== undefined;
+        if (hasNetReserveCol || hasNetReserveColVN) {
+            const statusValue = row[netReserveCol] || row['Trạng thái duy trì/mở rộng'];
+            // Nếu giá trị là empty/null/undefined trong Excel → xóa data
+            if (statusValue === null || statusValue === undefined || statusValue.toString().trim() === '') {
+                const currentValue = idea.netReserveStatus || '';
+                if (currentValue !== '') {
+                    payload.netReserveStatus = '';
+                    diff.current.netReserveStatus = currentValue;
+                    diff.new.netReserveStatus = '';
+                    if (status === ImportSession_1.ImportRowStatus.OK) {
+                        status = ImportSession_1.ImportRowStatus.WARNING;
+                    }
+                }
+            }
+            else {
                 const trimmedValue = statusValue.toString().trim();
                 const currentValue = idea.netReserveStatus || '';
                 if (trimmedValue !== currentValue) {
-                    payload.netReserveStatus = trimmedValue || '';
+                    payload.netReserveStatus = trimmedValue;
                     diff.current.netReserveStatus = currentValue;
                     diff.new.netReserveStatus = trimmedValue;
                     if (status === ImportSession_1.ImportRowStatus.OK) {
@@ -553,13 +600,29 @@ function validateAndParseRow(row, rowIndex, columnMapping) {
             }
         }
         // Reason Note (Ghi chú lý do Dừng/Hủy)
-        if (row[columnMapping['reasonNote']] !== undefined || row['Ghi chú lý do (Dừng/Hủy)'] !== undefined || row['Reason Note'] !== undefined) {
-            const noteValue = row[columnMapping['reasonNote']] || row['Ghi chú lý do (Dừng/Hủy)'] || row['Reason Note'];
-            if (noteValue !== null && noteValue !== undefined) {
+        const reasonNoteCol = columnMapping['reasonNote'];
+        const hasReasonNoteCol = reasonNoteCol && row[reasonNoteCol] !== undefined;
+        const hasReasonNoteColVN = row['Ghi chú lý do (Dừng/Hủy)'] !== undefined;
+        const hasReasonNoteColEN = row['Reason Note'] !== undefined;
+        if (hasReasonNoteCol || hasReasonNoteColVN || hasReasonNoteColEN) {
+            const noteValue = row[reasonNoteCol] || row['Ghi chú lý do (Dừng/Hủy)'] || row['Reason Note'];
+            // Nếu giá trị là empty/null/undefined trong Excel → xóa data
+            if (noteValue === null || noteValue === undefined || noteValue.toString().trim() === '') {
+                const currentValue = idea.reasonNote || '';
+                if (currentValue !== '') {
+                    payload.reasonNote = '';
+                    diff.current.reasonNote = currentValue;
+                    diff.new.reasonNote = '';
+                    if (status === ImportSession_1.ImportRowStatus.OK) {
+                        status = ImportSession_1.ImportRowStatus.WARNING;
+                    }
+                }
+            }
+            else {
                 const trimmedValue = noteValue.toString().trim();
                 const currentValue = idea.reasonNote || '';
                 if (trimmedValue !== currentValue) {
-                    payload.reasonNote = trimmedValue || '';
+                    payload.reasonNote = trimmedValue;
                     diff.current.reasonNote = currentValue;
                     diff.new.reasonNote = trimmedValue;
                     if (status === ImportSession_1.ImportRowStatus.OK) {
@@ -791,9 +854,10 @@ const commitImport = (req, res) => __awaiter(void 0, void 0, void 0, function* (
                 }
                 const updateData = {};
                 if (mode === 'patch') {
-                    // Chỉ update các field có giá trị
+                    // Update tất cả các field có trong payload (bao gồm cả empty string để xóa data)
+                    // Chỉ bỏ qua nếu key không có trong payload
                     Object.keys(row.payload).forEach(key => {
-                        if (row.payload[key] !== null && row.payload[key] !== undefined && row.payload[key] !== '') {
+                        if (row.payload.hasOwnProperty(key)) {
                             updateData[key] = row.payload[key];
                         }
                     });

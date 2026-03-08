@@ -806,7 +806,7 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
                 />
                 <TextField
                   name="netReserveStatus"
-                  label="Trạng thái dự trữ ròng"
+                  label="Trạng thái duy trì/mở rộng"
                   value={(formData as any).netReserveStatus || ''}
                   onChange={handleTextChange}
                   fullWidth

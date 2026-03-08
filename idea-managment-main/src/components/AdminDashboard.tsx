@@ -155,6 +155,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     page: 0,
   });
 
+  // Mobile pagination
+  const [mobilePage, setMobilePage] = useState(0);
+  const mobilePageSize = 10; // Hiển thị 1 ý tưởng mỗi trang trên mobile
+
   const topScrollRef = useRef<HTMLDivElement>(null);
   const dataGridRef = useRef<HTMLDivElement>(null);
 
@@ -2809,7 +2813,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
                       Không có ý tưởng nào
                     </Typography>
                   ) : (
-                    filteredIdeas.map((idea) => (
+                    filteredIdeas
+                      .slice(mobilePage * mobilePageSize, (mobilePage + 1) * mobilePageSize)
+                      .map((idea) => (
                       <Card
                         key={idea._id}
                         elevation={2}
@@ -2935,6 +2941,31 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
                       </Card>
                     ))
                   )}
+
+                  {/* Mobile Pagination */}
+                  {filteredIdeas.length > 0 && (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 2, gap: 2 }}>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => setMobilePage(Math.max(0, mobilePage - 1))}
+                        disabled={mobilePage === 0}
+                      >
+                        Trước
+                      </Button>
+                      <Typography variant="body2">
+                        Trang {mobilePage + 1} / {Math.ceil(filteredIdeas.length / mobilePageSize)}
+                      </Typography>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => setMobilePage(Math.min(Math.ceil(filteredIdeas.length / mobilePageSize) - 1, mobilePage + 1))}
+                        disabled={mobilePage >= Math.ceil(filteredIdeas.length / mobilePageSize) - 1}
+                      >
+                        Sau
+                      </Button>
+                    </Box>
+                  )}
                 </Box>
               ) : (
                 // Table View for Mobile - use columnVisibilityModel
@@ -2969,7 +3000,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {filteredIdeas.map((idea) => (
+                      {filteredIdeas
+                        .slice(mobilePage * mobilePageSize, (mobilePage + 1) * mobilePageSize)
+                        .map((idea) => (
                         <TableRow
                           key={idea._id}
                           hover
@@ -3048,6 +3081,31 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
                     </TableBody>
                   </Table>
                 </TableContainer>
+              )}
+
+              {/* Mobile Table Pagination */}
+              {mobileViewMode === 'table' && filteredIdeas.length > 0 && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 2, gap: 2 }}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => setMobilePage(Math.max(0, mobilePage - 1))}
+                    disabled={mobilePage === 0}
+                  >
+                    Trước
+                  </Button>
+                  <Typography variant="body2">
+                    Trang {mobilePage + 1} / {Math.ceil(filteredIdeas.length / mobilePageSize)}
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => setMobilePage(Math.min(Math.ceil(filteredIdeas.length / mobilePageSize) - 1, mobilePage + 1))}
+                    disabled={mobilePage >= Math.ceil(filteredIdeas.length / mobilePageSize) - 1}
+                  >
+                    Sau
+                  </Button>
+                </Box>
               )}
 
               {/* Mobile FAB for adding new idea */}

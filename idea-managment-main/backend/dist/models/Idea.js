@@ -106,7 +106,7 @@ const IdeaSchema = new mongoose_1.Schema({
     // 4 trường mới theo yêu cầu
     implementationStatus: { type: String, required: false }, // Trạng thái triển khai
     expectedCompletionDate: { type: Date, required: false }, // Hạn dự kiến hoàn thành (dự kiến)
-    netReserveStatus: { type: String, required: false }, // Trạng thái dự trữ ròng
+    netReserveStatus: { type: String, required: false }, // Trạng thái duy trì mở rộng
     reasonNote: { type: String, required: false }, // Ghi chú lý do (Đăng/Huy)
 });
 exports.default = mongoose_1.default.model('Idea', IdeaSchema);
