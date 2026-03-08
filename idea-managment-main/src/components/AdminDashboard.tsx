@@ -2861,7 +2861,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
                             </Typography>
                           </Box>
 
-                          {/* Thông tin thêm */}
+                          {/* Thông tin thêm - Chỉ hiển thị Giá trị làm lợi và Tiền thưởng khi status là Hoàn thành */}
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                               <CalendarTodayIcon fontSize="small" color="action" />
@@ -2869,6 +2869,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
                                 {idea.submissionDate ? new Date(idea.submissionDate).toLocaleDateString('vi-VN') : 'N/A'}
                               </Typography>
                             </Box>
+                            {idea.status === IdeaStatus.DONE && (
                             <Box sx={{ display: 'flex', gap: 0.5 }}>
                               {(idea as any).benefitValue > 0 && (
                                 <Chip
@@ -2885,6 +2886,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
                                 />
                               )}
                             </Box>
+                            )}
                           </Box>
 
                           {/* Actions - chỉ hiển thị khi không phải viewOnly */}
@@ -3226,13 +3228,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
                 </AccordionDetails>
               </Accordion>
 
-              {/* Reward Info */}
+              {/* Reward Info - Luôn hiển thị section, chỉ ẩn Giá trị làm lợi và Tiền thưởng khi không phải Hoàn thành */}
               <Accordion>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                   <Typography sx={{ fontWeight: 'bold' }}>Thông tin khen thưởng</Typography>
                 </AccordionSummary>
                 <AccordionDetails>
                   <Grid container spacing={2}>
+                    {selectedIdeaForDetail.status === IdeaStatus.DONE && (
+                    <>
                     <Grid item xs={6}>
                       <Typography variant="caption" color="text.secondary">Giá trị làm lợi:</Typography>
                       <Typography variant="body2" sx={{ fontWeight: 'bold', color: '#2e7d32' }}>
@@ -3245,6 +3249,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
                         {((selectedIdeaForDetail as any).rewardAmount || 0).toLocaleString('vi-VN')} đ
                       </Typography>
                     </Grid>
+                    </>
+                    )}
                     <Grid item xs={12}>
                       <Typography variant="caption" color="text.secondary">Tình trạng khen thưởng:</Typography>
                       <Box sx={{ mt: 0.5 }}>

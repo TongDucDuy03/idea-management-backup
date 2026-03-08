@@ -55,10 +55,40 @@ const DEFAULT_COLUMN_MAPPING: Record<string, string> = {
   'Hạn dự kiến hoàn thành': 'expectedCompletionDate',
   'Expected Completion Date': 'expectedCompletionDate',
   'Trạng thái dự trữ ròng': 'netReserveStatus',
-  'Net Reserve Status': 'netReserveStatus',
+  'Trạng thái duy trì/mở rộng': 'netReserveStatus', // Alias
   'Ghi chú lý do (Dừng/Hủy)': 'reasonNote',
   'Reason Note': 'reasonNote'
 };
+
+// Hàm parse date từ Excel (hỗ trợ cả string và serial number)
+function parseExcelDate(value: any): Date | null {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+
+  // Nếu là số, có thể là serial number của Excel
+  if (typeof value === 'number') {
+    // Excel serial date: 1 = Jan 1, 1900
+    // Cần điều chỉnh vì Excel có bug (coi 1900 là năm nhuận)
+    const excelEpoch = new Date(1899, 11, 30); // Dec 30, 1899
+    const days = value;
+    const result = new Date(excelEpoch.getTime() + days * 24 * 60 * 60 * 1000);
+    return result;
+  }
+
+  // Nếu là string, thử parse bình thường
+  const strValue = value.toString().trim();
+  if (strValue === '') {
+    return null;
+  }
+
+  const date = new Date(strValue);
+  if (!isNaN(date.getTime())) {
+    return date;
+  }
+
+  return null;
+}
 
 // Validate và parse một row
 async function validateAndParseRow(
@@ -448,26 +478,24 @@ async function validateAndParseRow(
   // Expected Completion Date (Hạn dự kiến hoàn thành)
   if (row[columnMapping['expectedCompletionDate']] !== undefined || row['Hạn dự kiến hoàn thành'] !== undefined || row['Expected Completion Date'] !== undefined) {
     const dateValue = row[columnMapping['expectedCompletionDate']] || row['Hạn dự kiến hoàn thành'] || row['Expected Completion Date'];
-    if (dateValue !== null && dateValue !== undefined && dateValue.toString().trim() !== '') {
-      const date = new Date(dateValue);
-      if (!isNaN(date.getTime())) {
-        const currentDate = (idea as any).expectedCompletionDate ? new Date((idea as any).expectedCompletionDate).getTime() : null;
-        const newDate = date.getTime();
-        if (currentDate !== newDate) {
-          payload.expectedCompletionDate = date;
-          diff.current.expectedCompletionDate = (idea as any).expectedCompletionDate || null;
-          diff.new.expectedCompletionDate = date;
-          if (status === ImportRowStatus.OK) {
-            status = ImportRowStatus.WARNING;
-          }
+    const date = parseExcelDate(dateValue);
+    if (date !== null) {
+      const currentDate = (idea as any).expectedCompletionDate ? new Date((idea as any).expectedCompletionDate).getTime() : null;
+      const newDate = date.getTime();
+      if (currentDate !== newDate) {
+        payload.expectedCompletionDate = date;
+        diff.current.expectedCompletionDate = (idea as any).expectedCompletionDate || null;
+        diff.new.expectedCompletionDate = date;
+        if (status === ImportRowStatus.OK) {
+          status = ImportRowStatus.WARNING;
         }
       }
     }
   }
 
-  // Net Reserve Status (Trạng thái dự trữ ròng)
-  if (row[columnMapping['netReserveStatus']] !== undefined || row['Trạng thái dự trữ ròng'] !== undefined || row['Net Reserve Status'] !== undefined) {
-    const statusValue = row[columnMapping['netReserveStatus']] || row['Trạng thái dự trữ ròng'] || row['Net Reserve Status'];
+  // Net Reserve Status (Trạng thái dự trữ ròng / Trạng thái duy trì mở rộng)
+  if (row[columnMapping['netReserveStatus']] !== undefined  || row['Trạng thái duy trì/mở rộng'] !== undefined) {
+    const statusValue = row[columnMapping['netReserveStatus']] ||row['Trạng thái duy trì/mở rộng'];
     if (statusValue !== null && statusValue !== undefined) {
       const trimmedValue = statusValue.toString().trim();
       const currentValue = (idea as any).netReserveStatus || '';
