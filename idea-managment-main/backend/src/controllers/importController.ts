@@ -61,6 +61,7 @@ const DEFAULT_COLUMN_MAPPING: Record<string, string> = {
 };
 
 // Hàm parse date từ Excel (hỗ trợ cả string và serial number)
+// Xử lý đúng timezone cho Việt Nam (GMT+7)
 function parseExcelDate(value: any): Date | null {
   if (value === null || value === undefined || value === '') {
     return null;
@@ -70,18 +71,50 @@ function parseExcelDate(value: any): Date | null {
   if (typeof value === 'number') {
     // Excel serial date: 1 = Jan 1, 1900
     // Cần điều chỉnh vì Excel có bug (coi 1900 là năm nhuận)
-    const excelEpoch = new Date(1899, 11, 30); // Dec 30, 1899
+    const excelEpoch = new Date(Date.UTC(1899, 11, 30, 0, 0, 0));
     const days = value;
     const result = new Date(excelEpoch.getTime() + days * 24 * 60 * 60 * 1000);
     return result;
   }
 
-  // Nếu là string, thử parse bình thường
+  // Nếu là string, thử parse theo định dạng dd/MM/yyyy hoặc d/M/yyyy
   const strValue = value.toString().trim();
   if (strValue === '') {
     return null;
   }
 
+  // Thử parse theo định dạng Việt Nam: d/M/yyyy hoặc dd/MM/yyyy
+  const parts = strValue.split(/[\/\-\.]/);
+  if (parts.length >= 2) {
+    let day: number, month: number, year: number;
+
+    if (parts.length === 2) {
+      // d/M (giả định là năm hiện tại)
+      day = parseInt(parts[0], 10);
+      month = parseInt(parts[1], 10) - 1; // Month trong JS bắt đầu từ 0
+      year = new Date().getFullYear();
+    } else {
+      // d/M/yyyy hoặc dd/MM/yyyy
+      day = parseInt(parts[0], 10);
+      month = parseInt(parts[1], 10) - 1;
+      year = parseInt(parts[2], 10);
+      // Nếu năm chỉ có 2 chữ số
+      if (year < 100) {
+        year += year > 50 ? 1900 : 2000;
+      }
+    }
+
+    if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+      // Tạo date theo giờ Việt Nam (UTC+7)
+      // Sử dụng UTC để tránh bị ảnh hưởng bởi timezone server
+      const date = new Date(Date.UTC(year, month, day, 0, 0, 0));
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
+    }
+  }
+
+  // Fallback: thử parse bình thường
   const date = new Date(strValue);
   if (!isNaN(date.getTime())) {
     return date;

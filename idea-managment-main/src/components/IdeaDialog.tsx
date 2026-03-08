@@ -12,7 +12,11 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  SelectChangeEvent
+  SelectChangeEvent,
+  Tabs,
+  Tab,
+  Typography,
+  Paper
 } from '@mui/material';
 import { Idea, IdeaStatus, IdeaStatusLabels, RewardCalculationMethod, RewardCalculationMethodLabels } from '../types';
 import ImageLightbox from './ImageLightbox';
@@ -79,9 +83,12 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
   idea,
   isEdit = false
 }) => {
+  // State cho tabs
+  const [activeTab, setActiveTab] = useState(0);
+
   // Style cố định cho TextField để không bị thu nhỏ
   const textFieldStyle = {
-    '& .MuiInputBase-input': { 
+    '& .MuiInputBase-input': {
       fontSize: '16px !important',
       minHeight: '1.4375em !important',
       padding: '16.5px 14px !important'
@@ -90,7 +97,56 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
       fontSize: '16px !important'
     },
     '& .MuiOutlinedInput-root': {
-      minHeight: '56px !important'
+      minHeight: '56px !important',
+      borderRadius: '12px !important',
+      transition: 'all 0.3s ease',
+      '&:hover': {
+        '& .MuiOutlinedInput-notchedOutline': {
+          borderColor: '#1976d2 !important',
+          borderWidth: '2px !important',
+        }
+      },
+      '&.Mui-focused': {
+        boxShadow: '0 4px 12px rgba(25, 118, 210, 0.15)',
+        '& .MuiOutlinedInput-notchedOutline': {
+          borderWidth: '2px !important',
+        }
+      }
+    },
+    '& .MuiInputLabel-root.Mui-focused': {
+      color: '#1976d2 !important',
+      fontWeight: 600
+    }
+  };
+
+  // Style cho Select/FormControl
+  const selectStyle = {
+    borderRadius: '12px !important',
+    '& .MuiOutlinedInput-root': {
+      borderRadius: '12px !important',
+      transition: 'all 0.3s ease',
+      '&:hover': {
+        '& .MuiOutlinedInput-notchedOutline': {
+          borderColor: '#1976d2 !important',
+          borderWidth: '2px !important',
+        }
+      },
+      '&.Mui-focused': {
+        boxShadow: '0 4px 12px rgba(25, 118, 210, 0.15)',
+        '& .MuiOutlinedInput-notchedOutline': {
+          borderWidth: '2px !important',
+        }
+      }
+    }
+  };
+
+  // Style cho Paper (card hình ảnh)
+  const cardStyle = {
+    borderRadius: '16px !important',
+    transition: 'all 0.3s ease',
+    '&:hover': {
+      boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12) !important',
+      transform: 'translateY(-2px)'
     }
   };
 
@@ -408,409 +464,516 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
         {isEdit ? 'Sửa Ý tưởng' : 'Thêm Ý tưởng Mới'}
       </DialogTitle>
       <form onSubmit={handleSubmit}>
-        <DialogContent sx={{ maxHeight: '80vh', overflowY: 'auto' }}>
+        <DialogContent sx={{ maxHeight: '80vh', overflowY: 'hidden', display: 'flex', flexDirection: 'column', p: 0 }}>
           {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
+            <Alert severity="error" sx={{ m: 2 }}>
               {error}
             </Alert>
           )}
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <TextField
-              name="ideaCode"
-              label="Mã ý tưởng"
-              value={formData.ideaCode || ''}
-              onChange={handleTextChange}
-              disabled={isEdit}
-              fullWidth
-              sx={textFieldStyle}
-              helperText={isEdit ? 'Mã ý tưởng không thể thay đổi' : ''}
-            />
-            <TextField
-              name="fullName"
-              label="Họ và tên"
-              value={formData.fullName}
-              onChange={handleTextChange}
-              required
-              fullWidth
-              sx={textFieldStyle}
-            />
-            <FormControl fullWidth required>
-              <InputLabel>Phòng ban</InputLabel>
-              <Select
-                name="department"
-                value={formData.department}
-                onChange={handleSelectChange}
-                label="Phòng ban"
-              >
-                {departments.map((dept) => (
-                  <MenuItem key={dept} value={dept}>
-                    {dept}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <TextField
-              name="idea"
-              label="Ý tưởng"
-              value={formData.idea}
-              onChange={handleTextChange}
-              required
-              fullWidth
-              multiline
-              rows={6}
-            />
-            <TextField
-              name="solution"
-              label="Thực trạng"
-              value={formData.solution}
-              onChange={handleTextChange}
-              required
-              fullWidth
-              multiline
-              rows={6}
-            />
-            <TextField
-              name="benefit"
-              label="Giải pháp"
-              value={formData.benefit}
-              onChange={handleTextChange}
-              required
-              fullWidth
-              multiline
-              rows={6}
-            />
-            {/* New fields */}
-            <TextField
-              name="benefitOutcome"
-              label="Lợi ích mang lại"
-              value={(formData as any).benefitOutcome || ''}
-              onChange={handleTextChange}
-              fullWidth
-              multiline
-              rows={4}
-            />
-            <TextField
-              name="resourcesUsed"
-              label="Nguồn lực sử dụng"
-              value={(formData as any).resourcesUsed || ''}
-              onChange={handleTextChange}
-              fullWidth
-              multiline
-              rows={4}
-            />
-            <TextField
-              name="calculationDescription"
-              label="Mô tả cách tính"
-              value={(formData as any).calculationDescription || ''}
-              onChange={handleTextChange}
-              fullWidth
-              multiline
-              rows={4}
-            />
-            <TextField
-              name="scalingOpportunity"
-              label="Cơ hội nhân rộng phát triển"
-              value={(formData as any).scalingOpportunity || ''}
-              onChange={handleTextChange}
-              fullWidth
-              multiline
-              rows={4}
-            />
-            {/* Hình ảnh trước và sau */}
-            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-              <Box sx={{ flex: 1, minWidth: 260 }}>
-                <Button variant="outlined" component="label" fullWidth>
-                  Tải lên Hình ảnh Trước
-                  <input type="file" accept="image/*" hidden onChange={(e) => handleImageChange(e, 'beforeImage')} />
-                </Button>
-                <Box sx={{ mt: 0.5, color: '#777', fontSize: 12 }}>
-                  Gợi ý: ảnh ngang ~800×600px, dung lượng nhỏ hơn 15MB (sẽ được tối ưu hóa tự động)
-                </Box>
-                {(formData as any).beforeImage && (
-                  <Box sx={{ mt: 1, width: '100%' }}>
-                    <img 
-                      src={(formData as any).beforeImage} 
-                      alt="Hình ảnh trước" 
-                      onClick={() => handleImageClick((formData as any).beforeImage, 'Hình ảnh trước cải tiến')}
-                      style={{ 
-                        width: '100%', 
-                        height: 'auto', 
-                        maxHeight: '250px',
-                        objectFit: 'contain',
-                        borderRadius: 8,
-                        border: '1px solid #e0e0e0',
-                        cursor: 'pointer',
-                        transition: 'transform 0.2s, box-shadow 0.2s',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'scale(1.02)';
-                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'scale(1)';
-                        e.currentTarget.style.boxShadow = 'none';
-                      }}
-                    />
-                    <Button 
-                      size="small" 
-                      color="error" 
-                      fullWidth 
-                      sx={{ mt: 1 }}
-                      onClick={() => setFormData(prev => ({ ...prev, beforeImage: '' }))}
-                    >
-                      Xóa hình ảnh trước
-                    </Button>
-                  </Box>
-                )}
+
+          {/* Tabs */}
+          <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: '#f8f9fa' }}>
+            <Tabs
+              value={activeTab}
+              onChange={(_, newValue) => setActiveTab(newValue)}
+              variant="scrollable"
+              scrollButtons="auto"
+              sx={{
+                '& .MuiTab-root': {
+                  textTransform: 'none',
+                  fontWeight: 500,
+                  fontSize: '14px',
+                  minHeight: 48,
+                  borderRadius: '8px 8px 0 0',
+                  margin: '8px 4px 0',
+                  padding: '8px 16px',
+                  transition: 'all 0.2s ease',
+                  '&.Mui-selected': {
+                    fontWeight: 600,
+                    bgcolor: 'white',
+                    boxShadow: '0 -2px 8px rgba(0,0,0,0.05)',
+                  },
+                  '&:hover': {
+                    bgcolor: 'rgba(25, 118, 210, 0.08)',
+                  }
+                },
+                '& .MuiTabs-indicator': {
+                  display: 'none'
+                }
+              }}
+            >
+              <Tab label="Thông tin cơ bản" />
+              <Tab label="Nội dung ý tưởng" />
+              <Tab label="Hình ảnh" />
+              <Tab label="Triển khai" />
+              <Tab label="Khen thưởng" />
+              <Tab label="Bổ sung" />
+            </Tabs>
+          </Box>
+
+          {/* Tab Panels */}
+          <Box sx={{ flex: 1, overflowY: 'auto', p: 3 }}>
+            {/* Tab 1: Thông tin cơ bản */}
+            {activeTab === 0 && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: 600, mx: 'auto' }}>
+                <TextField
+                  name="ideaCode"
+                  label="Mã ý tưởng"
+                  value={formData.ideaCode || ''}
+                  onChange={handleTextChange}
+                  disabled={isEdit}
+                  fullWidth
+                  sx={textFieldStyle}
+                  helperText={isEdit ? 'Mã ý tưởng không thể thay đổi' : ''}
+                />
+                <TextField
+                  name="fullName"
+                  label="Họ và tên"
+                  value={formData.fullName}
+                  onChange={handleTextChange}
+                  required
+                  fullWidth
+                  sx={textFieldStyle}
+                />
+                <FormControl fullWidth required sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}>
+                  <InputLabel>Phòng ban</InputLabel>
+                  <Select
+                    name="department"
+                    value={formData.department}
+                    onChange={handleSelectChange}
+                    label="Phòng ban"
+                  >
+                    {departments.map((dept) => (
+                      <MenuItem key={dept} value={dept}>
+                        {dept}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormControl fullWidth sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}>
+                  <InputLabel>Trạng thái</InputLabel>
+                  <Select
+                    name="status"
+                    value={formData.status || IdeaStatus.DE_NGHI_MOI}
+                    onChange={handleSelectChange}
+                    label="Trạng thái"
+                  >
+                    {Object.values(IdeaStatus).map((status) => (
+                      <MenuItem key={status} value={status}>
+                        {IdeaStatusLabels[status]}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <TextField
+                  name="note"
+                  label="Lời nhắn phản hồi"
+                  value={formData.note}
+                  onChange={handleTextChange}
+                  fullWidth
+                  multiline
+                  rows={3}
+                  placeholder="Hãy để lại lời nhắn..."
+                  sx={textFieldStyle}
+                />
               </Box>
-              <Box sx={{ flex: 1, minWidth: 260 }}>
-                <Button variant="outlined" component="label" fullWidth>
-                  Tải lên Hình ảnh Sau
-                  <input type="file" accept="image/*" hidden onChange={(e) => handleImageChange(e, 'afterImage')} />
-                </Button>
-                <Box sx={{ mt: 0.5, color: '#777', fontSize: 12 }}>
-                  Gợi ý: ảnh ngang ~800×600px, dung lượng nhỏ hơn 15MB (sẽ được tối ưu hóa tự động)
-                </Box>
-                {(formData as any).afterImage && (
-                  <Box sx={{ mt: 1, width: '100%' }}>
-                    <img 
-                      src={(formData as any).afterImage} 
-                      alt="Hình ảnh sau" 
-                      onClick={() => handleImageClick((formData as any).afterImage, 'Hình ảnh sau cải tiến')}
-                      style={{ 
-                        width: '100%', 
-                        height: 'auto', 
-                        maxHeight: '250px',
-                        objectFit: 'contain',
-                        borderRadius: 8,
-                        border: '1px solid #e0e0e0',
-                        cursor: 'pointer',
-                        transition: 'transform 0.2s, box-shadow 0.2s',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'scale(1.02)';
-                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'scale(1)';
-                        e.currentTarget.style.boxShadow = 'none';
-                      }}
-                    />
-                    <Button 
-                      size="small" 
-                      color="error" 
-                      fullWidth 
-                      sx={{ mt: 1 }}
-                      onClick={() => setFormData(prev => ({ ...prev, afterImage: '' }))}
-                    >
-                      Xóa hình ảnh sau
-                    </Button>
-                  </Box>
-                )}
+            )}
+
+            {/* Tab 2: Nội dung ý tưởng */}
+            {activeTab === 1 && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: 800, mx: 'auto' }}>
+                <TextField
+                  name="idea"
+                  label="Ý tưởng"
+                  value={formData.idea}
+                  onChange={handleTextChange}
+                  required
+                  fullWidth
+                  multiline
+                  rows={5}
+                  sx={textFieldStyle}
+                />
+                <TextField
+                  name="solution"
+                  label="Thực trạng"
+                  value={formData.solution}
+                  onChange={handleTextChange}
+                  required
+                  fullWidth
+                  multiline
+                  rows={5}
+                  sx={textFieldStyle}
+                />
+                <TextField
+                  name="benefit"
+                  label="Giải pháp"
+                  value={formData.benefit}
+                  onChange={handleTextChange}
+                  required
+                  fullWidth
+                  multiline
+                  rows={5}
+                  sx={textFieldStyle}
+                />
+                <TextField
+                  name="benefitOutcome"
+                  label="Lợi ích mang lại"
+                  value={(formData as any).benefitOutcome || ''}
+                  onChange={handleTextChange}
+                  fullWidth
+                  multiline
+                  rows={4}
+                  sx={textFieldStyle}
+                />
               </Box>
-            </Box>
-            <FormControl fullWidth>
-              <InputLabel>Trạng thái</InputLabel>
-              <Select
-                name="status"
-                value={formData.status || IdeaStatus.DE_NGHI_MOI}
-                onChange={handleSelectChange}
-                label="Trạng thái"
-              >
-                {Object.values(IdeaStatus).map((status) => (
-                  <MenuItem key={status} value={status}>
-                    {IdeaStatusLabels[status]}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <FormControl fullWidth>
-              <InputLabel>Phòng ban triển khai</InputLabel>
-              <Select
-                name="implementationDepartment"
-                value={formData.implementationDepartment || ''}
-                onChange={handleSelectChange}
-                label="Phòng ban triển khai"
-              >
-                <MenuItem value="">Chọn phòng ban</MenuItem>
-                {departments.map((dept) => (
-                  <MenuItem key={dept} value={dept}>
-                    {dept}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <TextField
-              name="note"
-              label="Ghi chú"
-              value={formData.note}
-              onChange={handleTextChange}
-              fullWidth
-              multiline
-              rows={3}
-            />
-            <TextField
-              name="benefitValue"
-              label="Giá trị làm lợi (VND)"
-              type="number"
-              value={formData.benefitValue || 0}
-              onChange={handleTextChange}
-              fullWidth
-              inputProps={{ min: 0, step: 1 }}
-              helperText="Ví dụ: 5.000.000"
-            />
-            <TextField
-              name="rewardAmount"
-              label="Tiền thưởng (VND)"
-              type="number"
-              value={formData.rewardAmount || 0}
-              onChange={handleTextChange}
-              fullWidth
-              inputProps={{ min: 0, step: 1 }}
-              helperText="Ví dụ: 1.000.000"
-            />
-            <TextField
-              name="rewardApprovalDate"
-              label="Ngày duyệt khen thưởng"
-              type="datetime-local"
-              value={formData.rewardApprovalDate ? (() => {
-                let date: Date;
-                if (formData.rewardApprovalDate instanceof Date) {
-                  date = new Date(formData.rewardApprovalDate);
-                } else if (typeof formData.rewardApprovalDate === 'string') {
-                  date = new Date(formData.rewardApprovalDate);
-                } else {
-                  return '';
-                }
-                
-                // Format as datetime-local (YYYY-MM-DDTHH:mm)
-                const year = date.getFullYear();
-                const month = String(date.getMonth() + 1).padStart(2, '0');
-                const day = String(date.getDate()).padStart(2, '0');
-                const hours = String(date.getHours()).padStart(2, '0');
-                const minutes = String(date.getMinutes()).padStart(2, '0');
-                return `${year}-${month}-${day}T${hours}:${minutes}`;
-              })() : ''}
-              onChange={(e) => {
-                const value = e.target.value;
-                if (value) {
-                  // datetime-local input gives local time, convert to Date
-                  const date = new Date(value);
-                  setFormData(prev => ({
-                    ...prev,
-                    rewardApprovalDate: date
-                  }));
-                } else {
-                  setFormData(prev => ({
-                    ...prev,
-                    rewardApprovalDate: undefined
-                  }));
-                }
-              }}
-              fullWidth
-              InputLabelProps={{
-                shrink: true,
-              }}
-              sx={textFieldStyle}
-            />
-            <FormControl fullWidth>
-              <InputLabel>Phương thức tính thưởng</InputLabel>
-              <Select
-                name="rewardCalculationMethod"
-                value={formData.rewardCalculationMethod || ''}
-                onChange={handleSelectChange}
-                label="Phương thức tính thưởng"
-              >
-                <MenuItem value="">
-                  <em>Chọn phương thức (để trống)</em>
-                </MenuItem>
-                {Object.values(RewardCalculationMethod).map((method) => (
-                  <MenuItem key={method} value={method}>
-                    {RewardCalculationMethodLabels[method]}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            {/* 4 trường mới theo yêu cầu */}
-            <TextField
-              name="implementationStatus"
-              label="Trạng thái triển khai"
-              value={(formData as any).implementationStatus || ''}
-              onChange={handleTextChange}
-              fullWidth
-              multiline
-              rows={2}
-            />
-            <TextField
-              name="expectedCompletionDate"
-              label="Hạn dự kiến hoàn thành (dự kiến)"
-              type="date"
-              value={(formData as any).expectedCompletionDate ? (() => {
-                let date: Date;
-                if ((formData as any).expectedCompletionDate instanceof Date) {
-                  date = new Date((formData as any).expectedCompletionDate);
-                } else if (typeof (formData as any).expectedCompletionDate === 'string') {
-                  date = new Date((formData as any).expectedCompletionDate);
-                } else {
-                  return '';
-                }
-                const year = date.getFullYear();
-                const month = String(date.getMonth() + 1).padStart(2, '0');
-                const day = String(date.getDate()).padStart(2, '0');
-                return `${year}-${month}-${day}`;
-              })() : ''}
-              onChange={(e) => {
-                const value = e.target.value;
-                if (value) {
-                  const date = new Date(value);
-                  setFormData(prev => ({
-                    ...prev,
-                    expectedCompletionDate: date
-                  }));
-                } else {
-                  setFormData(prev => ({
-                    ...prev,
-                    expectedCompletionDate: undefined
-                  }));
-                }
-              }}
-              fullWidth
-              InputLabelProps={{
-                shrink: true,
-              }}
-              sx={textFieldStyle}
-            />
-            <TextField
-              name="netReserveStatus"
-              label="Trạng thái dự trữ ròng"
-              value={(formData as any).netReserveStatus || ''}
-              onChange={handleTextChange}
-              fullWidth
-              multiline
-              rows={2}
-            />
-            <TextField
-              name="reasonNote"
-              label="Ghi chú lý do (Dừng/Hủy)"
-              value={(formData as any).reasonNote || ''}
-              onChange={handleTextChange}
-              fullWidth
-              multiline
-              rows={2}
-            />
-            {isEdit && (
-              <FormControl fullWidth>
-                {/* Additional edit-only controls can be added here */}
-              </FormControl>
+            )}
+
+            {/* Tab 3: Hình ảnh */}
+            {activeTab === 2 && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                  <Paper elevation={2} sx={cardStyle}>
+                    <Box sx={{ p: 2 }}>
+                      <Typography variant="subtitle1" fontWeight={600} gutterBottom color="primary">
+                        Hình ảnh trước cải tiến
+                      </Typography>
+                      <Button variant="outlined" component="label" fullWidth sx={{ mb: 1, borderRadius: '10px', py: 1.5 }}>
+                        Tải lên Hình ảnh Trước
+                        <input type="file" accept="image/*" hidden onChange={(e) => handleImageChange(e, 'beforeImage')} />
+                      </Button>
+                      <Typography variant="caption" display="block" color="text.secondary" sx={{ mb: 1 }}>
+                        Gợi ý: ảnh ngang ~800×600px, dung lượng nhỏ hơn 15MB (sẽ được tối ưu hóa tự động)
+                      </Typography>
+                      {(formData as any).beforeImage && (
+                        <Box sx={{ mt: 1 }}>
+                          <img
+                            src={(formData as any).beforeImage}
+                            alt="Hình ảnh trước"
+                            onClick={() => handleImageClick((formData as any).beforeImage, 'Hình ảnh trước cải tiến')}
+                            style={{
+                              width: '100%',
+                              height: 'auto',
+                              maxHeight: '250px',
+                              objectFit: 'contain',
+                              borderRadius: '12px',
+                              border: '1px solid #e0e0e0',
+                              cursor: 'pointer',
+                              transition: 'transform 0.2s, box-shadow 0.2s',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = 'scale(1.02)';
+                              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'scale(1)';
+                              e.currentTarget.style.boxShadow = 'none';
+                            }}
+                          />
+                          <Button
+                            size="small"
+                            color="error"
+                            fullWidth
+                            sx={{ mt: 1, borderRadius: '8px' }}
+                            onClick={() => setFormData(prev => ({ ...prev, beforeImage: '' }))}
+                          >
+                            Xóa hình ảnh
+                          </Button>
+                        </Box>
+                      )}
+                    </Box>
+                  </Paper>
+                  <Paper elevation={2} sx={cardStyle}>
+                    <Box sx={{ p: 2 }}>
+                      <Typography variant="subtitle1" fontWeight={600} gutterBottom color="primary">
+                        Hình ảnh sau cải tiến
+                      </Typography>
+                      <Button variant="outlined" component="label" fullWidth sx={{ mb: 1, borderRadius: '10px', py: 1.5 }}>
+                        Tải lên Hình ảnh Sau
+                        <input type="file" accept="image/*" hidden onChange={(e) => handleImageChange(e, 'afterImage')} />
+                      </Button>
+                      <Typography variant="caption" display="block" color="text.secondary" sx={{ mb: 1 }}>
+                        Gợi ý: ảnh ngang ~800×600px, dung lượng nhỏ hơn 15MB (sẽ được tối ưu hóa tự động)
+                      </Typography>
+                      {(formData as any).afterImage && (
+                        <Box sx={{ mt: 1 }}>
+                          <img
+                            src={(formData as any).afterImage}
+                            alt="Hình ảnh sau"
+                            onClick={() => handleImageClick((formData as any).afterImage, 'Hình ảnh sau cải tiến')}
+                            style={{
+                              width: '100%',
+                              height: 'auto',
+                              maxHeight: '250px',
+                              objectFit: 'contain',
+                              borderRadius: '12px',
+                              border: '1px solid #e0e0e0',
+                              cursor: 'pointer',
+                              transition: 'transform 0.2s, box-shadow 0.2s',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = 'scale(1.02)';
+                              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'scale(1)';
+                              e.currentTarget.style.boxShadow = 'none';
+                            }}
+                          />
+                          <Button
+                            size="small"
+                            color="error"
+                            fullWidth
+                            sx={{ mt: 1, borderRadius: '8px' }}
+                            onClick={() => setFormData(prev => ({ ...prev, afterImage: '' }))}
+                          >
+                            Xóa hình ảnh
+                          </Button>
+                        </Box>
+                      )}
+                    </Box>
+                  </Paper>
+                </Box>
+              </Box>
+            )}
+
+            {/* Tab 4: Triển khai */}
+            {activeTab === 3 && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: 600, mx: 'auto' }}>
+                <FormControl fullWidth sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}>
+                  <InputLabel>Phòng ban triển khai</InputLabel>
+                  <Select
+                    name="implementationDepartment"
+                    value={formData.implementationDepartment || ''}
+                    onChange={handleSelectChange}
+                    label="Phòng ban triển khai"
+                  >
+                    <MenuItem value="">Chọn phòng ban</MenuItem>
+                    {departments.map((dept) => (
+                      <MenuItem key={dept} value={dept}>
+                        {dept}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <TextField
+                  name="implementationStatus"
+                  label="Trạng thái triển khai"
+                  value={(formData as any).implementationStatus || ''}
+                  onChange={handleTextChange}
+                  fullWidth
+                  multiline
+                  rows={2}
+                  sx={textFieldStyle}
+                />
+                <TextField
+                  name="expectedCompletionDate"
+                  label="Hạn dự kiến hoàn thành"
+                  type="date"
+                  value={(formData as any).expectedCompletionDate ? (() => {
+                    let date: Date;
+                    if ((formData as any).expectedCompletionDate instanceof Date) {
+                      date = new Date((formData as any).expectedCompletionDate);
+                    } else if (typeof (formData as any).expectedCompletionDate === 'string') {
+                      date = new Date((formData as any).expectedCompletionDate);
+                    } else {
+                      return '';
+                    }
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    return `${year}-${month}-${day}`;
+                  })() : ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value) {
+                      const date = new Date(value);
+                      setFormData(prev => ({
+                        ...prev,
+                        expectedCompletionDate: date
+                      }));
+                    } else {
+                      setFormData(prev => ({
+                        ...prev,
+                        expectedCompletionDate: undefined
+                      }));
+                    }
+                  }}
+                  fullWidth
+                  InputLabelProps={{
+                    shrink: true,
+                  }}
+                  sx={textFieldStyle}
+                />
+                <TextField
+                  name="netReserveStatus"
+                  label="Trạng thái dự trữ ròng"
+                  value={(formData as any).netReserveStatus || ''}
+                  onChange={handleTextChange}
+                  fullWidth
+                  multiline
+                  rows={2}
+                  sx={textFieldStyle}
+                />
+                <TextField
+                  name="reasonNote"
+                  label="Ghi chú lý do (Dừng/Hủy)"
+                  value={(formData as any).reasonNote || ''}
+                  onChange={handleTextChange}
+                  fullWidth
+                  multiline
+                  rows={2}
+                  sx={textFieldStyle}
+                />
+              </Box>
+            )}
+
+            {/* Tab 5: Khen thưởng */}
+            {activeTab === 4 && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: 500, mx: 'auto' }}>
+                <TextField
+                  name="benefitValue"
+                  label="Giá trị làm lợi (VND)"
+                  type="number"
+                  value={formData.benefitValue || 0}
+                  onChange={handleTextChange}
+                  fullWidth
+                  inputProps={{ min: 0, step: 1 }}
+                  helperText="Ví dụ: 5.000.000"
+                  sx={textFieldStyle}
+                />
+                <TextField
+                  name="rewardAmount"
+                  label="Tiền thưởng (VND)"
+                  type="number"
+                  value={formData.rewardAmount || 0}
+                  onChange={handleTextChange}
+                  fullWidth
+                  inputProps={{ min: 0, step: 1 }}
+                  helperText="Ví dụ: 1.000.000"
+                  sx={textFieldStyle}
+                />
+                <TextField
+                  name="rewardApprovalDate"
+                  label="Ngày duyệt khen thưởng"
+                  type="datetime-local"
+                  value={formData.rewardApprovalDate ? (() => {
+                    let date: Date;
+                    if (formData.rewardApprovalDate instanceof Date) {
+                      date = new Date(formData.rewardApprovalDate);
+                    } else if (typeof formData.rewardApprovalDate === 'string') {
+                      date = new Date(formData.rewardApprovalDate);
+                    } else {
+                      return '';
+                    }
+
+                    // Format as datetime-local (YYYY-MM-DDTHH:mm)
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    const hours = String(date.getHours()).padStart(2, '0');
+                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                    return `${year}-${month}-${day}T${hours}:${minutes}`;
+                  })() : ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value) {
+                      // datetime-local input gives local time, convert to Date
+                      const date = new Date(value);
+                      setFormData(prev => ({
+                        ...prev,
+                        rewardApprovalDate: date
+                      }));
+                    } else {
+                      setFormData(prev => ({
+                        ...prev,
+                        rewardApprovalDate: undefined
+                      }));
+                    }
+                  }}
+                  fullWidth
+                  InputLabelProps={{
+                    shrink: true,
+                  }}
+                  sx={textFieldStyle}
+                />
+                <FormControl fullWidth sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}>
+                  <InputLabel>Phương thức tính thưởng</InputLabel>
+                  <Select
+                    name="rewardCalculationMethod"
+                    value={formData.rewardCalculationMethod || ''}
+                    onChange={handleSelectChange}
+                    label="Phương thức tính thưởng"
+                  >
+                    <MenuItem value="">
+                      <em>Chọn phương thức (để trống)</em>
+                    </MenuItem>
+                    {Object.values(RewardCalculationMethod).map((method) => (
+                      <MenuItem key={method} value={method}>
+                        {RewardCalculationMethodLabels[method]}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Box>
+            )}
+
+            {/* Tab 6: Bổ sung */}
+            {activeTab === 5 && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: 800, mx: 'auto' }}>
+                <TextField
+                  name="resourcesUsed"
+                  label="Nguồn lực sử dụng"
+                  value={(formData as any).resourcesUsed || ''}
+                  onChange={handleTextChange}
+                  fullWidth
+                  multiline
+                  rows={3}
+                  sx={textFieldStyle}
+                />
+                <TextField
+                  name="calculationDescription"
+                  label="Mô tả cách tính"
+                  value={(formData as any).calculationDescription || ''}
+                  onChange={handleTextChange}
+                  fullWidth
+                  multiline
+                  rows={3}
+                  sx={textFieldStyle}
+                />
+                <TextField
+                  name="scalingOpportunity"
+                  label="Cơ hội nhân rộng phát triển"
+                  value={(formData as any).scalingOpportunity || ''}
+                  onChange={handleTextChange}
+                  fullWidth
+                  multiline
+                  rows={3}
+                  sx={textFieldStyle}
+                />
+              </Box>
             )}
           </Box>
+
+          {/* Action Buttons */}
+          <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider', bgcolor: '#fafafa', display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+            <Button
+              onClick={onClose}
+              color="primary"
+              variant="outlined"
+              sx={{ borderRadius: '10px', px: 3, textTransform: 'none', fontWeight: 500 }}
+            >
+              Hủy
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              sx={{ borderRadius: '10px', px: 4, textTransform: 'none', fontWeight: 600, boxShadow: '0 4px 12px rgba(25, 118, 210, 0.3)' }}
+            >
+              {isEdit ? 'Cập nhật' : 'Thêm mới'}
+            </Button>
+          </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={onClose}>Hủy</Button>
-          <Button type="submit" variant="contained" color="primary">
-            {isEdit ? 'Cập nhật' : 'Thêm mới'}
-          </Button>
-        </DialogActions>
       </form>
       <ImageLightbox
         open={lightboxOpen}
