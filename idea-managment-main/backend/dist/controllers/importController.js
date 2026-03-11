@@ -73,6 +73,7 @@ const DEFAULT_COLUMN_MAPPING = {
     'Quyết định phê duyệt': 'status', // Tên cột từ export
     'Tình trạng khen thưởng': 'rewardStatuses',
     'Reward Statuses': 'rewardStatuses',
+    'Tình trạng khen thưởng ': 'rewardStatuses', // có dấu cách cuối
     'Ghi chú': 'note',
     'Note': 'note',
     'Lý do không duy trì': 'note',
@@ -222,10 +223,9 @@ function validateAndParseRow(row, rowIndex, columnMapping) {
                 }
             }
         }
-        // RewardStatuses
-        const rewardValueKey = columnMapping['rewardStatuses'] || 'Tình trạng khen thưởng';
-        if (row[rewardValueKey] !== undefined || row['Tình trạng khen thưởng'] !== undefined || row['Reward Statuses'] !== undefined) {
-            const rewardValue = row[rewardValueKey] || row['Tình trạng khen thưởng'] || row['Reward Statuses'];
+        // RewardStatuses - Sửa logic kiểm tra cột
+        if (row['Tình trạng khen thưởng'] !== undefined || row['Reward Statuses'] !== undefined || row['rewardStatuses'] !== undefined) {
+            const rewardValue = row['Tình trạng khen thưởng'] || row['Reward Statuses'] || row['rewardStatuses'];
             const currentRewards = (idea.rewardStatuses || []);
             // LUÔN thêm vào diff (để hiển thị trong preview)
             diff.current.rewardStatuses = currentRewards;

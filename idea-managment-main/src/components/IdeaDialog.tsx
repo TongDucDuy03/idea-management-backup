@@ -16,9 +16,10 @@ import {
   Tabs,
   Tab,
   Typography,
-  Paper
+  Paper,
+  Chip
 } from '@mui/material';
-import { Idea, IdeaStatus, IdeaStatusLabels, RewardCalculationMethod, RewardCalculationMethodLabels } from '../types';
+import { Idea, IdeaStatus, IdeaStatusLabels, RewardCalculationMethod, RewardCalculationMethodLabels, RewardStatus, RewardStatusLabels } from '../types';
 import ImageLightbox from './ImageLightbox';
 
 // Helpers to parse legacy records where "idea" may include lines like
@@ -164,6 +165,7 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
     rewardAmount: 0,
     rewardApprovalDate: undefined,
     rewardCalculationMethod: undefined,
+    rewardStatuses: [],
     benefitOutcome: '',
     resourcesUsed: '',
     calculationDescription: '',
@@ -567,13 +569,13 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
                 </FormControl>
                 <TextField
                   name="note"
-                  label="Lời nhắn phản hồi"
+                  label="Ghi chú"
                   value={formData.note}
                   onChange={handleTextChange}
                   fullWidth
                   multiline
                   rows={3}
-                  placeholder="Hãy để lại lời nhắn..."
+                  placeholder="Hãy để lại ghi chú..."
                   sx={textFieldStyle}
                 />
               </Box>
@@ -830,6 +832,61 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
             {/* Tab 5: Khen thưởng */}
             {activeTab === 4 && (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: 500, mx: 'auto' }}>
+                {/* Tình trạng khen thưởng - Multi-select với giới hạn */}
+                <FormControl fullWidth sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}>
+                  <InputLabel>Tình trạng khen thưởng</InputLabel>
+                  <Select
+                    multiple
+                    name="rewardStatuses"
+                    value={(formData.rewardStatuses || []).map((s: any) => s)}
+                    onChange={(e: any) => {
+                      const value = e.target.value;
+                      // Logic giới hạn: chỉ chọn được 1 trong mỗi nhóm (50k hoặc 20%)
+                      let newValue: string[] = [];
+
+                      if (Array.isArray(value)) {
+                        // Lọc các giá trị 50k
+                        const selected50k = value.filter((v: string) =>
+                          v === 'CHO_KHEN_THUONG_50K' || v === 'DA_KHEN_THUONG_50K'
+                        );
+                        // Lọc các giá trị 20%
+                        const selected20 = value.filter((v: string) =>
+                          v === 'CHO_KHEN_THUONG_20' || v === 'DA_KHEN_THUONG_20'
+                        );
+
+                        // Chỉ giữ lại tối đa 1 giá trị từ mỗi nhóm
+                        newValue = [...selected50k.slice(0, 1), ...selected20.slice(0, 1)];
+                      }
+
+                      setFormData(prev => ({
+                        ...prev,
+                        rewardStatuses: newValue as any
+                      }));
+                    }}
+                    label="Tình trạng khen thưởng"
+                    renderValue={(selected) => (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {((selected as string[]) || []).map((value) => (
+                          <Chip
+                            key={value}
+                            label={RewardStatusLabels[value as RewardStatus] || value}
+                            size="small"
+                            sx={{ height: 24 }}
+                          />
+                        ))}
+                      </Box>
+                    )}
+                  >
+                    {Object.values(RewardStatus).map((status) => (
+                      <MenuItem key={status} value={status}>
+                        {RewardStatusLabels[status]}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                    * Chỉ chọn được 1 trong nhóm 50.000đ và 1 trong nhóm 20%
+                  </Typography>
+                </FormControl>
                 <TextField
                   name="benefitValue"
                   label="Giá trị làm lợi (VND)"

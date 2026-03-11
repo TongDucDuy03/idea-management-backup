@@ -30,6 +30,7 @@ const DEFAULT_COLUMN_MAPPING: Record<string, string> = {
   'Quyết định phê duyệt': 'status', // Tên cột từ export
   'Tình trạng khen thưởng': 'rewardStatuses',
   'Reward Statuses': 'rewardStatuses',
+  'Tình trạng khen thưởng ': 'rewardStatuses', // có dấu cách cuối
   'Ghi chú': 'note',
   'Note': 'note',
   'Lý do không duy trì': 'note',
@@ -195,15 +196,14 @@ async function validateAndParseRow(
     }
   }
 
-  // RewardStatuses
-  const rewardValueKey = columnMapping['rewardStatuses'] || 'Tình trạng khen thưởng';
-  if (row[rewardValueKey] !== undefined || row['Tình trạng khen thưởng'] !== undefined || row['Reward Statuses'] !== undefined) {
-    const rewardValue = row[rewardValueKey] || row['Tình trạng khen thưởng'] || row['Reward Statuses'];
+  // RewardStatuses - Sửa logic kiểm tra cột
+  if (row['Tình trạng khen thưởng'] !== undefined || row['Reward Statuses'] !== undefined || row['rewardStatuses'] !== undefined) {
+    const rewardValue = row['Tình trạng khen thưởng'] || row['Reward Statuses'] || row['rewardStatuses'];
     const currentRewards = (idea.rewardStatuses || []) as RewardStatus[];
-    
+
     // LUÔN thêm vào diff (để hiển thị trong preview)
     diff.current.rewardStatuses = currentRewards;
-    
+
     // Nếu giá trị rỗng hoặc null, coi như muốn xóa (set thành mảng rỗng)
     if (!rewardValue || rewardValue.toString().trim() === '' || rewardValue.toString().trim().toLowerCase() === 'null') {
       payload.rewardStatuses = [];
@@ -217,7 +217,7 @@ async function validateAndParseRow(
       // LUÔN set vào diff.new (kể cả khi parse không thành công)
       diff.new.rewardStatuses = rewardStatuses.length > 0 ? rewardStatuses : [];
       payload.rewardStatuses = rewardStatuses.length > 0 ? rewardStatuses : [];
-      
+
       if (rewardStatuses.length > 0) {
         // Kiểm tra xung đột
         const hasConflict = checkRewardConflict(rewardStatuses);
