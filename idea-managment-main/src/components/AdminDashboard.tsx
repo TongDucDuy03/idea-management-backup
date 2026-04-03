@@ -976,7 +976,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
   };
 
   const uniqueDepartments = Array.from(new Set(ideas.map(i => i.department))).filter(Boolean).sort();
-  const uniqueImplementationDepartments = Array.from(new Set(ideas.map(i => (i as any).implementationDepartment))).filter(Boolean).sort();
+  const uniqueImplementationDepartments = Array.from(
+    new Set(
+      ideas
+        .map(i => (i as any).implementationDepartment)
+        .filter(Boolean)
+        .flatMap((val: any) => {
+          if (Array.isArray(val)) return val as string[];
+          if (typeof val === 'string') {
+            return val.split(',').map(s => s.trim()).filter(Boolean);
+          }
+          return [];
+        })
+    )
+  ).sort();
 
   const normalizeText = (text: string) =>
     (text || '')
@@ -1924,10 +1937,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       renderCell: (params) => (
         <div style={{
           width: '100%',
-          textAlign: 'center',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap'
+          textAlign: 'left',
+          whiteSpace: 'normal',
+          wordBreak: 'break-word',
+          lineHeight: 1.35
         }}>
           {params.value || '-'}
         </div>

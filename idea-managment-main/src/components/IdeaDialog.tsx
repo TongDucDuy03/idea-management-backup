@@ -744,12 +744,46 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
                 <FormControl fullWidth sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}>
                   <InputLabel>Phòng ban triển khai</InputLabel>
                   <Select
+                    multiple
                     name="implementationDepartment"
-                    value={formData.implementationDepartment || ''}
-                    onChange={handleSelectChange}
+                    value={
+                      (formData.implementationDepartment
+                        ? (formData.implementationDepartment as string)
+                            .split(',')
+                            .map(s => s.trim())
+                            .filter(Boolean)
+                        : []) as any
+                    }
+                    onChange={(e) => {
+                      const value = e.target.value as string[] | string;
+                      const valuesArray = Array.isArray(value) ? value : [value];
+                      const joined = valuesArray.join(', ');
+                      setFormData(prev => ({
+                        ...prev,
+                        implementationDepartment: joined
+                      }));
+                    }}
+                    renderValue={(selected) => {
+                      const list = (Array.isArray(selected) ? selected : [selected]) as string[];
+                      return (
+                        <Box sx={{ whiteSpace: 'normal', wordBreak: 'break-word', display: 'block' }}>
+                          {list.join(', ')}
+                        </Box>
+                      );
+                    }}
+                    sx={{
+                      '& .MuiSelect-select': {
+                        whiteSpace: 'normal',
+                        wordBreak: 'break-word',
+                        display: 'block',
+                        alignItems: 'flex-start'
+                      }
+                    }}
                     label="Phòng ban triển khai"
                   >
-                    <MenuItem value="">Chọn phòng ban</MenuItem>
+                    <MenuItem value="">
+                      <em>Chọn phòng ban</em>
+                    </MenuItem>
                     {departments.map((dept) => (
                       <MenuItem key={dept} value={dept}>
                         {dept}
