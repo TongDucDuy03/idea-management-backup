@@ -22,6 +22,8 @@ import { CircularProgress } from '@mui/material';
 import api from '../api/config';
 import ImageLightbox from './ImageLightbox';
 
+const GEMINI_ASSISTANT_URL = 'https://gemini.google.com/gem/1u21g1gYbXuBE8-VjgonT-art3DvXZjFX?usp=sharing';
+
 const departments = [
   'Phòng Hành chính nhân sự',
   'Phòng Nghiên cứu thí nghiệm',
@@ -379,6 +381,33 @@ const IdeaForm: React.FC = () => {
         >
           Đề xuất ý tưởng Cải tiến
         </Typography>
+
+        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+          <Button
+            href={GEMINI_ASSISTANT_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            variant="contained"
+            size="large"
+            startIcon={<AutoAwesome />}
+            sx={{
+              px: 4,
+              py: 1.25,
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 700,
+              fontSize: '1rem',
+              bgcolor: '#1a73e8',
+              boxShadow: '0 6px 16px rgba(26, 115, 232, 0.28)',
+              '&:hover': {
+                bgcolor: '#1557b0',
+                boxShadow: '0 8px 20px rgba(26, 115, 232, 0.35)'
+              }
+            }}
+          >
+            Trợ lý AI
+          </Button>
+        </Box>
         
         {/* Thông tin người hỗ trợ */}
         <Card 
