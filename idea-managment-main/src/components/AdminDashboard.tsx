@@ -1729,9 +1729,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
         <div style={{
           width: '100%',
           textAlign: 'center',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap'
+          whiteSpace: 'normal',
+          wordBreak: 'break-word',
+          lineHeight: 1.4
         }}>
           {params.value || '-'}
         </div>

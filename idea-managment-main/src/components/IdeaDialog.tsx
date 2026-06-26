@@ -21,6 +21,7 @@ import {
 } from '@mui/material';
 import { Idea, IdeaStatus, IdeaStatusLabels, RewardCalculationMethod, RewardCalculationMethodLabels, RewardStatus, RewardStatusLabels } from '../types';
 import ImageLightbox from './ImageLightbox';
+import { getDepartmentOptions, isRetiredDepartment } from '../constants/departments';
 
 // Helpers to parse legacy records where "idea" may include lines like
 // "Giải pháp: ..." and "Lợi ích: ..."
@@ -44,30 +45,6 @@ const getPureIdeaText = (ideaText: string | undefined) => {
   });
   return filtered.join('\n').trim();
 };
-
-const departments = [
-  'Phòng Hành chính nhân sự',
-  'Phòng Nghiên cứu thí nghiệm',
-  'Phòng Kinh doanh quốc tế',
-  'Phòng Kinh tế kế toán',
-  'Phòng Kỹ thuật công nghệ',
-  'Phòng Kiểm soát chất lượng',
-  'Phòng Kế hoạch',
-  'Phòng Vật tư',
-  'Phòng Thiết bị',
-  'Phòng Cải tiến',
-  'PX Mẫu Xốp',
-  'PX Khuôn',
-  'PX Đúc 1',
-  'PX Hoàn thiện',
-  'PX Nhiệt luyện',
-  'PX Cơ điện',
-  'PX GCCK',
-  'Nhà máy DISA',
-  'Tổ liệu',
-  'Thư ký ISO',
-  'Thư ký An toàn 5S'
-];
 
 interface IdeaDialogProps {
   open: boolean;
@@ -545,8 +522,12 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
                     onChange={handleSelectChange}
                     label="Phòng ban"
                   >
-                    {departments.map((dept) => (
-                      <MenuItem key={dept} value={dept}>
+                    {getDepartmentOptions(formData.department).map((dept) => (
+                      <MenuItem
+                        key={dept}
+                        value={dept}
+                        disabled={isRetiredDepartment(dept)}
+                      >
                         {dept}
                       </MenuItem>
                     ))}
@@ -784,8 +765,19 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
                     <MenuItem value="">
                       <em>Chọn phòng ban</em>
                     </MenuItem>
-                    {departments.map((dept) => (
-                      <MenuItem key={dept} value={dept}>
+                    {getDepartmentOptions(
+                      (formData.implementationDepartment
+                        ? (formData.implementationDepartment as string)
+                            .split(',')
+                            .map((s) => s.trim())
+                            .filter(Boolean)
+                        : []) as string[]
+                    ).map((dept) => (
+                      <MenuItem
+                        key={dept}
+                        value={dept}
+                        disabled={isRetiredDepartment(dept)}
+                      >
                         {dept}
                       </MenuItem>
                     ))}

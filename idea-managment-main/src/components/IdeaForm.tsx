@@ -15,38 +15,15 @@ import {
   Grid,
   Card,
   CardContent,
-  Link
+  Link,
+  CircularProgress
 } from '@mui/material';
 import { ContactSupport, Phone, AutoAwesome } from '@mui/icons-material';
-import { CircularProgress } from '@mui/material';
 import api from '../api/config';
+import { departments } from '../constants/departments';
 import ImageLightbox from './ImageLightbox';
 
 const GEMINI_ASSISTANT_URL = 'https://gemini.google.com/gem/1u21g1gYbXuBE8-VjgonT-art3DvXZjFX?usp=sharing';
-
-const departments = [
-  'Phòng Hành chính nhân sự',
-  'Phòng Nghiên cứu thí nghiệm',
-  'Phòng Kinh doanh quốc tế',
-  'Phòng Kinh tế kế toán',
-  'Phòng Kỹ thuật công nghệ',
-  'Phòng Kiểm soát chất lượng',
-  'Phòng Kế hoạch',
-  'Phòng Vật tư',
-  'Phòng Thiết bị',
-  'Phòng Cải tiến',
-  'PX Mẫu Xốp',
-  'PX Khuôn',
-  'PX Đúc 1',
-  'PX Hoàn thiện',
-  'PX Nhiệt luyện',
-  'PX Cơ điện',
-  'PX GCCK',
-  'Nhà máy DISA',
-  'Tổ liệu',
-  'Thư ký ISO',
-  'Thư ký An toàn 5S'
-];
 
 const IdeaForm: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -460,31 +437,7 @@ const IdeaForm: React.FC = () => {
                   </Box>
                   
                   {/* Link 2 - Dòng 2 */}
-                  <Box>
-                    <Link
-                      href="https://zalo.me/0947969358"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      sx={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 1,
-                        color: '#0068ff',
-                        textDecoration: 'none',
-                        fontWeight: 'bold',
-                        cursor: 'pointer',
-                        '&:hover': {
-                          textDecoration: 'underline',
-                          color: '#0052cc'
-                        }
-                      }}
-                    >
-                      <Phone sx={{ fontSize: 18 }} />
-                      <Typography component="span" variant="body1">
-                        0947969358 (Bằng - Cải tiến)
-                      </Typography>
-                    </Link>
-                  </Box>
+
                   
                 </Box>
             </Box>
