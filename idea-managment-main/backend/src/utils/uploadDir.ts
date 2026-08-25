@@ -3,14 +3,11 @@ import fs from 'fs';
 
 export function resolveUploadDir(): string {
   if (process.env.UPLOAD_DIR && process.env.UPLOAD_DIR.trim() !== '') {
-    return process.env.UPLOAD_DIR.trim();
+    return path.resolve(process.env.UPLOAD_DIR.trim());
   }
 
-  if (process.env.NODE_ENV === 'production') {
-    return '/var/www/idea/uploads';
-  }
-
-  // Dev/local: backend/uploads (từ dist/utils → ../.. → backend/uploads)
+  // Mặc định luôn là thư mục uploads nằm trong backend (dù ở dev hay production)
+  // Từ dist/utils/uploadDir.js -> ../.. -> backend/uploads
   return path.join(__dirname, '..', '..', 'uploads');
 }
 

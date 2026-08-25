@@ -198,6 +198,7 @@ const UNSUPPORTED_CANVAS_COLOR = /\b(?:oklch|oklab|lab|lch|color)\s*\(/i;
 const CANVAS_COLOR_PROPERTIES = [
   'color',
   'background-color',
+  'border-color',
   'border-top-color',
   'border-right-color',
   'border-bottom-color',
@@ -206,6 +207,8 @@ const CANVAS_COLOR_PROPERTIES = [
   'text-decoration-color',
   'caret-color',
   'column-rule-color',
+  'fill',
+  'stroke',
 ] as const;
 
 /**
@@ -525,6 +528,29 @@ const A3LayoutEditor: React.FC<A3LayoutEditorProps> = ({
         useCORS: true,
         allowTaint: false,
         backgroundColor: '#ffffff',
+        logging: false,
+        onclone: (clonedDoc) => {
+          // 1. Sanitize all <style> tags inside cloned iframe to prevent oklch CSS parse errors
+          clonedDoc.querySelectorAll('style').forEach(styleTag => {
+            if (styleTag.textContent) {
+              styleTag.textContent = styleTag.textContent.replace(
+                /\b(?:oklch|oklab|lab|lch|color)\s*\([^)]*\)/gi,
+                '#000000'
+              );
+            }
+          });
+
+          // 2. Sanitize all elements inside clonedDoc
+          clonedDoc.querySelectorAll<HTMLElement>('*').forEach(el => {
+            const styleAttr = el.getAttribute('style');
+            if (styleAttr && /\b(?:oklch|oklab|lab|lch|color)\s*\(/i.test(styleAttr)) {
+              el.setAttribute(
+                'style',
+                styleAttr.replace(/\b(?:oklch|oklab|lab|lch|color)\s*\([^)]*\)/gi, '#000000')
+              );
+            }
+          });
+        },
       });
       const pdf = new jsPDF('l', 'mm', 'a3');
       const pageWidth = pdf.internal.pageSize.getWidth();
@@ -757,10 +783,25 @@ const A3LayoutEditor: React.FC<A3LayoutEditorProps> = ({
                   </Box>
                 </Box>
 
-                <Box sx={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '72px 1fr' }}>
+                <Box sx={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '76px 1fr' }}>
                   <Box sx={{ borderRight: '2px solid #111827', display: 'grid', gridTemplateRows: 'repeat(4, 1fr)' }}>
                     {['NGƯỜI LẬP', 'P. CẢI TIẾN', 'GĐ KT', 'GĐ ĐH'].map(label => (
-                      <Box key={label} sx={{ borderBottom: '1px solid #111827', display: 'flex', alignItems: 'center', justifyContent: 'center', writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontSize: 11, fontWeight: 800 }}>
+                      <Box
+                        key={label}
+                        sx={{
+                          borderBottom: '1px solid #111827',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'flex-end',
+                          flexDirection: 'column',
+                          pb: 0.75,
+                          px: 0.5,
+                          fontSize: 10,
+                          fontWeight: 800,
+                          textAlign: 'center',
+                          lineHeight: 1.2,
+                        }}
+                      >
                         {label}
                       </Box>
                     ))}

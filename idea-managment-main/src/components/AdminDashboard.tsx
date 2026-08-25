@@ -1657,15 +1657,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       minWidth: 160,
       flex: 0.85,
       sortable: false,
+      align: 'left',
+      headerAlign: 'left',
       renderCell: (params) => (
-        <Box sx={{ width: '100%', py: 0.5 }}>
-          <Typography variant="body2" sx={{ fontWeight: 700, color: '#0f172a', lineHeight: 1.35 }}>
+        <Box sx={{ width: '100%', py: 0.5, textAlign: 'left' }}>
+          <Typography variant="body2" sx={{ fontWeight: 700, color: '#0f172a', lineHeight: 1.35, textAlign: 'left' }}>
             {(params.row as Idea).fullName || 'Chưa cung cấp tên'}
           </Typography>
-          <Typography variant="caption" sx={{ display: 'block', color: '#64748b', lineHeight: 1.35 }}>
+          <Typography variant="caption" sx={{ display: 'block', color: '#64748b', lineHeight: 1.35, textAlign: 'left' }}>
             {(params.row as Idea).department || 'Chưa có đơn vị'}
           </Typography>
-          <Typography variant="caption" sx={{ display: 'block', color: '#94a3b8', mt: 0.5 }}>
+          <Typography variant="caption" sx={{ display: 'block', color: '#94a3b8', mt: 0.5, textAlign: 'left' }}>
             {(params.row as Idea).submissionDate
               ? new Date((params.row as Idea).submissionDate).toLocaleDateString('vi-VN')
               : '-'}
@@ -1679,6 +1681,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       minWidth: 190,
       flex: 1.2,
       sortable: false,
+      align: 'left',
+      headerAlign: 'left',
       renderCell: (params) => {
         const rawText = getPureIdeaText((params.row as Idea).idea);
         const text = truncateTextToMaxLines(rawText, 10, 400);
@@ -1699,6 +1703,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
               WebkitBoxOrient: 'vertical',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
+              textAlign: 'left',
             }}
           >
             {text || 'Không có nội dung'}
@@ -1712,19 +1717,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       minWidth: 170,
       flex: 0.9,
       sortable: false,
+      align: 'left',
+      headerAlign: 'left',
       renderCell: (params) => {
         const row = params.row as Idea;
         const implementationDepartment = (row as any).implementationDepartment;
         const expectedDate = (row as any).expectedCompletionDate;
         return (
-          <Box sx={{ width: '100%', py: 0.5 }}>
+          <Box sx={{ width: '100%', py: 0.5, textAlign: 'left', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
             <ImplementationStatusCell row={row} />
-            <Typography variant="caption" sx={{ display: 'block', color: '#64748b', mt: 0.75, lineHeight: 1.35 }}>
+            <Typography variant="caption" sx={{ display: 'block', color: '#64748b', mt: 0.75, lineHeight: 1.35, textAlign: 'left' }}>
               {implementationDepartment || 'Chưa phân công đơn vị'}
             </Typography>
             <Typography
               variant="caption"
-              sx={{ display: 'block', color: expectedDate ? '#475569' : '#94a3b8', mt: 0.25 }}
+              sx={{ display: 'block', color: expectedDate ? '#475569' : '#94a3b8', mt: 0.25, textAlign: 'left' }}
             >
               Hạn: {expectedDate ? new Date(expectedDate).toLocaleDateString('vi-VN') : 'Chưa đặt'}
             </Typography>
@@ -1738,17 +1745,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       minWidth: 135,
       flex: 0.7,
       sortable: false,
+      align: 'left',
+      headerAlign: 'left',
       renderCell: (params) => {
         const row = params.row as any;
         return (
-          <Box sx={{ width: '100%', py: 0.5 }}>
-            <Typography variant="caption" sx={{ display: 'block', color: '#64748b' }}>
+          <Box sx={{ width: '100%', py: 0.5, textAlign: 'left' }}>
+            <Typography variant="caption" sx={{ display: 'block', color: '#64748b', textAlign: 'left' }}>
               Giá trị làm lợi
             </Typography>
-            <Typography variant="body2" sx={{ fontWeight: 700, color: '#15803d' }}>
+            <Typography variant="body2" sx={{ fontWeight: 700, color: '#15803d', textAlign: 'left' }}>
               {formatCurrency(row.benefitValue)}
             </Typography>
-            <Typography variant="caption" sx={{ display: 'block', color: '#64748b', mt: 0.5 }}>
+            <Typography variant="caption" sx={{ display: 'block', color: '#64748b', mt: 0.5, textAlign: 'left' }}>
               Thưởng: <Box component="span" sx={{ fontWeight: 700, color: '#c2410c' }}>{formatCurrency(row.rewardAmount)}</Box>
             </Typography>
           </Box>
