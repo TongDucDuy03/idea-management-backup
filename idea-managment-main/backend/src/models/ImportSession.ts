@@ -53,7 +53,7 @@ const ImportRowSchema = new Schema<IImportRow>({
 const ImportSessionSchema = new Schema<IImportSession>({
   fileName: { type: String, required: true },
   uploadedBy: { type: String },
-  createdAt: { type: Date, default: Date.now },
+  createdAt: { type: Date, default: Date.now, expires: '7d' }, // Tự động xóa phiên import cũ sau 7 ngày
   mappingConfig: { type: Schema.Types.Mixed },
   summary: {
     total: { type: Number, default: 0 },

@@ -839,15 +839,30 @@ export const getImportSession = async (req: Request, res: Response) => {
 export const commitImport = async (req: Request, res: Response) => {
   try {
     const { selectedRowIndices, mode = 'patch' } = req.body; // mode: 'patch' | 'overwrite'
-    
+
+    // Validate input trước khi dùng: thiếu field này sẽ ném TypeError và trả 500
+    if (!Array.isArray(selectedRowIndices)) {
+      return res.status(400).json({ message: 'Thiếu danh sách dòng cần import (selectedRowIndices)' });
+    }
+    if (mode !== 'patch' && mode !== 'overwrite') {
+      return res.status(400).json({ message: 'Giá trị mode không hợp lệ (chỉ nhận patch hoặc overwrite)' });
+    }
+
+    const selectedSet = new Set(
+      selectedRowIndices.filter((i: unknown): i is number => Number.isInteger(i))
+    );
+    if (selectedSet.size === 0) {
+      return res.status(400).json({ message: 'Không có dòng nào được chọn để import' });
+    }
+
     const session = await ImportSession.findById(req.params.id);
     if (!session) {
       return res.status(404).json({ message: 'Không tìm thấy session import' });
     }
 
     // Lọc các row được chọn và có status OK hoặc WARNING
-    const rowsToImport = session.rows.filter((row, index) => 
-      selectedRowIndices.includes(index) && 
+    const rowsToImport = session.rows.filter((row, index) =>
+      selectedSet.has(index) &&
       (row.status === ImportRowStatus.OK || row.status === ImportRowStatus.WARNING)
     );
 

@@ -104,27 +104,29 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
 
   const fetchIdeas = useCallback(async () => {
     try {
-      if (isViewOnly) {
-        // Public endpoint không cần authentication
-        const response = await api.get('/ideas/public');
-        setIdeas(response.data);
-        setLoading(false);
-      } else {
-        // Protected endpoint yêu cầu authentication
-        const token = localStorage.getItem('token');
-        if (!token) {
-          navigate('/login');
-          return;
-        }
+      const token = localStorage.getItem('token');
 
-        const response = await api.get('/ideas', {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-        setIdeas(response.data);
+      // Nếu có token -> tải dữ liệu đầy đủ qua /ideas
+      if (token) {
+        const response = await api.get('/ideas');
+        const rawData = response.data;
+        const ideaList = Array.isArray(rawData) ? rawData : (rawData.ideas || rawData.data || []);
+        setIdeas(ideaList);
         setLoading(false);
+        return;
       }
+
+      // Nếu ở chế độ chỉ xem (public view) -> tải dữ liệu qua /ideas/public
+      if (isViewOnly) {
+        const response = await api.get('/ideas/public');
+        const rawData = response.data;
+        const ideaList = Array.isArray(rawData) ? rawData : (rawData.ideas || rawData.data || []);
+        setIdeas(ideaList);
+        setLoading(false);
+        return;
+      }
+
+      navigate('/login');
     } catch (error: any) {
       if (!isViewOnly && error.response?.status === 401) {
         localStorage.removeItem('token');

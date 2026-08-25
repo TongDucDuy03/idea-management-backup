@@ -56,6 +56,11 @@ export interface IIdea extends Document {
   afterImage?: string; // Hình ảnh sau (data URL hoặc URL) - legacy
   beforeImagePath?: string; // Đường dẫn file: /uploads/xxx.jpg
   afterImagePath?: string; // Đường dẫn file: /uploads/xxx.jpg
+  // 4 trường mới
+  implementationStatus?: string; // Trạng thái triển khai
+  expectedCompletionDate?: Date; // Hạn dự kiến hoàn thành (dự kiến)
+  netReserveStatus?: string; // Trạng thái duy trì/mở rộng
+  reasonNote?: string; // Ghi chú lý do (Dừng/Hủy)
 }
 
 const IdeaSchema: Schema = new Schema({
@@ -67,10 +72,10 @@ const IdeaSchema: Schema = new Schema({
   ideaCode: { type: String, required: true, unique: true },
   submissionDate: { type: Date, default: Date.now },
   isPaid: { type: Boolean, default: false },
-  status: { 
-    type: String, 
-    enum: Object.values(IdeaStatus), 
-    default: IdeaStatus.DE_NGHI_MOI 
+  status: {
+    type: String,
+    enum: Object.values(IdeaStatus),
+    default: IdeaStatus.DE_NGHI_MOI
   },
   implementationDepartment: { type: String, required: false },
   // Legacy field giữ lại để phục vụ các script migrate cũ
@@ -79,8 +84,8 @@ const IdeaSchema: Schema = new Schema({
   benefitValue: { type: Number, required: false, default: 0 },
   rewardAmount: { type: Number, required: false, default: 0 },
   rewardApprovalDate: { type: Date, required: false },
-  rewardStatuses: { 
-    type: [String], 
+  rewardStatuses: {
+    type: [String],
     enum: Object.values(RewardStatus),
     default: []
   },
@@ -105,4 +110,13 @@ const IdeaSchema: Schema = new Schema({
   reasonNote: { type: String, required: false }, // Ghi chú lý do (Đăng/Huy)
 });
 
-export default mongoose.model<IIdea>('Idea', IdeaSchema); 
+// Index cho các trường thường dùng để lọc và sắp xếp.
+// Trước đây chỉ có unique index trên ideaCode, nên mọi truy vấn thống kê đều
+// phải quét toàn bộ collection.
+IdeaSchema.index({ submissionDate: -1 });
+IdeaSchema.index({ status: 1, submissionDate: -1 });
+IdeaSchema.index({ department: 1 });
+IdeaSchema.index({ implementationDepartment: 1 });
+IdeaSchema.index({ rewardApprovalDate: -1 });
+
+export default mongoose.model<IIdea>('Idea', IdeaSchema);

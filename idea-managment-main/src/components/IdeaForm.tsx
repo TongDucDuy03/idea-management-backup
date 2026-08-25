@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   TextField,
   Button,
   Typography,
-  Paper,
   Alert,
   FormControl,
   InputLabel,
@@ -16,25 +15,154 @@ import {
   Card,
   CardContent,
   Link,
-  CircularProgress
+  Stepper,
+  Step,
+  StepLabel,
+  StepConnector,
+  Chip,
+  LinearProgress,
+  ToggleButton,
+  ToggleButtonGroup,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
-import { ContactSupport, Phone, AutoAwesome } from '@mui/icons-material';
+import {
+  ContactSupport,
+  Phone,
+  AutoAwesome,
+  OpenInNew,
+  Person,
+  Lightbulb,
+  PhotoCamera,
+  CheckCircle,
+  ArrowForward,
+  ArrowBack,
+  Send,
+  Celebration,
+  ContentCopy,
+  RestartAlt,
+} from '@mui/icons-material';
+import { styled } from '@mui/material/styles';
 import api from '../api/config';
 import { departments } from '../constants/departments';
 import ImageLightbox from './ImageLightbox';
+import { COLORS } from '../theme/theme';
 
-const GEMINI_ASSISTANT_URL = 'https://gemini.google.com/gem/1u21g1gYbXuBE8-VjgonT-art3DvXZjFX?usp=sharing';
+const DRAFT_STORAGE_KEY = 'vico_idea_draft';
+
+type FormMode = 'quick' | 'guided';
+
+const EMPTY_FORM_DATA = {
+  fullName: '',
+  department: '',
+  idea: '',
+  solution: '',
+  benefit: '',
+  beforeImage: '',
+  afterImage: ''
+};
+
+type IdeaSubmissionForm = typeof EMPTY_FORM_DATA;
+
+const loadDraft = () => {
+  try {
+    const saved = localStorage.getItem(DRAFT_STORAGE_KEY);
+    if (!saved) {
+      return {
+        formData: {
+          ...EMPTY_FORM_DATA,
+          department: localStorage.getItem('vico_last_department') || ''
+        },
+        activeStep: 0,
+        formMode: 'quick' as FormMode
+      };
+    }
+    const parsed = JSON.parse(saved);
+    return {
+      formData: { ...EMPTY_FORM_DATA, ...(parsed.formData || {}) },
+      activeStep: Math.min(Number(parsed.activeStep) || 0, 2),
+      formMode: parsed.formMode === 'guided' ? 'guided' as FormMode : 'quick' as FormMode
+    };
+  } catch {
+    return null;
+  }
+};
+
+// Custom step connector
+const CustomConnector = styled(StepConnector)(() => ({
+  '&.MuiStepConnector-root': {
+    top: 22,
+  },
+  '& .MuiStepConnector-line': {
+    height: 3,
+    border: 0,
+    backgroundColor: COLORS.slate[200],
+    borderRadius: 2,
+    transition: 'all 0.3s ease',
+  },
+  '&.Mui-active .MuiStepConnector-line': {
+    backgroundColor: COLORS.blue[500],
+  },
+  '&.Mui-completed .MuiStepConnector-line': {
+    backgroundColor: COLORS.emerald[500],
+  },
+}));
+
+// Custom step icon
+function CustomStepIcon(props: { active?: boolean; completed?: boolean; icon?: React.ReactNode; stepIndex: number }) {
+  const { active = false, completed = false } = props;
+  const icons: Record<number, React.ReactElement> = {
+    0: <Person sx={{ fontSize: 20 }} />,
+    1: <Lightbulb sx={{ fontSize: 20 }} />,
+    2: <PhotoCamera sx={{ fontSize: 20 }} />,
+  };
+
+  return (
+    <Box
+      sx={{
+        width: 44,
+        height: 44,
+        borderRadius: '12px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        ...(completed && {
+          backgroundColor: COLORS.emerald[500],
+          color: '#fff',
+          boxShadow: `0 4px 12px ${COLORS.emerald[500]}40`,
+        }),
+        ...(active && {
+          backgroundColor: COLORS.blue[500],
+          color: '#fff',
+          boxShadow: `0 4px 12px ${COLORS.blue[500]}40`,
+          transform: 'scale(1.05)',
+        }),
+        ...(!active && !completed && {
+          backgroundColor: COLORS.slate[100],
+          color: COLORS.slate[400],
+        }),
+      }}
+    >
+      {completed ? <CheckCircle sx={{ fontSize: 20 }} /> : icons[props.stepIndex]}
+    </Box>
+  );
+}
+
+const steps = [
+  'Người đề xuất',
+  'Nội dung ý tưởng',
+  'Hình ảnh & Gửi',
+];
 
 const IdeaForm: React.FC = () => {
-  const [formData, setFormData] = useState({
-    fullName: '',
-    department: '',
-    idea: '',
-    solution: '',
-    benefit: '',
-    beforeImage: '',
-    afterImage: ''
-  });
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  const initialDraft = loadDraft();
+  const [activeStep, setActiveStep] = useState(initialDraft?.activeStep || 0);
+  const [formMode, setFormMode] = useState<FormMode>(initialDraft?.formMode || 'quick');
+  const [formData, setFormData] = useState<IdeaSubmissionForm>(initialDraft?.formData || EMPTY_FORM_DATA);
   const [errors, setErrors] = useState({
     department: '',
     idea: ''
@@ -42,15 +170,9 @@ const IdeaForm: React.FC = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [ideaCode, setIdeaCode] = useState('');
-  
-  // AI states
-  const [aiLoading, setAiLoading] = useState({
-    improveDescription: false,
-    suggestSolution: false,
-    suggestBenefit: false,
-    suggestTopicTitle: false
-  });
-  
+  const [submitting, setSubmitting] = useState(false);
+  const [copied, setCopied] = useState(false);
+
   // Lightbox state
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
@@ -68,24 +190,74 @@ const IdeaForm: React.FC = () => {
     setLightboxTitle('');
   };
 
-  const validateForm = () => {
-    const newErrors = {
-      department: '',
-      idea: ''
-    } as any;
-    let isValid = true;
+  // Tự lưu phần văn bản; không lưu ảnh base64 để tránh làm đầy localStorage.
+  useEffect(() => {
+    if (success) return;
+    const timer = window.setTimeout(() => {
+      try {
+        const { beforeImage: _beforeImage, afterImage: _afterImage, ...textData } = formData;
+        localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({
+          formData: textData,
+          activeStep,
+          formMode
+        }));
+      } catch {
+        // Trình duyệt có thể chặn localStorage; form vẫn hoạt động bình thường.
+      }
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [formData, activeStep, formMode, success]);
 
-    if (!formData.department.trim()) {
-      newErrors.department = 'Vui lòng chọn đơn vị làm việc';
-      isValid = false;
-    }
-    if (!formData.idea.trim()) {
-      newErrors.idea = 'Vui lòng nhập ý tưởng';
-      isValid = false;
-    }
+  const handleFormModeChange = (_event: React.MouseEvent<HTMLElement>, nextMode: FormMode | null) => {
+    if (nextMode) setFormMode(nextMode);
+  };
 
-    setErrors(newErrors);
-    return isValid;
+  const handleCopyIdeaCode = async () => {
+    try {
+      await navigator.clipboard.writeText(ideaCode);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError('Không thể tự động sao chép. Vui lòng nhấn giữ mã để sao chép.');
+    }
+  };
+
+  const handleCreateAnother = () => {
+    setSuccess(false);
+    setIdeaCode('');
+    setCopied(false);
+    setActiveStep(0);
+  };
+
+  const validateStep = (step: number): boolean => {
+    switch (step) {
+      case 0:
+        if (!formData.department.trim()) {
+          setErrors(prev => ({ ...prev, department: 'Vui lòng chọn đơn vị làm việc' }));
+          return false;
+        }
+        return true;
+      case 1:
+        if (!formData.idea.trim()) {
+          setErrors(prev => ({ ...prev, idea: 'Vui lòng nhập ý tưởng' }));
+          return false;
+        }
+        return true;
+      default:
+        return true;
+    }
+  };
+
+  const handleNext = () => {
+    if (validateStep(activeStep)) {
+      setActiveStep(prev => prev + 1);
+      window.scrollTo({ top: 300, behavior: 'smooth' });
+    }
+  };
+
+  const handleBack = () => {
+    setActiveStep(prev => prev - 1);
+    window.scrollTo({ top: 300, behavior: 'smooth' });
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -94,7 +266,6 @@ const IdeaForm: React.FC = () => {
       ...prev,
       [name]: value
     }));
-    // Clear error when user starts typing
     if (errors[name as keyof typeof errors]) {
       setErrors(prev => ({
         ...prev,
@@ -109,7 +280,6 @@ const IdeaForm: React.FC = () => {
       ...prev,
       [name as string]: value
     }));
-    // Clear error when user selects an option
     if (errors[name as keyof typeof errors]) {
       setErrors(prev => ({
         ...prev,
@@ -118,17 +288,16 @@ const IdeaForm: React.FC = () => {
     }
   };
 
-  // Hàm tối ưu hóa hình ảnh với compression mạnh hơn
+  // Image optimization
   const optimizeImage = (file: File, maxWidth: number = 800, maxHeight: number = 600, quality: number = 0.6): Promise<string> => {
     return new Promise((resolve) => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       const img = new Image();
-      
+
       img.onload = () => {
-        // Tính toán kích thước mới (giảm kích thước tối đa)
         let { width, height } = img;
-        
+
         if (width > height) {
           if (width > maxWidth) {
             height = (height * maxWidth) / width;
@@ -140,22 +309,17 @@ const IdeaForm: React.FC = () => {
             height = maxHeight;
           }
         }
-        
+
         canvas.width = width;
         canvas.height = height;
-        
-        // Vẽ hình ảnh đã resize
         ctx?.drawImage(img, 0, 0, width, height);
-        
-        // Thử nhiều mức quality để đảm bảo kích thước nhỏ
+
         let optimizedDataUrl = canvas.toDataURL('image/jpeg', quality);
-        
-        // Nếu vẫn quá lớn (>500KB), giảm quality xuống
+
         if (optimizedDataUrl.length > 500000) {
           optimizedDataUrl = canvas.toDataURL('image/jpeg', 0.4);
         }
-        
-        // Nếu vẫn quá lớn (>300KB), giảm kích thước thêm
+
         if (optimizedDataUrl.length > 300000) {
           const smallerCanvas = document.createElement('canvas');
           const smallerCtx = smallerCanvas.getContext('2d');
@@ -164,11 +328,10 @@ const IdeaForm: React.FC = () => {
           smallerCtx?.drawImage(canvas, 0, 0, smallerCanvas.width, smallerCanvas.height);
           optimizedDataUrl = smallerCanvas.toDataURL('image/jpeg', 0.3);
         }
-        
-        console.log(`Image optimized: ${file.size} bytes -> ${optimizedDataUrl.length} bytes (${Math.round((1 - optimizedDataUrl.length / file.size) * 100)}% reduction)`);
+
         resolve(optimizedDataUrl);
       };
-      
+
       img.src = URL.createObjectURL(file);
     });
   };
@@ -179,124 +342,32 @@ const IdeaForm: React.FC = () => {
   ) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
-    
-    // Kiểm tra kích thước file (giới hạn 15MB)
+
     if (file.size > 15 * 1024 * 1024) {
       setError(`File ${field === 'beforeImage' ? 'hình trước' : 'hình sau'} quá lớn. Vui lòng chọn file nhỏ hơn 15MB.`);
       return;
     }
-    
+
     try {
-      // Tối ưu hóa hình ảnh trước khi lưu
       const optimizedDataUrl = await optimizeImage(file);
       setFormData(prev => ({ ...prev, [field]: optimizedDataUrl }));
-      setError(''); // Clear any previous errors
+      setError('');
     } catch (error) {
-      console.error(`Error processing ${field} image:`, error);
-      setError(`Lỗi khi xử lý hình ảnh ${field === 'beforeImage' ? 'trước' : 'sau'}. Vui lòng thử lại.`);
+      setError(`Lỗi khi xử lý hình ảnh. Vui lòng thử lại.`);
     }
   };
 
-  // AI Functions
-  const handleImproveDescription = async () => {
-    if (!formData.idea.trim()) {
-      setError('Vui lòng nhập mô tả ý tưởng trước khi sử dụng AI');
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+
+    if (!formData.department.trim() || !formData.idea.trim()) {
+      setError('Vui lòng điền đầy đủ thông tin bắt buộc');
       return;
     }
 
-    setAiLoading(prev => ({ ...prev, improveDescription: true }));
+    setSubmitting(true);
     setError('');
-
     try {
-      const response = await api.post('/ai/improve-description', {
-        idea: formData.idea,
-        department: formData.department
-      });
-      setFormData(prev => ({ ...prev, idea: response.data.improvedIdea }));
-    } catch (error: any) {
-      console.error('AI Error:', error);
-      setError(error.response?.data?.message || 'Lỗi khi sử dụng AI. Vui lòng thử lại.');
-    } finally {
-      setAiLoading(prev => ({ ...prev, improveDescription: false }));
-    }
-  };
-
-  const handleSuggestSolution = async () => {
-    if (!formData.idea.trim()) {
-      setError('Vui lòng nhập mô tả ý tưởng trước khi sử dụng AI');
-      return;
-    }
-
-    setAiLoading(prev => ({ ...prev, suggestSolution: true }));
-    setError('');
-
-    try {
-      const response = await api.post('/ai/suggest-solution', {
-        idea: formData.idea,
-        department: formData.department
-      });
-      setFormData(prev => ({ ...prev, solution: response.data.solution }));
-    } catch (error: any) {
-      console.error('AI Error:', error);
-      setError(error.response?.data?.message || 'Lỗi khi sử dụng AI. Vui lòng thử lại.');
-    } finally {
-      setAiLoading(prev => ({ ...prev, suggestSolution: false }));
-    }
-  };
-
-  const handleSuggestBenefit = async () => {
-    if (!formData.idea.trim()) {
-      setError('Vui lòng nhập mô tả ý tưởng trước khi sử dụng AI');
-      return;
-    }
-
-    setAiLoading(prev => ({ ...prev, suggestBenefit: true }));
-    setError('');
-
-    try {
-      const response = await api.post('/ai/suggest-benefit', {
-        idea: formData.idea,
-        solution: formData.solution,
-        department: formData.department
-      });
-      setFormData(prev => ({ ...prev, benefit: response.data.benefit }));
-    } catch (error: any) {
-      console.error('AI Error:', error);
-      setError(error.response?.data?.message || 'Lỗi khi sử dụng AI. Vui lòng thử lại.');
-    } finally {
-      setAiLoading(prev => ({ ...prev, suggestBenefit: false }));
-    }
-  };
-
-  const handleSuggestTopicTitle = async () => {
-    if (!formData.idea.trim()) {
-      setError('Vui lòng nhập mô tả ý tưởng trước khi sử dụng AI');
-      return;
-    }
-
-    setAiLoading(prev => ({ ...prev, suggestTopicTitle: true }));
-    setError('');
-
-    try {
-      const response = await api.post('/ai/suggest-topic-title', {
-        idea: formData.idea,
-        department: formData.department
-      });
-      setFormData(prev => ({ ...prev, topicTitle: response.data.topicTitle }));
-    } catch (error: any) {
-      console.error('AI Error:', error);
-      setError(error.response?.data?.message || 'Lỗi khi sử dụng AI. Vui lòng thử lại.');
-    } finally {
-      setAiLoading(prev => ({ ...prev, suggestTopicTitle: false }));
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-
-    try {
-      // Prepare data, include all fields
       const submitData: any = {
         fullName: formData.fullName,
         department: formData.department,
@@ -306,527 +377,692 @@ const IdeaForm: React.FC = () => {
         beforeImage: formData.beforeImage || null,
         afterImage: formData.afterImage || null
       };
-      
-      console.log('Submitting idea form data:', {
-        hasBeforeImage: !!formData.beforeImage,
-        beforeImageLength: formData.beforeImage ? formData.beforeImage.length : 0,
-        hasAfterImage: !!formData.afterImage,
-        afterImageLength: formData.afterImage ? formData.afterImage.length : 0
-      });
-      
+
       const response = await api.post('/ideas', submitData);
       setSuccess(true);
       setIdeaCode(response.data.ideaCode);
-      setFormData({
-        fullName: '',
-        department: '',
-        idea: '',
-        solution: '',
-        benefit: '',
-        beforeImage: '',
-        afterImage: ''
-      });
-      setTimeout(() => {
-        setSuccess(false);
-        setIdeaCode('');
-      }, 10000); // Hiển thị trong 10 giây
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+      localStorage.setItem('vico_last_department', formData.department);
+      setFormData({ ...EMPTY_FORM_DATA, department: formData.department });
+      setActiveStep(0);
     } catch (error: any) {
       setError(error.response?.data?.message || 'Có lỗi xảy ra');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Step content renderers
+  const renderStep0 = () => (
+    <Box className="animate-fadeIn" sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2.5, sm: 3 } }}>
+      <Box sx={{ textAlign: { xs: 'left', sm: 'center' }, mb: 0.5 }}>
+        <Typography variant="h5" sx={{ fontWeight: 800, color: COLORS.navy.main, mb: 0.5, fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
+          1. Thông tin cá nhân
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+          Nhập họ tên (tùy chọn) và chọn phòng/xưởng làm việc của bạn
+        </Typography>
+      </Box>
+
+      <TextField
+        name="fullName"
+        label="Họ và tên người đề xuất"
+        value={formData.fullName}
+        onChange={handleChange}
+        fullWidth
+        placeholder="Nhập họ và tên (không bắt buộc)"
+        InputProps={{
+          style: { fontSize: '16px' }, // Prevent iOS zoom
+          startAdornment: (
+            <Box sx={{ mr: 1, color: COLORS.slate[400], display: 'flex' }}>
+              <Person fontSize="small" />
+            </Box>
+          ),
+        }}
+      />
+
+      <FormControl fullWidth error={!!errors.department} required>
+        <InputLabel style={{ fontSize: '16px' }}>Đơn vị / Phòng / Xưởng làm việc *</InputLabel>
+        <Select
+          name="department"
+          value={formData.department}
+          onChange={handleSelectChange}
+          label="Đơn vị / Phòng / Xưởng làm việc *"
+          style={{ fontSize: '16px' }}
+          sx={{ borderRadius: '10px', minHeight: 52 }}
+        >
+          {departments.map((dept) => (
+            <MenuItem key={dept} value={dept} style={{ fontSize: '15px' }}>
+              {dept}
+            </MenuItem>
+          ))}
+        </Select>
+        {errors.department && (
+          <Typography color="error" variant="caption" sx={{ mt: 0.5, ml: 1 }}>
+            {errors.department}
+          </Typography>
+        )}
+      </FormControl>
+
+      {/* Mobile-friendly Support Card */}
+      <Card
+        sx={{
+          background: `linear-gradient(135deg, ${COLORS.blue[50]} 0%, #ffffff 100%)`,
+          border: `1px solid ${COLORS.blue[100]}`,
+          borderRadius: '14px',
+          mt: 1,
+        }}
+      >
+        <CardContent sx={{ py: 2, px: 2.5, '&:last-child': { pb: 2 } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 42,
+                height: 42,
+                borderRadius: '12px',
+                backgroundColor: COLORS.blue[100],
+                color: COLORS.blue[600],
+                flexShrink: 0,
+              }}
+            >
+              <ContactSupport fontSize="small" />
+            </Box>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: COLORS.navy.main, fontSize: '0.875rem' }}>
+                Cần người hỗ trợ điền form?
+              </Typography>
+              <Link
+                href="https://zalo.me/0943490500"
+                target="_blank"
+                rel="noopener noreferrer"
+                sx={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  color: COLORS.blue[600],
+                  textDecoration: 'none',
+                  fontWeight: 700,
+                  fontSize: '0.9rem',
+                  mt: 0.25,
+                  '&:hover': { textDecoration: 'underline' },
+                }}
+              >
+                <Phone sx={{ fontSize: 16 }} />
+                Zalo: 0943 490 500 (Hà - Cải tiến)
+              </Link>
+            </Box>
+          </Box>
+        </CardContent>
+      </Card>
+    </Box>
+  );
+
+  const renderStep1 = () => (
+    <Box className="animate-fadeIn" sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2.5, sm: 3 } }}>
+      <Box sx={{ textAlign: { xs: 'left', sm: 'center' }, mb: 0.5 }}>
+        <Typography variant="h5" sx={{ fontWeight: 800, color: COLORS.navy.main, mb: 0.5, fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
+          2. Mô tả ý tưởng cải tiến
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+          Trình bày thực trạng hiện tại, vấn đề cần giải quyết hoặc cách làm mới
+        </Typography>
+      </Box>
+
+      <ToggleButtonGroup
+        value={formMode}
+        exclusive
+        onChange={handleFormModeChange}
+        fullWidth
+        size="small"
+        aria-label="Chọn cách nhập ý tưởng"
+        sx={{
+          borderRadius: '12px',
+          backgroundColor: COLORS.slate[100],
+          p: 0.5,
+          '& .MuiToggleButton-root': {
+            border: 0,
+            borderRadius: '9px !important',
+            textTransform: 'none',
+            fontWeight: 700,
+            py: 1,
+            color: COLORS.slate[600],
+            '&.Mui-selected': {
+              backgroundColor: '#fff',
+              color: COLORS.blue[600],
+              boxShadow: '0 2px 8px rgba(15, 23, 42, 0.1)'
+            }
+          },
+        }}
+      >
+        <ToggleButton value="quick">Gửi nhanh</ToggleButton>
+        <ToggleButton value="guided">Được hướng dẫn</ToggleButton>
+      </ToggleButtonGroup>
+
+      <TextField
+        name="idea"
+        label={formMode === 'quick' ? 'Bạn muốn cải tiến điều gì? *' : 'Vấn đề hoặc cơ hội muốn cải tiến *'}
+        value={formData.idea}
+        onChange={handleChange}
+        required
+        fullWidth
+        multiline
+        rows={formMode === 'quick' ? 7 : 4}
+        error={!!errors.idea}
+        helperText={errors.idea || 'Hãy mô tả bằng ngôn ngữ tự nhiên, chưa cần viết thật hoàn chỉnh'}
+        placeholder="Ví dụ: Tại công đoạn đúc 1, tôi nhận thấy thời gian chờ đang kéo dài do..."
+        InputProps={{
+          style: { fontSize: '16px', lineHeight: 1.6 },
+        }}
+      />
+
+      <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
+        <Button
+          component="a"
+          href="https://gemini.google.com/gem/1u21g1gYbXuBE8-VjgonT-art3DvXZjFX?usp=sharing"
+          target="_blank"
+          rel="noopener noreferrer"
+          variant="outlined"
+          size="small"
+          startIcon={<AutoAwesome sx={{ color: '#8b5cf6' }} />}
+          endIcon={<OpenInNew sx={{ fontSize: '15px !important' }} />}
+          sx={{
+            borderRadius: '10px',
+            textTransform: 'none',
+            fontWeight: 700,
+            borderColor: '#c4b5fd',
+            color: '#6d28d9',
+            backgroundColor: '#f5f3ff',
+            '&:hover': {
+              borderColor: '#8b5cf6',
+              backgroundColor: '#ede9fe',
+            },
+          }}
+        >
+          Viết lại rõ ràng hơn
+        </Button>
+        <Typography variant="caption" sx={{ color: COLORS.slate[500] }}>
+          Mở trợ lý Gemini để được hướng dẫn hoàn thiện ý tưởng rõ ràng, súc tích hơn.
+        </Typography>
+      </Box>
+
+      {formMode === 'guided' && (
+        <Box className="animate-fadeIn" sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+          <TextField
+            name="solution"
+            label="Thực trạng hiện tại"
+            value={formData.solution}
+            onChange={handleChange}
+            fullWidth
+            multiline
+            rows={3}
+            placeholder="Hiện tại công việc đang được thực hiện như thế nào? Khó khăn nằm ở đâu?"
+            InputProps={{ style: { fontSize: '16px', lineHeight: 1.6 } }}
+          />
+          <TextField
+            name="benefit"
+            label="Giải pháp đề xuất"
+            value={formData.benefit}
+            onChange={handleChange}
+            fullWidth
+            multiline
+            rows={3}
+            placeholder="Bạn đề xuất thay đổi cách làm, thiết bị hoặc quy trình như thế nào?"
+            InputProps={{ style: { fontSize: '16px', lineHeight: 1.6 } }}
+          />
+        </Box>
+      )}
+    </Box>
+  );
+
+  const renderStep2 = () => (
+    <Box className="animate-fadeIn" sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2.5, sm: 3 } }}>
+      <Box sx={{ textAlign: { xs: 'left', sm: 'center' }, mb: 0.5 }}>
+        <Typography variant="h5" sx={{ fontWeight: 800, color: COLORS.navy.main, mb: 0.5, fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
+          3. Hình ảnh & gửi ý tưởng
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+          Thêm ảnh hiện trạng hoặc ảnh minh họa giải pháp nếu có
+        </Typography>
+      </Box>
+
+      <Grid container spacing={2}>
+        {/* Trước cải tiến */}
+        <Grid item xs={12} sm={6}>
+          <Card
+            sx={{
+              borderRadius: '14px',
+              border: formData.beforeImage
+                ? `2px solid ${COLORS.emerald[500]}`
+                : `2px dashed ${COLORS.slate[300]}`,
+              backgroundColor: formData.beforeImage ? COLORS.emerald[50] : '#ffffff',
+              textAlign: 'center',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <CardContent sx={{ p: 2.5 }}>
+              {formData.beforeImage ? (
+                <Box>
+                  <img
+                    src={formData.beforeImage}
+                    alt="Hình ảnh trước"
+                    onClick={() => handleImageClick(formData.beforeImage, 'Hình ảnh trước cải tiến')}
+                    style={{
+                      width: '100%',
+                      maxHeight: '180px',
+                      objectFit: 'cover',
+                      borderRadius: 10,
+                      cursor: 'pointer',
+                    }}
+                  />
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1.5 }}>
+                    <Chip label="✓ Ảnh trước" color="success" size="small" sx={{ fontWeight: 700 }} />
+                    <Button
+                      size="small"
+                      color="error"
+                      onClick={() => setFormData(prev => ({ ...prev, beforeImage: '' }))}
+                      sx={{ fontWeight: 600 }}
+                    >
+                      Xóa ảnh
+                    </Button>
+                  </Box>
+                </Box>
+              ) : (
+                <Box component="label" sx={{ cursor: 'pointer', display: 'block', py: 1 }}>
+                  <PhotoCamera sx={{ fontSize: 44, color: COLORS.blue[500], mb: 1 }} />
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, color: COLORS.navy.main, mb: 0.5 }}>
+                    Ảnh hiện trạng
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+                    Chụp trực tiếp hoặc chọn từ thư viện ảnh
+                  </Typography>
+                  <Button variant="outlined" component="span" fullWidth sx={{ borderRadius: '10px', minHeight: 44, fontWeight: 600 }}>
+                    📷 Chọn / Chụp ảnh
+                  </Button>
+                  <input type="file" accept="image/*" hidden onChange={(e) => handleImageChange(e, 'beforeImage')} />
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Sau cải tiến */}
+        <Grid item xs={12} sm={6}>
+          <Card
+            sx={{
+              borderRadius: '14px',
+              border: formData.afterImage
+                ? `2px solid ${COLORS.emerald[500]}`
+                : `2px dashed ${COLORS.slate[300]}`,
+              backgroundColor: formData.afterImage ? COLORS.emerald[50] : '#ffffff',
+              textAlign: 'center',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <CardContent sx={{ p: 2.5 }}>
+              {formData.afterImage ? (
+                <Box>
+                  <img
+                    src={formData.afterImage}
+                    alt="Hình ảnh sau"
+                    onClick={() => handleImageClick(formData.afterImage, 'Hình ảnh sau cải tiến')}
+                    style={{
+                      width: '100%',
+                      maxHeight: '180px',
+                      objectFit: 'cover',
+                      borderRadius: 10,
+                      cursor: 'pointer',
+                    }}
+                  />
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1.5 }}>
+                    <Chip label="✓ Ảnh sau" color="success" size="small" sx={{ fontWeight: 700 }} />
+                    <Button
+                      size="small"
+                      color="error"
+                      onClick={() => setFormData(prev => ({ ...prev, afterImage: '' }))}
+                      sx={{ fontWeight: 600 }}
+                    >
+                      Xóa ảnh
+                    </Button>
+                  </Box>
+                </Box>
+              ) : (
+                <Box component="label" sx={{ cursor: 'pointer', display: 'block', py: 1 }}>
+                  <PhotoCamera sx={{ fontSize: 44, color: COLORS.emerald[500], mb: 1 }} />
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, color: COLORS.navy.main, mb: 0.5 }}>
+                    Ảnh giải pháp / kết quả
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+                    Có thể bổ sung ảnh kết quả sau khi ý tưởng được triển khai
+                  </Typography>
+                  <Button variant="outlined" component="span" fullWidth color="success" sx={{ borderRadius: '10px', minHeight: 44, fontWeight: 600 }}>
+                    📷 Chọn / Chụp ảnh
+                  </Button>
+                  <input type="file" accept="image/*" hidden onChange={(e) => handleImageChange(e, 'afterImage')} />
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      <Alert severity="info" sx={{ borderRadius: '12px', fontSize: '0.875rem' }}>
+        Hình ảnh là tùy chọn. Sau khi gửi, hệ thống sẽ cấp một mã riêng để bạn theo dõi ý tưởng.
+      </Alert>
+
+      {isMobile && renderSummary()}
+    </Box>
+  );
+
+  const renderSummary = () => (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <Card sx={{ borderRadius: '16px', border: `1px solid ${COLORS.slate[200]}`, boxShadow: '0 8px 24px rgba(15, 23, 42, 0.06)' }}>
+        <CardContent sx={{ p: 2.5 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 800, color: COLORS.navy.main, mb: 2 }}>
+            Tóm tắt đề xuất
+          </Typography>
+          <Grid container spacing={2}>
+            {formData.fullName && (
+              <Grid item xs={12} sm={6}>
+                <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
+                  Họ và tên
+                </Typography>
+                <Typography variant="body1" sx={{ fontWeight: 700, mt: 0.25, color: COLORS.navy.main }}>
+                  {formData.fullName}
+                </Typography>
+              </Grid>
+            )}
+            <Grid item xs={12} sm={formData.fullName ? 6 : 12}>
+              <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
+                Đơn vị / Phòng ban
+              </Typography>
+              <Typography variant="body1" sx={{ fontWeight: 700, mt: 0.25, color: COLORS.navy.main }}>
+                {formData.department}
+              </Typography>
+            </Grid>
+            <Grid item xs={12}>
+              <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
+                Nội dung ý tưởng
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 0.5, whiteSpace: 'pre-wrap', lineHeight: 1.6, color: COLORS.slate[800], fontSize: '0.938rem' }}>
+                {formData.idea}
+              </Typography>
+            </Grid>
+            {formData.solution && (
+              <Grid item xs={12}>
+                <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
+                  Thực trạng
+                </Typography>
+                <Typography variant="body2" sx={{ mt: 0.5, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                  {formData.solution}
+                </Typography>
+              </Grid>
+            )}
+            {formData.benefit && (
+              <Grid item xs={12}>
+                <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
+                  Giải pháp đề xuất
+                </Typography>
+                <Typography variant="body2" sx={{ mt: 0.5, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                  {formData.benefit}
+                </Typography>
+              </Grid>
+            )}
+            {(formData.beforeImage || formData.afterImage) && (
+              <Grid item xs={12}>
+                <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, display: 'block', mb: 1 }}>
+                  Hình ảnh đính kèm
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                  {formData.beforeImage && (
+                    <Chip label="✓ Đã kèm ảnh trước" color="success" size="small" sx={{ fontWeight: 600 }} />
+                  )}
+                  {formData.afterImage && (
+                    <Chip label="✓ Đã kèm ảnh sau" color="success" size="small" sx={{ fontWeight: 600 }} />
+                  )}
+                </Box>
+              </Grid>
+            )}
+          </Grid>
+        </CardContent>
+      </Card>
+    </Box>
+  );
+
+  const getStepContent = (step: number) => {
+    switch (step) {
+      case 0: return renderStep0();
+      case 1: return renderStep1();
+      case 2: return renderStep2();
+      default: return null;
     }
   };
 
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
-      <Paper 
-        elevation={3} 
-        sx={{ 
-          p: 4, 
-          borderRadius: 2,
-          background: 'linear-gradient(to bottom right, #ffffff, #f5f5f5)'
-        }}
-      >
-        <Typography 
-          variant="h4" 
-          component="h1" 
-          gutterBottom 
-          align="center"
-          sx={{ 
-            color: '#1976d2',
-            fontWeight: 'bold',
-            mb: 4
+    <Container maxWidth="lg" disableGutters={isMobile} sx={{ px: { xs: 1.5, sm: 3 }, py: 1 }}>
+      {/* Success Banner */}
+      {success && (
+        <Card
+          className="animate-scaleIn"
+          sx={{
+            mb: 3,
+            background: `linear-gradient(135deg, ${COLORS.emerald[50]} 0%, #ffffff 100%)`,
+            border: `2px solid ${COLORS.emerald[400]}`,
+            borderRadius: '16px',
+            textAlign: 'center',
           }}
         >
-          Đề xuất ý tưởng Cải tiến
-        </Typography>
-
-        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
-          <Button
-            href={GEMINI_ASSISTANT_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            variant="contained"
-            size="large"
-            startIcon={<AutoAwesome />}
-            sx={{
-              px: 4,
-              py: 1.25,
-              borderRadius: 2,
-              textTransform: 'none',
-              fontWeight: 700,
-              fontSize: '1rem',
-              bgcolor: '#1a73e8',
-              boxShadow: '0 6px 16px rgba(26, 115, 232, 0.28)',
-              '&:hover': {
-                bgcolor: '#1557b0',
-                boxShadow: '0 8px 20px rgba(26, 115, 232, 0.35)'
-              }
-            }}
-          >
-            Trợ lý AI
-          </Button>
-        </Box>
-        
-        {/* Thông tin người hỗ trợ */}
-        <Card 
-          sx={{ 
-            mb: 3, 
-            bgcolor: '#e3f2fd',
-            border: '1px solid #90caf9',
-            borderRadius: 2,
-            '&:hover': {
-              boxShadow: 3
-            }
-          }}
-        >
-          <CardContent>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <ContactSupport sx={{ color: '#1976d2', fontSize: 32 }} />
-                <Box sx={{ flex: 1 }}>
-                  <Typography variant="h6" color="primary" sx={{ fontWeight: 'bold', mb: 0.5 }}>
-                    Cần hỗ trợ?
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                    Liên hệ người hỗ trợ qua Zalo:
-                  </Typography>
-                  
-                  {/* Link 1 - Dòng 1 */}
-                  <Box sx={{ mb: 1 }}>
-                    <Link
-                      href="https://zalo.me/0943490500"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      sx={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 1,
-                        color: '#0068ff',
-                        textDecoration: 'none',
-                        fontWeight: 'bold',
-                        cursor: 'pointer',
-                        '&:hover': {
-                          textDecoration: 'underline',
-                          color: '#0052cc'
-                        }
-                      }}
-                    >
-                      <Phone sx={{ fontSize: 18 }} />
-                      <Typography component="span" variant="body1">
-                        0943490500 (Hà - Cải tiến)
-                      </Typography>
-                    </Link>
-                  </Box>
-                  
-                  {/* Link 2 - Dòng 2 */}
-
-                  
-                </Box>
+          <CardContent sx={{ py: 3, px: 2 }}>
+            <Celebration sx={{ fontSize: 44, color: COLORS.emerald[500], mb: 1 }} />
+            <Typography variant="h5" sx={{ fontWeight: 800, color: COLORS.emerald[700], mb: 1 }}>
+              Gửi ý tưởng thành công! 🎉
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 2, color: COLORS.slate[700] }}>
+              Mã ý tưởng của bạn là:
+            </Typography>
+            <Chip
+              label={ideaCode}
+              color="primary"
+              sx={{
+                fontSize: { xs: '1.1rem', sm: '1.25rem' },
+                fontWeight: 800,
+                py: 2.5,
+                px: 2,
+                borderRadius: '12px',
+                boxShadow: `0 4px 14px ${COLORS.blue[500]}30`,
+              }}
+            />
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
+              Hãy lưu mã này để đối chiếu với Phòng Cải tiến khi cần.
+            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1.5, flexWrap: 'wrap', mt: 2.5 }}>
+              <Button
+                variant="contained"
+                startIcon={copied ? <CheckCircle /> : <ContentCopy />}
+                onClick={handleCopyIdeaCode}
+                sx={{ borderRadius: '10px', textTransform: 'none', fontWeight: 700 }}
+              >
+                {copied ? 'Đã sao chép' : 'Sao chép mã'}
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<RestartAlt />}
+                onClick={handleCreateAnother}
+                sx={{ borderRadius: '10px', textTransform: 'none', fontWeight: 700 }}
+              >
+                Gửi thêm ý tưởng
+              </Button>
             </Box>
           </CardContent>
         </Card>
+      )}
 
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-        {success && (
-          <Card sx={{ mb: 3, bgcolor: '#e3f2fd' }}>
-            <CardContent>
-              <Typography variant="h6" color="primary" gutterBottom>
-                Gửi ý tưởng thành công!
-              </Typography>
-              <Typography variant="body1">
-                Mã ý tưởng của bạn là: <strong style={{ color: '#1976d2' }}>{ideaCode}</strong>
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Vui lòng lưu lại mã này để nhận thưởng.
-              </Typography>
-            </CardContent>
-          </Card>
-        )}
-        <Box 
-          component="form" 
-          onSubmit={handleSubmit} 
-          sx={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            gap: 3 
-          }}
-        >
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
-              <TextField
-                name="fullName"
-                label="Họ và tên"
-                value={formData.fullName}
-                onChange={handleChange}
-                fullWidth
-                sx={{ 
-                  '& .MuiOutlinedInput-root': {
-                    '&:hover fieldset': {
-                      borderColor: '#1976d2',
-                    },
-                  },
-                }}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth error={!!errors.department}>
-                <InputLabel>Đơn vị làm việc</InputLabel>
-                <Select
-                  name="department"
-                  value={formData.department}
-                  onChange={handleSelectChange}
-                  label="Đơn vị làm việc"
-                  sx={{ 
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: errors.department ? 'error.main' : 'inherit',
-                    },
-                    '&:hover .MuiOutlinedInput-notchedOutline': {
-                      borderColor: '#1976d2',
-                    },
-                  }}
-                >
-                  {departments.map((dept) => (
-                    <MenuItem key={dept} value={dept}>
-                      {dept}
-                    </MenuItem>
-                  ))}
-                </Select>
-                {errors.department && (
-                  <Typography color="error" variant="caption" sx={{ mt: 1 }}>
-                    {errors.department}
-                  </Typography>
-                )}
-              </FormControl>
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                name="idea"
-                label="Ý tưởng"
-                value={formData.idea}
-                onChange={handleChange}
-                required
-                fullWidth
-                multiline
-                rows={6}
-                error={!!errors.idea}
-                helperText={errors.idea}
-                placeholder="Mô tả chi tiết ý tưởng cải tiến của bạn..."
+      {!success && (
+        <>
+          {/* Error Banner */}
+          {error && (
+            <Alert severity="error" sx={{ mb: 3, borderRadius: '12px' }} onClose={() => setError('')}>
+              {error}
+            </Alert>
+          )}
+
+          {/* Mobile Stepper Header: Compact Progress bar for phones */}
+          {isMobile ? (
+            <Box sx={{ mb: 3, px: 0.5 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: COLORS.blue[600] }}>
+                  Bước {activeStep + 1} / {steps.length}: {steps[activeStep]}
+                </Typography>
+                <Typography variant="caption" sx={{ fontWeight: 700, color: COLORS.slate[500] }}>
+                  {Math.round(((activeStep + 1) / steps.length) * 100)}%
+                </Typography>
+              </Box>
+              <LinearProgress
+                variant="determinate"
+                value={((activeStep + 1) / steps.length) * 100}
                 sx={{
-                  '& .MuiOutlinedInput-root': {
-                    '&:hover fieldset': {
-                      borderColor: '#1976d2',
-                    },
+                  height: 8,
+                  borderRadius: 4,
+                  backgroundColor: COLORS.slate[200],
+                  '& .MuiLinearProgress-bar': {
+                    borderRadius: 4,
+                    backgroundColor: COLORS.blue[500],
                   },
                 }}
               />
-            </Grid>
-            
-            {/* Tên đề tài với AI - Đã ẩn */}
-            {/* <Grid item xs={12}>
-              <Box sx={{ position: 'relative' }}>
-                <TextField
-                  name="topicTitle"
-                  label="Tên đề tài"
-                  value={formData.topicTitle}
-                  onChange={handleChange}
-                  fullWidth
-                  placeholder="Tên đề tài cho ý tưởng (có thể để AI đề xuất)"
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      '&:hover fieldset': {
-                        borderColor: '#1976d2',
-                      },
-                    },
-                  }}
-                />
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={aiLoading.suggestTopicTitle ? <CircularProgress size={16} /> : <AutoAwesome />}
-                  onClick={handleSuggestTopicTitle}
-                  disabled={aiLoading.suggestTopicTitle || !formData.idea.trim()}
-                  sx={{
-                    position: 'absolute',
-                    top: 8,
-                    right: 8,
-                    minWidth: 'auto',
-                    px: 1.5,
-                    py: 0.5,
-                    fontSize: '0.75rem',
-                    textTransform: 'none',
-                    bgcolor: 'white',
-                    '&:hover': {
-                      bgcolor: '#f5f5f5',
-                    }
-                  }}
-                >
-                  AI Đề xuất
-                </Button>
-              </Box>
-            </Grid> */}
-            
-            {/* Giải pháp với AI - Đã ẩn */}
-            {/* <Grid item xs={12}>
-              <Box sx={{ position: 'relative' }}>
-                <TextField
-                  name="solution"
-                  label="Giải pháp"
-                  value={formData.solution}
-                  onChange={handleChange}
-                  fullWidth
-                  multiline
-                  rows={4}
-                  placeholder="Mô tả giải pháp cụ thể (có thể để AI đề xuất)"
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      '&:hover fieldset': {
-                        borderColor: '#1976d2',
-                      },
-                    },
-                  }}
-                />
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={aiLoading.suggestSolution ? <CircularProgress size={16} /> : <AutoAwesome />}
-                  onClick={handleSuggestSolution}
-                  disabled={aiLoading.suggestSolution || !formData.idea.trim()}
-                  sx={{
-                    position: 'absolute',
-                    top: 8,
-                    right: 8,
-                    minWidth: 'auto',
-                    px: 1.5,
-                    py: 0.5,
-                    fontSize: '0.75rem',
-                    textTransform: 'none',
-                    bgcolor: 'white',
-                    '&:hover': {
-                      bgcolor: '#f5f5f5',
-                    }
-                  }}
-                >
-                  AI Đề xuất
-                </Button>
-              </Box>
-            </Grid> */}
-            
-            {/* Lợi ích với AI - Đã ẩn */}
-            {/* <Grid item xs={12}>
-              <Box sx={{ position: 'relative' }}>
-                <TextField
-                  name="benefit"
-                  label="Lợi ích"
-                  value={formData.benefit}
-                  onChange={handleChange}
-                  fullWidth
-                  multiline
-                  rows={4}
-                  placeholder="Mô tả lợi ích mang lại (có thể để AI đề xuất)"
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      '&:hover fieldset': {
-                        borderColor: '#1976d2',
-                      },
-                    },
-                  }}
-                />
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={aiLoading.suggestBenefit ? <CircularProgress size={16} /> : <AutoAwesome />}
-                  onClick={handleSuggestBenefit}
-                  disabled={aiLoading.suggestBenefit || !formData.idea.trim()}
-                  sx={{
-                    position: 'absolute',
-                    top: 8,
-                    right: 8,
-                    minWidth: 'auto',
-                    px: 1.5,
-                    py: 0.5,
-                    fontSize: '0.75rem',
-                    textTransform: 'none',
-                    bgcolor: 'white',
-                    '&:hover': {
-                      bgcolor: '#f5f5f5',
-                    }
-                  }}
-                >
-                  AI Đề xuất
-                </Button>
-              </Box>
-            </Grid> */}
-            {/* Hình ảnh trước và sau */}
-            <Grid item xs={12} md={6}>
-              <Box>
-                <Button 
-                  variant="outlined" 
-                  component="label" 
-                  fullWidth
-                  sx={{
-                    mb: 1,
-                    '&:hover': {
-                      borderColor: '#1976d2',
-                    },
-                  }}
-                >
-                  Hình ảnh trước cải tiến
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    hidden 
-                    onChange={(e) => handleImageChange(e, 'beforeImage')} 
-                  />
-                </Button>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                  Gợi ý: ảnh ngang ~800×600px, dung lượng nhỏ hơn 15MB (sẽ được tối ưu hóa tự động)
-                </Typography>
-                {formData.beforeImage && (
-                  <Box sx={{ mt: 1, width: '100%' }}>
-                    <img 
-                      src={formData.beforeImage} 
-                      alt="Hình ảnh trước" 
-                      onClick={() => handleImageClick(formData.beforeImage, 'Hình ảnh trước cải tiến')}
-                      style={{ 
-                        width: '100%', 
-                        height: 'auto', 
-                        maxHeight: '250px',
-                        objectFit: 'contain',
-                        borderRadius: 8,
-                        border: '1px solid #e0e0e0',
-                        cursor: 'pointer',
-                        transition: 'transform 0.2s, box-shadow 0.2s',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'scale(1.02)';
-                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'scale(1)';
-                        e.currentTarget.style.boxShadow = 'none';
-                      }}
-                    />
-                    <Button 
-                      size="small" 
-                      color="error" 
-                      fullWidth 
-                      sx={{ mt: 1 }}
-                      onClick={() => setFormData(prev => ({ ...prev, beforeImage: '' }))}
+            </Box>
+          ) : (
+            /* Desktop Stepper */
+            <Box sx={{ mb: 4 }}>
+              <Stepper
+                activeStep={activeStep}
+                alternativeLabel
+                connector={<CustomConnector />}
+                sx={{ px: 2 }}
+              >
+                {steps.map((label, index) => (
+                  <Step key={label}>
+                    <StepLabel
+                      StepIconComponent={(props) => (
+                        <CustomStepIcon
+                          {...props}
+                          stepIndex={index}
+                        />
+                      )}
                     >
-                      Xóa hình ảnh
-                    </Button>
-                  </Box>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          fontWeight: activeStep === index ? 700 : 500,
+                          color: activeStep === index ? COLORS.blue[600] : COLORS.slate[500],
+                          fontSize: '0.8rem',
+                        }}
+                      >
+                        {label}
+                      </Typography>
+                    </StepLabel>
+                  </Step>
+                ))}
+              </Stepper>
+            </Box>
+          )}
+
+          <Grid container spacing={{ xs: 0, sm: 3 }} alignItems="flex-start">
+            <Grid item xs={12} md={8}>
+              {/* Step Content */}
+              <Box sx={{ minHeight: 280 }}>
+                {getStepContent(activeStep)}
+              </Box>
+
+              {/* Navigation Buttons */}
+              <Box
+                sx={{
+                  display: 'flex',
+                  gap: 1.5,
+                  justifyContent: 'space-between',
+                  mt: 4,
+                  pt: 2.5,
+                  borderTop: `1px solid ${COLORS.slate[200]}`,
+                }}
+              >
+                <Button
+                  onClick={handleBack}
+                  disabled={activeStep === 0}
+                  startIcon={<ArrowBack />}
+                  variant="outlined"
+                  sx={{
+                    visibility: activeStep === 0 ? 'hidden' : 'visible',
+                    color: COLORS.slate[700],
+                    fontWeight: 700,
+                    borderRadius: '12px',
+                    minHeight: 48,
+                    px: { xs: 2, sm: 3 },
+                    fontSize: '0.9rem',
+                  }}
+                >
+                  Quay lại
+                </Button>
+
+                {activeStep === steps.length - 1 ? (
+                  <Button
+                    variant="contained"
+                    size="large"
+                    fullWidth={isMobile}
+                    endIcon={<Send />}
+                    disabled={submitting}
+                    onClick={() => handleSubmit()}
+                    sx={{
+                      px: 4,
+                      py: 1.5,
+                      fontWeight: 800,
+                      borderRadius: '12px',
+                      fontSize: '1rem',
+                      background: `linear-gradient(135deg, ${COLORS.blue[500]} 0%, ${COLORS.blue[600]} 100%)`,
+                      boxShadow: `0 4px 14px ${COLORS.blue[500]}40`,
+                      '&:hover': {
+                        boxShadow: `0 6px 20px ${COLORS.blue[500]}50`,
+                      },
+                    }}
+                  >
+                    {submitting ? 'Đang gửi ý tưởng...' : '🚀 Gửi ý tưởng ngay'}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="contained"
+                    fullWidth={isMobile}
+                    endIcon={<ArrowForward />}
+                    onClick={handleNext}
+                    sx={{
+                      px: 4,
+                      py: 1.5,
+                      fontWeight: 700,
+                      borderRadius: '12px',
+                      fontSize: '0.95rem',
+                      minHeight: 48,
+                    }}
+                  >
+                    Tiếp theo
+                  </Button>
                 )}
               </Box>
             </Grid>
-            <Grid item xs={12} md={6}>
-              <Box>
-                <Button 
-                  variant="outlined" 
-                  component="label" 
-                  fullWidth
-                  sx={{
-                    mb: 1,
-                    '&:hover': {
-                      borderColor: '#1976d2',
-                    },
-                  }}
-                >
-                  Hình ảnh sau cải tiến
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    hidden 
-                    onChange={(e) => handleImageChange(e, 'afterImage')} 
-                  />
-                </Button>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                  Gợi ý: ảnh ngang ~800×600px, dung lượng nhỏ hơn 15MB (sẽ được tối ưu hóa tự động)
-                </Typography>
-                {formData.afterImage && (
-                  <Box sx={{ mt: 1, width: '100%' }}>
-                    <img 
-                      src={formData.afterImage} 
-                      alt="Hình ảnh sau" 
-                      onClick={() => handleImageClick(formData.afterImage, 'Hình ảnh sau cải tiến')}
-                      style={{ 
-                        width: '100%', 
-                        height: 'auto', 
-                        maxHeight: '250px',
-                        objectFit: 'contain',
-                        borderRadius: 8,
-                        border: '1px solid #e0e0e0',
-                        cursor: 'pointer',
-                        transition: 'transform 0.2s, box-shadow 0.2s',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'scale(1.02)';
-                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'scale(1)';
-                        e.currentTarget.style.boxShadow = 'none';
-                      }}
-                    />
-                    <Button 
-                      size="small" 
-                      color="error" 
-                      fullWidth 
-                      sx={{ mt: 1 }}
-                      onClick={() => setFormData(prev => ({ ...prev, afterImage: '' }))}
-                    >
-                      Xóa hình ảnh
-                    </Button>
-                  </Box>
-                )}
-              </Box>
-            </Grid>
+
+            {!isMobile && (
+              <Grid item xs={12} md={4}>
+                <Box sx={{ position: { md: 'sticky' }, top: { md: 92 } }}>
+                  {renderSummary()}
+                  <Typography variant="caption" sx={{ display: 'block', color: COLORS.slate[500], mt: 1.5, textAlign: 'center' }}>
+                    Bản nháp được tự động lưu trên thiết bị này.
+                  </Typography>
+                </Box>
+              </Grid>
+            )}
           </Grid>
-          <Button 
-            type="submit" 
-            variant="contained" 
-            color="primary" 
-            size="large"
-            sx={{ 
-              mt: 2,
-              py: 1.5,
-              fontSize: '1.1rem',
-              fontWeight: 'bold',
-              textTransform: 'none',
-              boxShadow: 2,
-              '&:hover': {
-                boxShadow: 4,
-                transform: 'translateY(-2px)',
-                transition: 'all 0.2s'
-              }
-            }}
-          >
-            Gửi ý tưởng
-          </Button>
-        </Box>
-      </Paper>
+        </>
+      )}
+
       <ImageLightbox
         open={lightboxOpen}
         imageUrl={lightboxImage}
@@ -837,4 +1073,4 @@ const IdeaForm: React.FC = () => {
   );
 };
 
-export default IdeaForm; 
+export default IdeaForm;

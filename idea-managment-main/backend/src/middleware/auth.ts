@@ -1,26 +1,30 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { getJwtSecret } from '../config/secrets';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-
-interface AuthRequest extends Request {
+export interface AuthRequest extends Request {
   user?: {
     userId: string;
   };
 }
 
 export const auth = async (req: AuthRequest, res: Response, next: NextFunction) => {
-  try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
+  const header = req.header('Authorization');
 
-    if (!token) {
-      return res.status(401).json({ message: 'Không tìm thấy token xác thực' });
-    }
-
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-    req.user = decoded;
-    next();
-  } catch (error) {
-    res.status(401).json({ message: 'Token không hợp lệ' });
+  if (!header || !header.startsWith('Bearer ')) {
+    return res.status(401).json({ message: 'Không tìm thấy token xác thực' });
   }
-}; 
+
+  const token = header.slice('Bearer '.length).trim();
+  if (!token) {
+    return res.status(401).json({ message: 'Không tìm thấy token xác thực' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, getJwtSecret()) as { userId: string };
+    req.user = { userId: decoded.userId };
+    return next();
+  } catch (error) {
+    return res.status(401).json({ message: 'Token không hợp lệ' });
+  }
+};

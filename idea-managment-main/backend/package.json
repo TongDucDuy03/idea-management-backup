@@ -8,7 +8,8 @@
     "dev": "nodemon src/index.ts",
     "build": "tsc",
     "create-admin": "ts-node src/scripts/createAdmin.ts",
-    "migrate:status": "ts-node src/scripts/migrateStatus.ts"
+    "migrate:status": "ts-node src/scripts/migrateStatus.ts",
+    "migrate:clean-base64": "ts-node src/scripts/migrateCleanBase64.ts"
   },
   "dependencies": {
     "@types/multer": "^2.0.0",

@@ -1,95 +1,102 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Box,
   Container,
   Typography,
-  Paper,
-  Tabs,
-  Tab,
   Card,
   CardContent,
-  Divider
 } from '@mui/material';
 import IdeaForm from './IdeaForm';
-import A3ReportTab from './A3ReportTab';
-
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
-
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`main-tabpanel-${index}`}
-      aria-labelledby={`main-tab-${index}`}
-      {...other}
-    >
-      {value === index && (
-        <Box sx={{ py: 3 }}>
-          {children}
-        </Box>
-      )}
-    </div>
-  );
-}
+import LandingHero from './LandingHero';
+import { COLORS } from '../theme/theme';
+import api from '../api/config';
 
 const MainPageWithTabs: React.FC = () => {
-  const [tabValue, setTabValue] = useState(0);
+  const formRef = useRef<HTMLDivElement>(null);
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
+  // Stats for hero
+  const [stats, setStats] = useState({ total: 0, approved: 0, rewarded: 0 });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        // Dùng endpoint đếm sẵn ở server thay vì tải toàn bộ danh sách ý tưởng
+        // (kèm ảnh base64) chỉ để lấy 3 con số.
+        const response = await api.get('/ideas/stats');
+        const { total = 0, approved = 0, rewarded = 0 } = response.data || {};
+        setStats({ total, approved, rewarded });
+      } catch {
+        // Silently fail – hero will show 0s
+      }
+    };
+    fetchStats();
+  }, []);
+
+  const scrollToForm = () => {
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   return (
-    <Container maxWidth="xl" sx={{ py: 2 }}>
-      <Card elevation={3} sx={{ mb: 2, borderRadius: 2 }}>
-        <CardContent sx={{ pb: 0 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h4" component="h1" sx={{ color: '#1976d2', fontWeight: 'bold' }}>
-              Hệ thống Ghi nhận và Quản lý Ý tưởng Cải tiến
-            </Typography>
-          </Box>
-          <Box sx={{ textAlign: 'center', mb: 2 }}>
-            <Typography variant="body1" sx={{ color: '#666', fontSize: '1.1rem' }}>
-              Chào mừng bạn đến với hệ thống! Bạn có thể đề xuất ý tưởng mới hoặc nhập báo cáo A3 bằng mã ý tưởng.
-            </Typography>
-          </Box>
-          <Divider sx={{ mb: 0 }} />
-          <Tabs
-            value={tabValue}
-            onChange={handleTabChange}
-            aria-label="main tabs"
-            centered
+    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+      {/* Hero Section */}
+      <LandingHero
+        onScrollToForm={scrollToForm}
+        totalIdeas={stats.total}
+        approvedIdeas={stats.approved}
+        rewardedIdeas={stats.rewarded}
+      />
+
+      {/* Form Section */}
+      <Box ref={formRef} sx={{ backgroundColor: COLORS.slate[50] }}>
+        <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
+          {/* Section Header */}
+          <Box
+            className="animate-fadeInUp"
             sx={{
-              '& .MuiTab-root': {
-                textTransform: 'none',
-                fontWeight: 'bold',
-                fontSize: '1.1rem',
-                minHeight: 48,
-                px: 4
-              }
+              textAlign: 'center',
+              mb: 4,
+              opacity: 0,
             }}
           >
-            <Tab label="Đề xuất Ý tưởng Cải tiến" />
-            <Tab label="Nhập báo cáo A3" />
-          </Tabs>
-        </CardContent>
-      </Card>
+            <Typography
+              variant="h3"
+              sx={{
+                fontWeight: 800,
+                color: COLORS.navy.main,
+                mb: 1.5,
+                fontSize: { xs: '1.5rem', md: '1.8rem' },
+              }}
+            >
+              Bắt đầu đề xuất ý tưởng
+            </Typography>
+            <Typography
+              variant="body1"
+              color="text.secondary"
+              sx={{ maxWidth: 600, mx: 'auto' }}
+            >
+              Chia sẻ sáng kiến của bạn để cùng xây dựng môi trường làm việc tốt hơn mỗi ngày.
+            </Typography>
+          </Box>
 
-      <TabPanel value={tabValue} index={0}>
-        <IdeaForm />
-      </TabPanel>
-      
-      <TabPanel value={tabValue} index={1}>
-        <A3ReportTab />
-      </TabPanel>
-    </Container>
+          {/* Idea submission card */}
+          <Card
+            elevation={0}
+            sx={{
+              borderRadius: '20px',
+              border: `1px solid ${COLORS.slate[200]}`,
+              overflow: 'visible',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
+            }}
+          >
+            <CardContent sx={{ p: 0 }}>
+              <Box className="animate-fadeIn" sx={{ px: { xs: 0, md: 2 }, py: 4 }}>
+                <IdeaForm />
+              </Box>
+            </CardContent>
+          </Card>
+        </Container>
+      </Box>
+    </Box>
   );
 };
 

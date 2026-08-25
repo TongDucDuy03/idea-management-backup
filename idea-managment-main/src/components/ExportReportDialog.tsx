@@ -20,6 +20,8 @@ import {
 import { Idea, IdeaStatus } from '../types';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { Tune as TuneIcon } from '@mui/icons-material';
+import A3LayoutEditor from './A3LayoutEditor';
 
 interface ExportReportDialogProps {
   open: boolean;
@@ -35,6 +37,7 @@ const ExportReportDialog: React.FC<ExportReportDialogProps> = ({
   const [selectedIdeas, setSelectedIdeas] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
+  const [layoutEditorIdea, setLayoutEditorIdea] = useState<Idea | null>(null);
 
   // Lọc các ý tưởng có trạng thái "BAO_CAO_A3"
   const filteredIdeas = ideas.filter(idea => {
@@ -51,6 +54,7 @@ const ExportReportDialog: React.FC<ExportReportDialogProps> = ({
   useEffect(() => {
     if (open) {
       setSelectedIdeas([]);
+      setLayoutEditorIdea(null);
     }
   }, [open]);
 
@@ -72,14 +76,6 @@ const ExportReportDialog: React.FC<ExportReportDialogProps> = ({
     loadLogo();
     return () => { cancelled = true; };
   }, []);
-
-  const handleIdeaSelection = (ideaId: string) => {
-    setSelectedIdeas(prev => 
-      prev.includes(ideaId) 
-        ? prev.filter(id => id !== ideaId)
-        : [...prev, ideaId]
-    );
-  };
 
   const handleSelectAll = () => {
     if (selectedIdeas.length === filteredIdeas.length) {
@@ -549,8 +545,8 @@ const ExportReportDialog: React.FC<ExportReportDialogProps> = ({
                         <div class="section-title">HÌNH ẢNH TRƯỚC</div>
                         <div class="section-content">
                           ${(idea as any).beforeImage
-                            ? `<div class=\"image-box\"><img src=\"${(idea as any).beforeImage}\" alt=\"Hình ảnh trước\" /></div>`
-                            : '<div class=\"image-box\" style=\"color:#999; font-style:italic;\">Chưa có hình ảnh trước</div>'}
+                            ? `<div class="image-box"><img src="${(idea as any).beforeImage}" alt="Hình ảnh trước" /></div>`
+                            : '<div class="image-box" style="color:#999; font-style:italic;">Chưa có hình ảnh trước</div>'}
                         </div>
                     </div>
                     
@@ -558,8 +554,8 @@ const ExportReportDialog: React.FC<ExportReportDialogProps> = ({
                         <div class="section-title">HÌNH ẢNH SAU</div>
                         <div class="section-content">
                           ${(idea as any).afterImage
-                            ? `<div class=\"image-box\"><img src=\"${(idea as any).afterImage}\" alt=\"Hình ảnh sau\" /></div>`
-                            : '<div class=\"image-box\" style=\"color:#999; font-style:italic;\">Chưa có hình ảnh sau</div>'}
+                            ? `<div class="image-box"><img src="${(idea as any).afterImage}" alt="Hình ảnh sau" /></div>`
+                            : '<div class="image-box" style="color:#999; font-style:italic;">Chưa có hình ảnh sau</div>'}
                         </div>
                     </div>
                 </div>
@@ -750,6 +746,7 @@ const ExportReportDialog: React.FC<ExportReportDialogProps> = ({
   };
 
   return (
+    <>
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>
         Export Báo Cáo Cải Tiến A3
@@ -810,13 +807,27 @@ const ExportReportDialog: React.FC<ExportReportDialogProps> = ({
 
         {selectedIdeas.length > 0 && (
           <Alert severity="success" sx={{ mt: 2 }}>
-            Sẽ tạo {selectedIdeas.length} file báo cáo PDF A3. Các ô sẽ tự động mở rộng để hiển thị đầy đủ nội dung.
+            {selectedIdeas.length === 1
+              ? 'Bạn có thể xem trước, kéo căn chỉnh rồi xuất đúng bố cục đang xem.'
+              : `Sẽ tạo ${selectedIdeas.length} file PDF theo mẫu xuất nhanh. Để căn chỉnh riêng, hãy chọn từng ý tưởng một.`}
           </Alert>
         )}
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} disabled={loading}>
           Hủy
+        </Button>
+        <Button
+          onClick={() => {
+            const selectedIdea = filteredIdeas.find(idea => idea._id === selectedIdeas[0]);
+            if (selectedIdea) setLayoutEditorIdea(selectedIdea);
+          }}
+          variant="outlined"
+          color="primary"
+          disabled={selectedIdeas.length !== 1 || loading}
+          startIcon={<TuneIcon />}
+        >
+          Xem trước & căn chỉnh
         </Button>
         <Button 
           onClick={handleExport} 
@@ -829,6 +840,15 @@ const ExportReportDialog: React.FC<ExportReportDialogProps> = ({
         </Button>
       </DialogActions>
     </Dialog>
+      {layoutEditorIdea && (
+        <A3LayoutEditor
+          open={Boolean(layoutEditorIdea)}
+          idea={layoutEditorIdea}
+          filename={`Bao_Cao_Cai_Tien_A3_${layoutEditorIdea.ideaCode || layoutEditorIdea._id}.pdf`}
+          onClose={() => setLayoutEditorIdea(null)}
+        />
+      )}
+    </>
   );
 };
 

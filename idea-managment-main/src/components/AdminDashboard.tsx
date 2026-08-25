@@ -3,7 +3,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
   Button,
-  Container,
   Typography,
   Paper,
   TextField,
@@ -22,10 +21,10 @@ import {
   Checkbox,
   ListItemText,
   FormControlLabel,
-  Dialog,
-  DialogTitle,
   DialogContent,
   DialogActions,
+  ToggleButton,
+  ToggleButtonGroup,
   useMediaQuery,
   useTheme,
   Drawer,
@@ -35,8 +34,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Tabs,
-  Tab,
   Accordion,
   AccordionSummary,
   AccordionDetails,
@@ -45,23 +42,6 @@ import {
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip as ChartTooltip,
-  Legend,
-  ArcElement,
-  PointElement,
-  LineElement,
-  Filler
-} from 'chart.js';
-import { Bar, Doughnut, Line, getElementAtEvent } from 'react-chartjs-2';
-import {
-  TrendingUp as TrendingUpIcon,
-  TrendingDown as TrendingDownIcon,
-  CompareArrows as CompareArrowsIcon,
   BarChart as BarChartIcon,
   ViewList as ViewListIcon,
   ViewModule as ViewModuleIcon,
@@ -72,12 +52,6 @@ import {
   Person as PersonIcon,
   Business as BusinessIcon,
   CalendarToday as CalendarTodayIcon,
-  AttachMoney as AttachMoneyIcon,
-  Assessment as AssessmentIcon,
-  Image as ImageIcon,
-  Description as DescriptionIcon,
-  CheckCircle as CheckCircleIcon,
-  Schedule as ScheduleIcon,
   Visibility as VisibilityIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
@@ -93,12 +67,13 @@ import ImageLightbox from './ImageLightbox';
 import RewardStatusDialog from './RewardStatusDialog';
 import ImportDialog from './ImportDialog';
 import api from '../api/config';
-import useIsMobile from '../hooks/useIsMobile';
 
 interface AdminDashboardProps {
   // Chế độ chỉ xem (dùng cho /admin-view từ statistics-view)
   isViewOnly?: boolean;
 }
+
+type TableViewPreset = 'overview' | 'implementation' | 'reward' | 'all' | 'custom';
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) => {
   const navigate = useNavigate();
@@ -110,12 +85,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
   // Mobile view mode: 'cards' or 'table'
   const [mobileViewMode, setMobileViewMode] = useState<'cards' | 'table'>('cards');
 
-  // Detail modal for mobile
+  // Hồ sơ chi tiết dùng chung cho mobile và desktop
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedIdeaForDetail, setSelectedIdeaForDetail] = useState<Idea | null>(null);
 
-  // Filter drawer for mobile
-  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
+  // Mặc định ưu tiên bảng tóm tắt; người dùng vẫn có thể chuyển về bảng đầy đủ.
+  const [tableViewPreset, setTableViewPreset] = useState<TableViewPreset>(() => {
+    if (isViewOnly) return 'overview';
+    const savedPreset = localStorage.getItem('admin_table_view_preset') as TableViewPreset | null;
+    return savedPreset && ['overview', 'implementation', 'reward', 'all', 'custom'].includes(savedPreset)
+      ? savedPreset
+      : 'overview';
+  });
+
   // Filter collapse state
   const [filtersExpanded, setFiltersExpanded] = useState(false);
 
@@ -193,6 +175,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     'actions'
   ] as const;
 
+  // Các cột tổng hợp chỉ dùng cho những chế độ xem gọn.
+  const groupedColumnFields = [
+    'submitterSummary',
+    'ideaSummary',
+    'implementationSummary',
+    'valueSummary'
+  ] as const;
+
+  const allGridColumnFields = [...allColumnFields, ...groupedColumnFields];
+
   // Các cột được phép hiển thị trong chế độ chỉ xem (admin-view)
   const viewOnlyFields = new Set<string>([
     'ideaCode',          // Mã ý tưởng
@@ -207,57 +199,91 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     'note'               // Ghi chú
   ]);
 
-  const defaultVisibleFields = new Set<string>(
-    isViewOnly
-      ? Array.from(viewOnlyFields)
-      : [
-        'ideaCode',
-        'idea',
-        'solution',
-        'benefit',
-        'beforeImage',
-        'afterImage',
-        'status',
-        'note',
-        'actions'
-      ]
-  );
+  const presetFields: Record<Exclude<TableViewPreset, 'custom'>, Set<string>> = {
+    overview: new Set(
+      isViewOnly
+        ? ['ideaCode', 'submitterSummary', 'ideaSummary', 'status', 'rewardStatuses']
+        : ['ideaCode', 'submitterSummary', 'ideaSummary', 'status', 'implementationSummary', 'valueSummary', 'actions']
+    ),
+    implementation: new Set([
+      'ideaCode',
+      'submitterSummary',
+      'ideaSummary',
+      'status',
+      'implementationSummary',
+      'note',
+      'actions'
+    ]),
+    reward: new Set([
+      'ideaCode',
+      'submitterSummary',
+      'status',
+      'rewardStatuses',
+      'valueSummary',
+      'rewardCalculationMethod',
+      'rewardApprovalDate',
+      'actions'
+    ]),
+    all: new Set(isViewOnly ? Array.from(viewOnlyFields) : Array.from(allColumnFields))
+  };
+
+  const buildVisibilityModel = (preset: Exclude<TableViewPreset, 'custom'>) => {
+    const visibleFields = presetFields[preset];
+    const model: Record<string, boolean> = {};
+    allGridColumnFields.forEach(field => {
+      model[field] = visibleFields.has(field);
+    });
+    return model;
+  };
 
   const [columnVisibilityModel, setColumnVisibilityModel] = useState<Record<string, boolean>>(() => {
-    // Với chế độ chỉ xem, luôn cố định bộ cột, không dùng cấu hình lưu trong localStorage
-    if (isViewOnly) {
-      const model: Record<string, boolean> = {};
-      allColumnFields.forEach(f => {
-        model[f] = viewOnlyFields.has(f);
-      });
-      return model;
+    if (!isViewOnly && tableViewPreset === 'custom') {
+      try {
+        const saved = localStorage.getItem('admin_column_visibility');
+        if (saved) return JSON.parse(saved);
+      } catch { }
     }
 
-    try {
-      const saved = localStorage.getItem('admin_column_visibility');
-      if (saved) return JSON.parse(saved);
-    } catch { }
-    const model: Record<string, boolean> = {};
-    allColumnFields.forEach(f => { model[f] = defaultVisibleFields.has(f); });
-    return model;
+    const initialPreset = tableViewPreset === 'custom' ? 'overview' : tableViewPreset;
+    return buildVisibilityModel(initialPreset);
   });
 
   useEffect(() => {
     if (isViewOnly) return;
     try {
       localStorage.setItem('admin_column_visibility', JSON.stringify(columnVisibilityModel));
+      localStorage.setItem('admin_table_view_preset', tableViewPreset);
     } catch { }
-  }, [columnVisibilityModel, isViewOnly]);
+  }, [columnVisibilityModel, tableViewPreset, isViewOnly]);
+
+  const handleTableViewPresetChange = (
+    _event: React.MouseEvent<HTMLElement>,
+    nextPreset: TableViewPreset | null
+  ) => {
+    if (!nextPreset || nextPreset === 'custom') return;
+    setTableViewPreset(nextPreset);
+    setColumnVisibilityModel(buildVisibilityModel(nextPreset));
+    setPaginationModel(prev => ({ ...prev, page: 0 }));
+  };
 
   const [colMenuAnchor, setColMenuAnchor] = useState<null | HTMLElement>(null);
   const isColMenuOpen = Boolean(colMenuAnchor);
-  const openColMenu = (e: React.MouseEvent<HTMLElement>) => setColMenuAnchor(e.currentTarget);
+  const openColMenu = (e: React.MouseEvent<HTMLElement>) => {
+    // Trình quản lý cột làm việc trên các cột dữ liệu đầy đủ, không trộn với cột tổng hợp.
+    if (tableViewPreset !== 'all' && tableViewPreset !== 'custom') {
+      setTableViewPreset('all');
+      setColumnVisibilityModel(buildVisibilityModel('all'));
+    }
+    setColMenuAnchor(e.currentTarget);
+  };
   const closeColMenu = () => setColMenuAnchor(null);
   const handleToggleColumn = (field: string) => {
+    setTableViewPreset('custom');
     setColumnVisibilityModel(prev => ({ ...prev, [field]: !prev[field] }));
   };
 
   const handleSelectAllColumns = () => {
+    setTableViewPreset('custom');
     const allSelected = allColumnFields.every(field => columnVisibilityModel[field]);
     const newModel: Record<string, boolean> = {};
     allColumnFields.forEach(field => {
@@ -297,27 +323,30 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
 
   const fetchIdeas = useCallback(async () => {
     try {
-      if (isViewOnly) {
-        // Chế độ chỉ xem: dùng endpoint public, không cần token
-        const response = await api.get('/ideas/public');
-        setIdeas(response.data);
+      const token = localStorage.getItem('token');
+
+      // Nếu đã đăng nhập (có token) -> tải dữ liệu qua endpoint /ideas
+      if (token) {
+        const response = await api.get('/ideas');
+        const rawData = response.data;
+        const ideaList = Array.isArray(rawData) ? rawData : (rawData.ideas || rawData.data || []);
+        setIdeas(ideaList);
         setLoading(false);
         return;
       }
 
-      const token = localStorage.getItem('token');
-      if (!token) {
-        navigate('/login');
+      // Nếu ở chế độ chỉ xem (public view) -> tải dữ liệu qua /ideas/public
+      if (isViewOnly) {
+        const response = await api.get('/ideas/public');
+        const rawData = response.data;
+        const ideaList = Array.isArray(rawData) ? rawData : (rawData.ideas || rawData.data || []);
+        setIdeas(ideaList);
+        setLoading(false);
         return;
       }
 
-      const response = await api.get('/ideas', {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-      setIdeas(response.data);
-      setLoading(false);
+      // Chưa đăng nhập và không phải chế độ chỉ xem
+      navigate('/login');
     } catch (error: any) {
       if (!isViewOnly && error.response?.status === 401) {
         localStorage.removeItem('token');
@@ -442,12 +471,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
 
       await api.put(
         `/ideas/${id}`,
-        { rewardCalculationMethod: method || null },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+        { rewardCalculationMethod: method || null }
       );
 
       // Refresh ideas from server
@@ -588,11 +612,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
         updateData.rewardStatuses = rewardStatuses;
       }
 
-      await api.put(`/ideas/${id}`, updateData, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      await api.put(`/ideas/${id}`, updateData);
       fetchIdeas();
     } catch (error: any) {
       if (error.response?.status === 401) {
@@ -661,10 +681,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
 
       await api.put(`/ideas/${id}`, {
         rewardStatuses: validStatuses
-      }, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
       });
       fetchIdeas();
     } catch (error: any) {
@@ -692,11 +708,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       // Note: implementationStatus is not in the Idea type but may exist in database
       await api.put(`/ideas/${id}`, {
         implementationStatus
-      } as any, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      } as any);
       fetchIdeas();
     } catch (error: any) {
       if (error.response?.status === 401) {
@@ -719,11 +731,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
           return;
         }
 
-        await api.delete(`/ideas/${id}`, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
+        await api.delete(`/ideas/${id}`);
         fetchIdeas();
       } catch (error: any) {
         if (error.response?.status === 401) {
@@ -760,17 +768,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       }
 
       if (isEditMode && selectedIdea) {
-        await api.put(`/ideas/${selectedIdea._id}`, ideaData, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
+        await api.put(`/ideas/${selectedIdea._id}`, ideaData);
       } else {
-        await api.post('/ideas', ideaData, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
+        await api.post('/ideas', ideaData);
       }
       fetchIdeas();
       setIsDialogOpen(false);
@@ -830,11 +830,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     };
 
     // Get visible columns (default true if not explicitly hidden)
-    const visibleFields = columns.filter(col => {
+    const visibleGridFields = columns.filter(col => {
       const isVisible = columnVisibilityModel[col.field];
       // Default to true if not in visibility model (meaning column is visible by default)
       return isVisible !== false;
     }).map(col => col.field);
+
+    // Các cột tổng hợp trên UI được bung lại thành các trường dữ liệu thật khi xuất Excel.
+    const summaryFieldMapping: Record<string, string[]> = {
+      submitterSummary: ['fullName', 'department', 'submissionDate'],
+      ideaSummary: ['idea'],
+      implementationSummary: ['implementationStatus', 'implementationDepartment', 'expectedCompletionDate'],
+      valueSummary: ['benefitValue', 'rewardAmount']
+    };
+    const visibleFields = Array.from(new Set(
+      visibleGridFields.flatMap(field => summaryFieldMapping[field] || [field])
+    )).filter(field => field !== 'actions');
 
     const exportData = filteredIdeas.map(idea => {
       const row: Record<string, any> = {};
@@ -842,8 +853,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       visibleFields.forEach(field => {
         const displayName = fieldDisplayNames[field] || field;
 
-        if (field === 'beforeImage' || field === 'afterImage') {
-          row[displayName] = (idea as any)[field] ? 'Có' : 'Không';
+        if (field === 'beforeImage') {
+          const hasImg = (idea as any).beforeImageUrl || (idea as any).beforeImagePath || (idea as any).beforeImage;
+          row[displayName] = hasImg ? 'Có' : 'Không';
+        } else if (field === 'afterImage') {
+          const hasImg = (idea as any).afterImageUrl || (idea as any).afterImagePath || (idea as any).afterImage;
+          row[displayName] = hasImg ? 'Có' : 'Không';
         } else if (field === 'benefitValue' || field === 'rewardAmount') {
           const value = (idea as any)[field];
           row[displayName] = value ? value.toLocaleString('vi-VN') : '0';
@@ -1120,8 +1135,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     );
   });
 
-  // Sync horizontal scroll between top scroll bar and DataGrid
+  const showFullWidthTable = tableViewPreset === 'all' || tableViewPreset === 'custom';
+
+  // Chỉ đồng bộ thanh cuộn ngang trong chế độ toàn bộ/tùy chỉnh.
   useEffect(() => {
+    if (!showFullWidthTable) return;
     const topScrollElement = topScrollRef.current;
     const dataGridElement = dataGridRef.current?.querySelector('.MuiDataGrid-virtualScroller');
 
@@ -1165,7 +1183,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       topScrollElement.removeEventListener('scroll', handleTopScroll);
       dataGridElement.removeEventListener('scroll', handleDataGridScroll);
     };
-  }, [filteredIdeas]);
+  }, [filteredIdeas, showFullWidthTable]);
 
   const StatusCell: React.FC<{ row: Idea }> = ({ row }) => {
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -1207,7 +1225,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       [IdeaStatus.REJECTED]: '#E91E63'
     };
 
-    const handleOpen = (e: React.MouseEvent<HTMLElement>) => setAnchorEl(e.currentTarget);
+    const handleOpen = (e: React.MouseEvent<HTMLElement>) => {
+      e.stopPropagation();
+      setAnchorEl(e.currentTarget);
+    };
     const handleClose = () => setAnchorEl(null);
     const selectStatus = (s: IdeaStatus) => {
       handleStatusChange(row._id, s);
@@ -1261,6 +1282,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     const currentMethod = (row as any).rewardCalculationMethod as RewardCalculationMethod | undefined;
 
     const handleOpen = (e: React.MouseEvent<HTMLElement>) => {
+      e.stopPropagation();
       if (isViewOnly) return; // Không cho mở menu ở chế độ chỉ xem
       setAnchorEl(e.currentTarget);
     };
@@ -1329,11 +1351,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       (row as any).rewardStatuses || []
     );
 
+    const rewardStatuses = (row as any).rewardStatuses;
     useEffect(() => {
-      setSelectedStatuses((row as any).rewardStatuses || []);
-    }, [(row as any).rewardStatuses]);
+      setSelectedStatuses(rewardStatuses || []);
+    }, [rewardStatuses]);
 
     const handleOpen = (e: React.MouseEvent<HTMLElement>) => {
+      e.stopPropagation();
       if (isViewOnly) return; // Không cho mở menu ở chế độ chỉ xem
       setAnchorEl(e.currentTarget);
       setSelectedStatuses((row as any).rewardStatuses || []);
@@ -1491,7 +1515,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       }
     };
 
-    const handleOpen = (e: React.MouseEvent<HTMLElement>) => setAnchorEl(e.currentTarget);
+    const handleOpen = (e: React.MouseEvent<HTMLElement>) => {
+      e.stopPropagation();
+      setAnchorEl(e.currentTarget);
+    };
     const handleClose = () => setAnchorEl(null);
     const selectImplementationStatus = (
       s: '' | 'Đề xuất mới' | 'Xem xét' | 'Phê duyệt' | 'Phản hồi phê duyệt' | 'Đang triển khai' | 'Lập báo cáo A3' | 'Phê duyệt khen thưởng' | 'Đã khen thưởng' | 'Không đạt'
@@ -1568,6 +1595,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     return filtered.join('\n').trim();
   };
 
+  const truncateTextToMaxLines = (text: string | undefined, maxLines = 10, maxChars = 400): string => {
+    if (!text) return '';
+    const lines = text.split('\n');
+    if (lines.length > maxLines) {
+      return lines.slice(0, maxLines).join('\n') + '...';
+    }
+    if (text.length > maxChars) {
+      return text.slice(0, maxChars) + '...';
+    }
+    return text;
+  };
+
   // Handler for opening lightbox
   const handleImageClick = (imageUrl: string, title: string) => {
     setLightboxImage(imageUrl);
@@ -1581,11 +1620,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     setLightboxTitle('');
   };
 
+  const openIdeaDetails = (idea: Idea) => {
+    setSelectedIdeaForDetail(idea);
+    setDetailModalOpen(true);
+  };
+
+  const formatCurrency = (value: unknown) => {
+    const numericValue = Number(value) || 0;
+    return numericValue > 0 ? `${numericValue.toLocaleString('vi-VN')} đ` : '-';
+  };
+
   const columns: GridColDef[] = [
     {
       field: 'ideaCode',
       headerName: 'Mã ý tưởng',
-      width: 150,
+      width: 120,
       align: 'center',
       headerAlign: 'center',
       renderCell: (params) => (
@@ -1601,6 +1650,110 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
         </div>
       )
 
+    },
+    {
+      field: 'submitterSummary',
+      headerName: 'Người đề xuất',
+      minWidth: 160,
+      flex: 0.85,
+      sortable: false,
+      renderCell: (params) => (
+        <Box sx={{ width: '100%', py: 0.5 }}>
+          <Typography variant="body2" sx={{ fontWeight: 700, color: '#0f172a', lineHeight: 1.35 }}>
+            {(params.row as Idea).fullName || 'Chưa cung cấp tên'}
+          </Typography>
+          <Typography variant="caption" sx={{ display: 'block', color: '#64748b', lineHeight: 1.35 }}>
+            {(params.row as Idea).department || 'Chưa có đơn vị'}
+          </Typography>
+          <Typography variant="caption" sx={{ display: 'block', color: '#94a3b8', mt: 0.5 }}>
+            {(params.row as Idea).submissionDate
+              ? new Date((params.row as Idea).submissionDate).toLocaleDateString('vi-VN')
+              : '-'}
+          </Typography>
+        </Box>
+      )
+    },
+    {
+      field: 'ideaSummary',
+      headerName: 'Ý tưởng',
+      minWidth: 190,
+      flex: 1.2,
+      sortable: false,
+      renderCell: (params) => {
+        const rawText = getPureIdeaText((params.row as Idea).idea);
+        const text = truncateTextToMaxLines(rawText, 10, 400);
+        return (
+          <Typography
+            variant="body2"
+            sx={{
+              width: '100%',
+              py: 0.5,
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              overflowWrap: 'anywhere',
+              lineHeight: 1.4,
+              maxHeight: '14em',
+              color: '#334155',
+              display: '-webkit-box',
+              WebkitLineClamp: 10,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {text || 'Không có nội dung'}
+          </Typography>
+        );
+      }
+    },
+    {
+      field: 'implementationSummary',
+      headerName: 'Triển khai',
+      minWidth: 170,
+      flex: 0.9,
+      sortable: false,
+      renderCell: (params) => {
+        const row = params.row as Idea;
+        const implementationDepartment = (row as any).implementationDepartment;
+        const expectedDate = (row as any).expectedCompletionDate;
+        return (
+          <Box sx={{ width: '100%', py: 0.5 }}>
+            <ImplementationStatusCell row={row} />
+            <Typography variant="caption" sx={{ display: 'block', color: '#64748b', mt: 0.75, lineHeight: 1.35 }}>
+              {implementationDepartment || 'Chưa phân công đơn vị'}
+            </Typography>
+            <Typography
+              variant="caption"
+              sx={{ display: 'block', color: expectedDate ? '#475569' : '#94a3b8', mt: 0.25 }}
+            >
+              Hạn: {expectedDate ? new Date(expectedDate).toLocaleDateString('vi-VN') : 'Chưa đặt'}
+            </Typography>
+          </Box>
+        );
+      }
+    },
+    {
+      field: 'valueSummary',
+      headerName: 'Hiệu quả',
+      minWidth: 135,
+      flex: 0.7,
+      sortable: false,
+      renderCell: (params) => {
+        const row = params.row as any;
+        return (
+          <Box sx={{ width: '100%', py: 0.5 }}>
+            <Typography variant="caption" sx={{ display: 'block', color: '#64748b' }}>
+              Giá trị làm lợi
+            </Typography>
+            <Typography variant="body2" sx={{ fontWeight: 700, color: '#15803d' }}>
+              {formatCurrency(row.benefitValue)}
+            </Typography>
+            <Typography variant="caption" sx={{ display: 'block', color: '#64748b', mt: 0.5 }}>
+              Thưởng: <Box component="span" sx={{ fontWeight: 700, color: '#c2410c' }}>{formatCurrency(row.rewardAmount)}</Box>
+            </Typography>
+          </Box>
+        );
+      }
     },
     {
       field: 'beforeImage',
@@ -1745,21 +1898,26 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       align: 'center',
       headerAlign: 'center',
       valueGetter: (params) => getPureIdeaText((params.row as any).idea),
-      renderCell: (params) => (
-        <div style={{
-          whiteSpace: 'normal',
-          wordBreak: 'break-word',
-          width: '100%',
-          textAlign: 'left',
-          maxHeight: '180px',      // 👈 chiều cao tối đa cố định
-          overflowY: 'auto',       // 👈 text dài thì có scroll
-          paddingRight: '8px',
-          scrollbarWidth: 'thin',  // 👈 scrollbar mỏng hơn
-          scrollbarColor: '#ccc transparent' // 👈 màu scrollbar
-        }}>
-          {params.value || '-'}
-        </div>
-      )
+      renderCell: (params) => {
+        const text = truncateTextToMaxLines(params.value, 10, 400);
+        return (
+          <div style={{
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            width: '100%',
+            textAlign: 'left',
+            display: '-webkit-box',
+            WebkitLineClamp: 10,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            lineHeight: 1.4,
+            maxHeight: '14em',
+          }}>
+            {text || '-'}
+          </div>
+        );
+      }
     },
     {
       field: 'solution',
@@ -1768,22 +1926,26 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       align: 'center',
       headerAlign: 'center',
       valueGetter: (params) => (params.row as any).solution || parseFieldFromIdea((params.row as any).idea, 'Giải pháp'),
-      renderCell: (params) => (
-        <div style={{
-          whiteSpace: 'normal',
-          wordBreak: 'break-word',
-          width: '100%',
-          textAlign: 'left',
-          display: 'block',
-          maxHeight: '180px',      // 👈 chiều cao tối đa cố định
-          overflowY: 'auto',       // 👈 text dài thì có scroll
-          paddingRight: '8px',
-          scrollbarWidth: 'thin',  // 👈 scrollbar mỏng hơn
-          scrollbarColor: '#ccc transparent' // 👈 màu scrollbar
-        }}>
-          {params.value || '-'}
-        </div>
-      )
+      renderCell: (params) => {
+        const text = truncateTextToMaxLines(params.value, 10, 400);
+        return (
+          <div style={{
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            width: '100%',
+            textAlign: 'left',
+            display: '-webkit-box',
+            WebkitLineClamp: 10,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            lineHeight: 1.4,
+            maxHeight: '14em',
+          }}>
+            {text || '-'}
+          </div>
+        );
+      }
 
     },
     {
@@ -1793,21 +1955,26 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       align: 'center',
       headerAlign: 'center',
       valueGetter: (params) => (params.row as any).benefit || parseFieldFromIdea((params.row as any).idea, 'Lợi ích'),
-      renderCell: (params) => (
-        <div style={{
-          whiteSpace: 'normal',
-          wordBreak: 'break-word',
-          width: '100%',
-          textAlign: 'left',
-          maxHeight: '180px',      // 👈 chiều cao tối đa cố định
-          overflowY: 'auto',       // 👈 text dài thì có scroll
-          paddingRight: '8px',
-          scrollbarWidth: 'thin',  // 👈 scrollbar mỏng hơn
-          scrollbarColor: '#ccc transparent' // 👈 màu scrollbar
-        }}>
-          {params.value || '-'}
-        </div>
-      )
+      renderCell: (params) => {
+        const text = truncateTextToMaxLines(params.value, 10, 400);
+        return (
+          <div style={{
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            width: '100%',
+            textAlign: 'left',
+            display: '-webkit-box',
+            WebkitLineClamp: 10,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            lineHeight: 1.4,
+            maxHeight: '14em',
+          }}>
+            {text || '-'}
+          </div>
+        );
+      }
 
     },
     {
@@ -1816,21 +1983,26 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       width: 300,
       align: 'center',
       headerAlign: 'center',
-      renderCell: (params) => (
-        <div style={{
-          whiteSpace: 'normal',
-          wordBreak: 'break-word',
-          width: '100%',
-          textAlign: 'left',
-          maxHeight: '180px',
-          overflowY: 'auto',
-          paddingRight: '8px',
-          scrollbarWidth: 'thin',
-          scrollbarColor: '#ccc transparent'
-        }}>
-          {(params.row as any).benefitOutcome || ''}
-        </div>
-      )
+      renderCell: (params) => {
+        const text = truncateTextToMaxLines((params.row as any).benefitOutcome, 10, 400);
+        return (
+          <div style={{
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            width: '100%',
+            textAlign: 'left',
+            display: '-webkit-box',
+            WebkitLineClamp: 10,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            lineHeight: 1.4,
+            maxHeight: '14em',
+          }}>
+            {text || ''}
+          </div>
+        );
+      }
     },
     {
       field: 'resourcesUsed',
@@ -1838,21 +2010,26 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       width: 300,
       align: 'center',
       headerAlign: 'center',
-      renderCell: (params) => (
-        <div style={{
-          whiteSpace: 'normal',
-          wordBreak: 'break-word',
-          width: '100%',
-          textAlign: 'left',
-          maxHeight: '180px',
-          overflowY: 'auto',
-          paddingRight: '8px',
-          scrollbarWidth: 'thin',
-          scrollbarColor: '#ccc transparent'
-        }}>
-          {(params.row as any).resourcesUsed || ''}
-        </div>
-      )
+      renderCell: (params) => {
+        const text = truncateTextToMaxLines((params.row as any).resourcesUsed, 10, 400);
+        return (
+          <div style={{
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            width: '100%',
+            textAlign: 'left',
+            display: '-webkit-box',
+            WebkitLineClamp: 10,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            lineHeight: 1.4,
+            maxHeight: '14em',
+          }}>
+            {text || ''}
+          </div>
+        );
+      }
     },
     {
       field: 'calculationDescription',
@@ -1860,21 +2037,26 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       width: 300,
       align: 'center',
       headerAlign: 'center',
-      renderCell: (params) => (
-        <div style={{
-          whiteSpace: 'normal',
-          wordBreak: 'break-word',
-          width: '100%',
-          textAlign: 'left',
-          maxHeight: '180px',
-          overflowY: 'auto',
-          paddingRight: '8px',
-          scrollbarWidth: 'thin',
-          scrollbarColor: '#ccc transparent'
-        }}>
-          {(params.row as any).calculationDescription || ''}
-        </div>
-      )
+      renderCell: (params) => {
+        const text = truncateTextToMaxLines((params.row as any).calculationDescription, 10, 400);
+        return (
+          <div style={{
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            width: '100%',
+            textAlign: 'left',
+            display: '-webkit-box',
+            WebkitLineClamp: 10,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            lineHeight: 1.4,
+            maxHeight: '14em',
+          }}>
+            {text || ''}
+          </div>
+        );
+      }
     },
     {
       field: 'scalingOpportunity',
@@ -1882,26 +2064,31 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       width: 300,
       align: 'center',
       headerAlign: 'center',
-      renderCell: (params) => (
-        <div style={{
-          whiteSpace: 'normal',
-          wordBreak: 'break-word',
-          width: '100%',
-          textAlign: 'left',
-          maxHeight: '180px',
-          overflowY: 'auto',
-          paddingRight: '8px',
-          scrollbarWidth: 'thin',
-          scrollbarColor: '#ccc transparent'
-        }}>
-          {(params.row as any).scalingOpportunity || ''}
-        </div>
-      )
+      renderCell: (params) => {
+        const text = truncateTextToMaxLines((params.row as any).scalingOpportunity, 10, 400);
+        return (
+          <div style={{
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            width: '100%',
+            textAlign: 'left',
+            display: '-webkit-box',
+            WebkitLineClamp: 10,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            lineHeight: 1.4,
+            maxHeight: '14em',
+          }}>
+            {text || ''}
+          </div>
+        );
+      }
     },
     {
       field: 'status',
       headerName: 'Trạng thái',
-      width: 180,
+      width: 160,
       align: 'center',
       headerAlign: 'center',
       renderCell: (params) => <StatusCell row={params.row} />,
@@ -2120,13 +2307,29 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
         {
           field: 'actions',
           headerName: 'Thao tác',
-          width: 120,
+          width: 124,
+          sortable: false,
           renderCell: (params: any) => (
-            <Box>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Tooltip title="Xem chi tiết">
+                <IconButton
+                  color="default"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    openIdeaDetails(params.row);
+                  }}
+                  size="small"
+                >
+                  <VisibilityIcon />
+                </IconButton>
+              </Tooltip>
               <Tooltip title="Sửa">
                 <IconButton
                   color="primary"
-                  onClick={() => handleEdit(params.row)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    handleEdit(params.row);
+                  }}
                   size="small"
                 >
                   <EditIcon />
@@ -2135,7 +2338,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
               <Tooltip title="Xóa">
                 <IconButton
                   color="error"
-                  onClick={() => handleDelete(params.row._id)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    handleDelete(params.row._id);
+                  }}
                   size="small"
                 >
                   <DeleteIcon />
@@ -2149,28 +2355,44 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
   ];
 
   return (
-    <Container maxWidth={false} sx={{ py: 2, px: 1, width: '100%' }}>
-      <Card elevation={3} sx={{ mb: 4, borderRadius: 2 }}>
-        <CardContent sx={{ p: 2 }}>
-          {/* Header with toggle filter button for mobile */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-            <Typography variant={isMobile ? "h5" : "h4"} component="h1" sx={{ color: '#1976d2', fontWeight: 'bold' }}>
-              Quản lý Ý tưởng Cải tiến
+    <Box sx={{ width: '100%' }}>
+      {/* Page Header */}
+      <Box sx={{ mb: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+          <Box>
+            <Typography
+              variant={isMobile ? "h4" : "h3"}
+              component="h1"
+              sx={{
+                fontWeight: 800,
+                color: '#0F172A',
+                letterSpacing: '-0.01em',
+                mb: 0.5,
+              }}
+            >
+              Quản lý Ý tưởng
             </Typography>
-            {isMobile && (
-              <Button
-                variant="outlined"
-                color="primary"
-                size="small"
-                onClick={() => setFiltersExpanded(!filtersExpanded)}
-                startIcon={filtersExpanded ? <ExpandLessIcon /> : <FilterListIcon />}
-                sx={{ textTransform: 'none' }}
-              >
-                {filtersExpanded ? 'Ẩn lọc' : 'Lọc'}
-              </Button>
-            )}
+            <Typography variant="body2" sx={{ color: '#64748b' }}>
+              {filteredIdeas.length} ý tưởng {filteredIdeas.length !== ideas.length ? `(lọc từ ${ideas.length})` : 'tổng cộng'}
+            </Typography>
           </Box>
-          <Divider sx={{ my: 2 }} />
+          {isMobile && (
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => setFiltersExpanded(!filtersExpanded)}
+              startIcon={filtersExpanded ? <ExpandLessIcon /> : <FilterListIcon />}
+              sx={{ borderRadius: '10px', fontWeight: 600 }}
+            >
+              {filtersExpanded ? 'Ẩn lọc' : 'Bộ lọc'}
+            </Button>
+          )}
+        </Box>
+      </Box>
+
+      <Card elevation={0} sx={{ mb: 3, borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+        <CardContent sx={{ p: { xs: 2, md: 3 } }}>
+          <Divider sx={{ mb: 2, display: 'none' }} />
           <Grid container spacing={3} alignItems="flex-start">
             <Grid item xs={12} md={12}>
               <Box sx={{ display: 'flex', flexDirection: 'column', rowGap: 2 }}>
@@ -2471,7 +2693,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
                             minWidth: 'max-content'
                           }}
                         >
-                          Quản lý cột
+                          Tùy chỉnh cột
                         </Button>
                         <Menu anchorEl={colMenuAnchor} open={isColMenuOpen} onClose={closeColMenu} PaperProps={{ sx: { maxHeight: 500 } }}>
                           <MenuItem onClick={handleSelectAllColumns} sx={{ borderBottom: '1px solid #e0e0e0', fontWeight: 'bold' }}>
@@ -2726,55 +2948,41 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
           }
         }}
       >
-        {/* Top horizontal scroll bar - chỉ là thanh cuộn ngang */}
-        <Box
-          ref={topScrollRef}
-          sx={{
-            position: 'sticky',
-            top: 0,
-            zIndex: 10,
-            backgroundColor: 'transparent',
-            borderBottom: '1px solid #e0e0e0',
-            height: '12px',
-            overflowX: 'auto',
-            overflowY: 'hidden',
-            '&::-webkit-scrollbar': {
-              height: '12px',
-            },
-            '&::-webkit-scrollbar-track': {
-              background: '#f1f1f1',
-              borderRadius: '6px',
-            },
-            '&::-webkit-scrollbar-thumb': {
-              background: '#999999',
-              borderRadius: '6px',
-            },
-            '&::-webkit-scrollbar-thumb:hover': {
-              background: '#999',
-            }
-          }}
-        >
-          {/* Invisible content để tạo scrollbar với chiều rộng đúng */}
+        {/* Bảng tóm tắt không cần thanh cuộn ngang; chỉ giữ cho chế độ đầy đủ. */}
+        {showFullWidthTable && (
           <Box
+            ref={topScrollRef}
             sx={{
-              width: '100%',
-              minWidth: 'max-content',
-              height: '1px',
-              visibility: 'hidden'
+              position: 'sticky',
+              top: 0,
+              zIndex: 10,
+              backgroundColor: 'transparent',
+              borderBottom: '1px solid #e0e0e0',
+              height: '12px',
+              overflowX: 'auto',
+              overflowY: 'hidden',
+              '&::-webkit-scrollbar': { height: '12px' },
+              '&::-webkit-scrollbar-track': { background: '#f1f1f1', borderRadius: '6px' },
+              '&::-webkit-scrollbar-thumb': { background: '#999999', borderRadius: '6px' },
+              '&::-webkit-scrollbar-thumb:hover': { background: '#777' }
             }}
-          />
-        </Box>
+          >
+            <Box sx={{ width: '100%', minWidth: 'max-content', height: '1px', visibility: 'hidden' }} />
+          </Box>
+        )}
 
         {/* Thông tin số lượng kết quả */}
         <Box sx={{
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center',
+          alignItems: { xs: 'flex-start', md: 'center' },
+          flexDirection: { xs: 'column', md: 'row' },
+          gap: 1.5,
           mb: 2,
-          px: 1,
-          backgroundColor: '#f8f9fa',
-          borderRadius: 1,
-          py: 1
+          px: 2,
+          backgroundColor: '#f8fafc',
+          borderRadius: 2,
+          py: 1.5
         }}>
           <Typography variant="body2" color="text.secondary">
             Hiển thị {filteredIdeas.length} / {ideas.length} ý tưởng
@@ -2784,6 +2992,37 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
               </span>
             )}
           </Typography>
+          {!isViewOnly && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, maxWidth: '100%', overflowX: 'auto' }}>
+              <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                Chế độ xem
+              </Typography>
+              <ToggleButtonGroup
+                exclusive
+                size="small"
+                value={tableViewPreset}
+                onChange={handleTableViewPresetChange}
+                aria-label="Chế độ hiển thị bảng ý tưởng"
+                sx={{
+                  backgroundColor: '#fff',
+                  '& .MuiToggleButton-root': {
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    px: 1.5,
+                    whiteSpace: 'nowrap'
+                  }
+                }}
+              >
+                <ToggleButton value="overview">Tổng quan</ToggleButton>
+                <ToggleButton value="implementation">Triển khai</ToggleButton>
+                <ToggleButton value="reward">Khen thưởng</ToggleButton>
+                <ToggleButton value="all">Toàn bộ</ToggleButton>
+                {tableViewPreset === 'custom' && (
+                  <ToggleButton value="custom" disabled>Tùy chỉnh</ToggleButton>
+                )}
+              </ToggleButtonGroup>
+            </Box>
+          )}
         </Box>
 
         <Box ref={dataGridRef} sx={{ width: '100%', overflow: 'auto' }}>
@@ -3144,16 +3383,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
               rows={filteredIdeas}
               columns={columns}
               columnVisibilityModel={columnVisibilityModel}
-              onColumnVisibilityModelChange={(model) => setColumnVisibilityModel(model)}
+              onColumnVisibilityModelChange={(model) => {
+                setTableViewPreset('custom');
+                setColumnVisibilityModel(model);
+              }}
+              onRowClick={(params) => openIdeaDetails(params.row as Idea)}
               getRowId={(row) => row._id}
               paginationModel={paginationModel}
               onPaginationModelChange={setPaginationModel}
               pageSizeOptions={[10, 25, 50]}
               disableRowSelectionOnClick
               loading={loading}
-              getRowHeight={() => 200}
+              getRowHeight={() => showFullWidthTable ? 200 : 'auto'}
+              getEstimatedRowHeight={() => 104}
               sx={{
                 width: '100%',
+                '& .MuiDataGrid-row': {
+                  cursor: 'pointer'
+                },
                 '& .MuiDataGrid-columnHeader': {
                   backgroundColor: '#f5f5f5',
                 },
@@ -3179,23 +3426,46 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
 
       </Paper>
 
-      {/* Mobile Detail Modal */}
-      <Dialog
+      {/* Hồ sơ chi tiết: drawer giúp vừa xem danh sách vừa xem trọn một ý tưởng. */}
+      <Drawer
+        anchor="right"
         open={detailModalOpen}
         onClose={() => setDetailModalOpen(false)}
-        maxWidth="md"
-        fullWidth
-        fullScreen={isSmallMobile}
+        ModalProps={{ keepMounted: true }}
+        PaperProps={{
+          sx: {
+            width: isSmallMobile ? '100%' : { sm: 620, md: 720 },
+            maxWidth: '100vw',
+            display: 'flex',
+            flexDirection: 'column',
+            backgroundColor: '#f8fafc'
+          }
+        }}
       >
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
-          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-            Chi tiết ý tưởng
-          </Typography>
-          <IconButton onClick={() => setDetailModalOpen(false)}>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            px: 2.5,
+            py: 2,
+            backgroundColor: '#fff',
+            borderBottom: '1px solid #e2e8f0'
+          }}
+        >
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 800, color: '#0f172a' }}>
+              Hồ sơ ý tưởng
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Xem toàn bộ thông tin mà không cần kéo ngang bảng
+            </Typography>
+          </Box>
+          <IconButton aria-label="Đóng hồ sơ ý tưởng" onClick={() => setDetailModalOpen(false)}>
             <CloseIcon />
           </IconButton>
-        </DialogTitle>
-        <DialogContent dividers>
+        </Box>
+        <DialogContent dividers sx={{ flex: 1, px: { xs: 2, sm: 2.5 } }}>
           {selectedIdeaForDetail && (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {/* Header Info */}
@@ -3415,7 +3685,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
             </Button>
           </DialogActions>
         )}
-      </Dialog>
+      </Drawer>
 
       <IdeaDialog
         open={isDialogOpen}
@@ -3450,8 +3720,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
           setIsImportDialogOpen(false);
         }}
       />
-    </Container>
+    </Box>
   );
 };
 
-export default AdminDashboard; 
+export default AdminDashboard;

@@ -1,44 +1,82 @@
 import { Request, Response } from 'express';
 import axios from 'axios';
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-const AI_API_KEY = process.env.OPENAI_API_KEY || process.env.AI_API_KEY;
-const AI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
-const AI_ENDPOINT =
-  process.env.OPENAI_API_URL || process.env.AI_API_URL || 'https://api.openai.com/v1/chat/completions';
 
 type OpenAIMessage = {
   role: 'system' | 'user';
   content: string;
 };
 
-const ensureConfig = () => {
-  if (!AI_API_KEY) {
-    throw new Error('Thiếu OPENAI_API_KEY trong biến môi trường');
+/**
+ * Cấu hình nhà cung cấp LLM.
+ *
+ * Đọc lazy (trong hàm) để không phụ thuộc thứ tự import, và ưu tiên
+ * OPENROUTER_API_KEY — đây là key đang có trong .env. Trước đây code chỉ đọc
+ * OPENAI_API_KEY nên tính năng trợ lý AI luôn báo lỗi.
+ */
+const getAIConfig = () => {
+  const openRouterKey = process.env.OPENROUTER_API_KEY;
+  const openAIKey = process.env.OPENAI_API_KEY || process.env.AI_API_KEY;
+  const apiKey = openRouterKey || openAIKey;
+
+  if (!apiKey) {
+    throw new Error(
+      'Thiếu OPENROUTER_API_KEY (hoặc OPENAI_API_KEY) trong biến môi trường'
+    );
   }
+
+  // Nếu dùng OpenRouter thì endpoint và model mặc định phải khớp nhà cung cấp đó
+  const usingOpenRouter = !!openRouterKey && !openAIKey;
+
+  const endpoint =
+    process.env.AI_API_URL ||
+    process.env.OPENAI_API_URL ||
+    (usingOpenRouter
+      ? 'https://openrouter.ai/api/v1/chat/completions'
+      : 'https://api.openai.com/v1/chat/completions');
+
+  const model =
+    process.env.AI_MODEL ||
+    process.env.OPENAI_MODEL ||
+    (usingOpenRouter ? 'openai/gpt-4o-mini' : 'gpt-4o-mini');
+
+  return { apiKey, endpoint, model, usingOpenRouter };
 };
 
 const callAI = async (messages: OpenAIMessage[]) => {
-  ensureConfig();
+  const { apiKey, endpoint, model, usingOpenRouter } = getAIConfig();
+
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${apiKey}`,
+    'Content-Type': 'application/json',
+  };
+
+  // OpenRouter khuyến nghị gửi kèm 2 header này để nhận diện ứng dụng
+  if (usingOpenRouter) {
+    headers['HTTP-Referer'] = process.env.PUBLIC_BASE_URL || 'http://localhost:3000';
+    headers['X-Title'] = 'Idea Management';
+  }
 
   const response = await axios.post(
-    AI_ENDPOINT,
+    endpoint,
     {
-      model: AI_MODEL,
+      model,
       temperature: 0.6,
-      messages
+      messages,
     },
-    {
-      headers: {
-        Authorization: `Bearer ${AI_API_KEY}`,
-        'Content-Type': 'application/json'
-      }
-    }
+    { headers, timeout: 30000 }
   );
 
   return response.data?.choices?.[0]?.message?.content?.trim();
+};
+
+/** Giới hạn độ dài input để không gửi cả một quyển sách sang LLM. */
+const MAX_INPUT_LENGTH = 4000;
+
+const readIdeaInput = (value: unknown): string | null => {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  return trimmed.slice(0, MAX_INPUT_LENGTH);
 };
 
 const buildContext = (idea: string, department?: string, solution?: string) => {
@@ -53,9 +91,10 @@ const buildContext = (idea: string, department?: string, solution?: string) => {
 };
 
 export const improveDescription = async (req: Request, res: Response) => {
-  const { idea, department } = req.body;
+  const idea = readIdeaInput(req.body?.idea);
+  const department = readIdeaInput(req.body?.department) || undefined;
 
-  if (!idea?.trim()) {
+  if (!idea) {
     return res.status(400).json({ message: 'Thiếu mô tả ý tưởng' });
   }
 
@@ -84,9 +123,10 @@ export const improveDescription = async (req: Request, res: Response) => {
 };
 
 export const suggestSolution = async (req: Request, res: Response) => {
-  const { idea, department } = req.body;
+  const idea = readIdeaInput(req.body?.idea);
+  const department = readIdeaInput(req.body?.department) || undefined;
 
-  if (!idea?.trim()) {
+  if (!idea) {
     return res.status(400).json({ message: 'Thiếu mô tả ý tưởng' });
   }
 
@@ -118,9 +158,11 @@ export const suggestSolution = async (req: Request, res: Response) => {
 };
 
 export const suggestBenefit = async (req: Request, res: Response) => {
-  const { idea, solution, department } = req.body;
+  const idea = readIdeaInput(req.body?.idea);
+  const solution = readIdeaInput(req.body?.solution) || undefined;
+  const department = readIdeaInput(req.body?.department) || undefined;
 
-  if (!idea?.trim()) {
+  if (!idea) {
     return res.status(400).json({ message: 'Thiếu mô tả ý tưởng' });
   }
 
@@ -153,9 +195,10 @@ export const suggestBenefit = async (req: Request, res: Response) => {
 };
 
 export const suggestTopicTitle = async (req: Request, res: Response) => {
-  const { idea, department } = req.body;
+  const idea = readIdeaInput(req.body?.idea);
+  const department = readIdeaInput(req.body?.department) || undefined;
 
-  if (!idea?.trim()) {
+  if (!idea) {
     return res.status(400).json({ message: 'Thiếu mô tả ý tưởng' });
   }
 

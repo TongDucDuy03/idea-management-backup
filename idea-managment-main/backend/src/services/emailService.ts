@@ -1,8 +1,5 @@
 import nodemailer from 'nodemailer';
 import { IIdea } from '../models/Idea';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 const resolveBoolean = (value: string | undefined, defaultValue: boolean): boolean => {
   if (value === undefined) return defaultValue;

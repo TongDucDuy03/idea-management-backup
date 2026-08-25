@@ -4,21 +4,24 @@ import {
   Button,
   Container,
   Typography,
-  Paper,
   TextField,
   Alert,
   Grid,
   Card,
   CardContent,
   Divider,
-  CircularProgress,
-  Snackbar
+  CircularProgress
 } from '@mui/material';
-import { FileDownload as FileDownloadIcon, CheckCircle as CheckCircleIcon } from '@mui/icons-material';
+import {
+  FileDownload as FileDownloadIcon,
+  CheckCircle as CheckCircleIcon,
+  Tune as TuneIcon,
+} from '@mui/icons-material';
 import api from '../api/config';
 import { Idea } from '../types';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import A3LayoutEditor from './A3LayoutEditor';
 
 interface A3ReportFormProps {
   idea: Idea | null;
@@ -30,6 +33,7 @@ const A3ReportForm: React.FC<A3ReportFormProps> = ({ idea, onClose }) => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [layoutEditorOpen, setLayoutEditorOpen] = useState(false);
   const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
   const [reportData, setReportData] = useState<Partial<Idea>>({});
 
@@ -211,8 +215,10 @@ const A3ReportForm: React.FC<A3ReportFormProps> = ({ idea, onClose }) => {
         reportData: reportData
       });
 
-      // Cập nhật ý tưởng theo mã (public, không cần token)
-      const response = await api.put(`/ideas/code/${encodeURIComponent(idea.ideaCode)}`, reportData);
+      // Cập nhật qua endpoint có xác thực. Endpoint công khai theo mã ý tưởng
+      // (PUT /ideas/code/:ideaCode) đã bị gỡ vì cho phép sửa nội dung mà không
+      // cần đăng nhập.
+      const response = await api.put(`/ideas/${idea._id}`, reportData);
 
       console.log('Save response:', {
         _id: response.data._id,
@@ -695,18 +701,18 @@ const A3ReportForm: React.FC<A3ReportFormProps> = ({ idea, onClose }) => {
                     <div class="content-section">
                         <div class="section-title">HÌNH ẢNH TRƯỚC</div>
                         <div class="section-content">
-                          ${(idea as any).beforeImage
-                            ? `<div class=\"image-box\"><img src=\"${(idea as any).beforeImage}\" alt=\"Hình ảnh trước\" /></div>`
-                            : '<div class=\"image-box\" style=\"color:#999; font-style:italic;\">Chưa có hình ảnh trước</div>'}
+                          ${((idea as any).beforeImageUrl || (idea as any).beforeImagePath || (idea as any).beforeImage)
+                            ? `<div class="image-box"><img src="${(idea as any).beforeImageUrl || (idea as any).beforeImagePath || (idea as any).beforeImage}" alt="Hình ảnh trước" /></div>`
+                            : '<div class="image-box" style="color:#999; font-style:italic;">Chưa có hình ảnh trước</div>'}
                         </div>
                     </div>
                     
                     <div class="content-section">
                         <div class="section-title">HÌNH ẢNH SAU</div>
                         <div class="section-content">
-                          ${(idea as any).afterImage
-                            ? `<div class=\"image-box\"><img src=\"${(idea as any).afterImage}\" alt=\"Hình ảnh sau\" /></div>`
-                            : '<div class=\"image-box\" style=\"color:#999; font-style:italic;\">Chưa có hình ảnh sau</div>'}
+                          ${((idea as any).afterImageUrl || (idea as any).afterImagePath || (idea as any).afterImage)
+                            ? `<div class="image-box"><img src="${(idea as any).afterImageUrl || (idea as any).afterImagePath || (idea as any).afterImage}" alt="Hình ảnh sau" /></div>`
+                            : '<div class="image-box" style="color:#999; font-style:italic;">Chưa có hình ảnh sau</div>'}
                         </div>
                     </div>
                 </div>
@@ -894,8 +900,8 @@ const A3ReportForm: React.FC<A3ReportFormProps> = ({ idea, onClose }) => {
     await handleSave();
     if (!error) {
       setTimeout(() => {
-        handleExport();
-      }, 1000);
+        setLayoutEditorOpen(true);
+      }, 300);
     }
   };
 
@@ -910,6 +916,7 @@ const A3ReportForm: React.FC<A3ReportFormProps> = ({ idea, onClose }) => {
   }
 
   return (
+    <>
     <Container maxWidth="xl" sx={{ py: 4, minHeight: '100vh' }}>
       <Card elevation={3} sx={{ borderRadius: 2, minHeight: 'fit-content', width: '100%' }}>
         <CardContent sx={{ p: 3, width: '100%' }}>
@@ -1114,7 +1121,7 @@ const A3ReportForm: React.FC<A3ReportFormProps> = ({ idea, onClose }) => {
           </Grid>
 
           {/* Nút hành động */}
-          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', mt: 4 }}>
+          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap', mt: 4 }}>
             <Button
               variant="outlined"
               onClick={onClose}
@@ -1137,12 +1144,23 @@ const A3ReportForm: React.FC<A3ReportFormProps> = ({ idea, onClose }) => {
             <Button
               variant="contained"
               color="success"
+              onClick={() => setLayoutEditorOpen(true)}
+              disabled={loading || saving}
+              startIcon={<TuneIcon />}
+              sx={{ minWidth: 200 }}
+            >
+              Xem trước & căn chỉnh
+            </Button>
+
+            <Button
+              variant="outlined"
+              color="success"
               onClick={handleExport}
               disabled={loading}
               startIcon={loading ? <CircularProgress size={20} /> : <FileDownloadIcon />}
-              sx={{ minWidth: 200 }}
+              sx={{ minWidth: 150 }}
             >
-              {loading ? 'Đang xuất...' : 'Export PDF A3'}
+              {loading ? 'Đang xuất...' : 'Xuất nhanh'}
             </Button>
             
             <Button
@@ -1153,12 +1171,19 @@ const A3ReportForm: React.FC<A3ReportFormProps> = ({ idea, onClose }) => {
               startIcon={saving || loading ? <CircularProgress size={20} /> : <FileDownloadIcon />}
               sx={{ minWidth: 200 }}
             >
-              {saving || loading ? 'Đang xử lý...' : 'Lưu và Export PDF'}
+              {saving || loading ? 'Đang xử lý...' : 'Lưu & căn chỉnh'}
             </Button>
           </Box>
         </CardContent>
       </Card>
     </Container>
+      <A3LayoutEditor
+        open={layoutEditorOpen}
+        idea={{ ...idea, ...reportData } as Idea}
+        filename={`Bao_Cao_Cai_Tien_A3_${idea.ideaCode || idea._id}.pdf`}
+        onClose={() => setLayoutEditorOpen(false)}
+      />
+    </>
   );
 };
 
