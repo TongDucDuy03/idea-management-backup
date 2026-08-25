@@ -3533,47 +3533,55 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
                 </AccordionSummary>
                 <AccordionDetails>
                   <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                    {(selectedIdeaForDetail as any).beforeImage && (
-                      <Box sx={{ textAlign: 'center' }}>
-                        <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Trước</Typography>
-                        <Box
-                          component="img"
-                          src={typeof (selectedIdeaForDetail as any).beforeImage === 'string' && (selectedIdeaForDetail as any).beforeImage.startsWith('data:image')
-                            ? (selectedIdeaForDetail as any).beforeImage
-                            : (selectedIdeaForDetail as any).beforeImageUrl || (selectedIdeaForDetail as any).beforeImage}
-                          alt="Trước"
-                          sx={{ maxWidth: '100%', maxHeight: 200, borderRadius: 1, cursor: 'pointer', border: '1px solid #ddd' }}
-                          onClick={() => handleImageClick(
-                            typeof (selectedIdeaForDetail as any).beforeImage === 'string' && (selectedIdeaForDetail as any).beforeImage.startsWith('data:image')
-                              ? (selectedIdeaForDetail as any).beforeImage
-                              : (selectedIdeaForDetail as any).beforeImageUrl || (selectedIdeaForDetail as any).beforeImage,
-                            `Hình trước - ${(selectedIdeaForDetail as any).ideaCode}`
+                    {(() => {
+                      const row = selectedIdeaForDetail as any;
+                      if (!row) return null;
+
+                      const isBase64Before = typeof row.beforeImage === 'string' && row.beforeImage.startsWith('data:image');
+                      const beforeImageUrl = (isBase64Before ? row.beforeImage : null) ||
+                        row.beforeImageUrl ||
+                        (row.beforeImagePath ? `${window.location.origin}${row.beforeImagePath}` : null) ||
+                        row.beforeImage;
+
+                      const isBase64After = typeof row.afterImage === 'string' && row.afterImage.startsWith('data:image');
+                      const afterImageUrl = (isBase64After ? row.afterImage : null) ||
+                        row.afterImageUrl ||
+                        (row.afterImagePath ? `${window.location.origin}${row.afterImagePath}` : null) ||
+                        row.afterImage;
+
+                      if (!beforeImageUrl && !afterImageUrl) {
+                        return <Typography variant="body2" color="text.secondary">Không có hình ảnh</Typography>;
+                      }
+
+                      return (
+                        <>
+                          {beforeImageUrl && (
+                            <Box sx={{ textAlign: 'center' }}>
+                              <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>Hình trước</Typography>
+                              <Box
+                                component="img"
+                                src={beforeImageUrl}
+                                alt="Hình trước"
+                                sx={{ maxWidth: '100%', maxHeight: 220, borderRadius: 1, cursor: 'pointer', border: '1px solid #ddd', objectFit: 'contain' }}
+                                onClick={() => handleImageClick(beforeImageUrl, `Hình trước - ${row.ideaCode || 'N/A'}`)}
+                              />
+                            </Box>
                           )}
-                        />
-                      </Box>
-                    )}
-                    {(selectedIdeaForDetail as any).afterImage && (
-                      <Box sx={{ textAlign: 'center' }}>
-                        <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Sau</Typography>
-                        <Box
-                          component="img"
-                          src={typeof (selectedIdeaForDetail as any).afterImage === 'string' && (selectedIdeaForDetail as any).afterImage.startsWith('data:image')
-                            ? (selectedIdeaForDetail as any).afterImage
-                            : (selectedIdeaForDetail as any).afterImageUrl || (selectedIdeaForDetail as any).afterImage}
-                          alt="Sau"
-                          sx={{ maxWidth: '100%', maxHeight: 200, borderRadius: 1, cursor: 'pointer', border: '1px solid #ddd' }}
-                          onClick={() => handleImageClick(
-                            typeof (selectedIdeaForDetail as any).afterImage === 'string' && (selectedIdeaForDetail as any).afterImage.startsWith('data:image')
-                              ? (selectedIdeaForDetail as any).afterImage
-                              : (selectedIdeaForDetail as any).afterImageUrl || (selectedIdeaForDetail as any).afterImage,
-                            `Hình sau - ${(selectedIdeaForDetail as any).ideaCode}`
+                          {afterImageUrl && (
+                            <Box sx={{ textAlign: 'center' }}>
+                              <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block', mb: 0.5 }}>Hình sau</Typography>
+                              <Box
+                                component="img"
+                                src={afterImageUrl}
+                                alt="Hình sau"
+                                sx={{ maxWidth: '100%', maxHeight: 220, borderRadius: 1, cursor: 'pointer', border: '1px solid #ddd', objectFit: 'contain' }}
+                                onClick={() => handleImageClick(afterImageUrl, `Hình sau - ${row.ideaCode || 'N/A'}`)}
+                              />
+                            </Box>
                           )}
-                        />
-                      </Box>
-                    )}
-                    {!(selectedIdeaForDetail as any).beforeImage && !(selectedIdeaForDetail as any).afterImage && (
-                      <Typography variant="body2" color="text.secondary">Không có hình ảnh</Typography>
-                    )}
+                        </>
+                      );
+                    })()}
                   </Box>
                 </AccordionDetails>
               </Accordion>

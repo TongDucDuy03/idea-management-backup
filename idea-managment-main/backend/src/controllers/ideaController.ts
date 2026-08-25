@@ -462,7 +462,14 @@ export const updateIdea = async (req: Request, res: Response) => {
     const unsetFields: Record<string, 1> = {};
 
     // Xử lý beforeImage & beforeImagePath
-    if (updateData.beforeImage === null || updateData.beforeImage === '') {
+    // undefined → field not sent, ảnh không thay đổi → giữ nguyên
+    // null / '' → user xóa ảnh → xóa file và unset
+    // base64 → upload mới → lưu file, cập nhật path
+    // URL string → ảnh cũ gửi lại → bỏ qua, giữ nguyên
+    if (updateData.beforeImage === undefined) {
+      // Không gửi field → giữ nguyên, không làm gì
+      delete updateData.beforeImage;
+    } else if (updateData.beforeImage === null || updateData.beforeImage === '') {
       if (existing.beforeImagePath) {
         await deleteFileIfLocal(existing.beforeImagePath);
       }
@@ -485,13 +492,17 @@ export const updateIdea = async (req: Request, res: Response) => {
         unsetFields.beforeImage = 1;
       } catch (e) {
         console.error('Failed to save beforeImage on update:', e);
+        delete updateData.beforeImage;
       }
-    } else if (existing.beforeImage) {
-      unsetFields.beforeImage = 1;
+    } else {
+      // URL string or unexpected value → giữ nguyên ảnh hiện tại
+      delete updateData.beforeImage;
     }
 
     // Xử lý afterImage & afterImagePath
-    if (updateData.afterImage === null || updateData.afterImage === '') {
+    if (updateData.afterImage === undefined) {
+      delete updateData.afterImage;
+    } else if (updateData.afterImage === null || updateData.afterImage === '') {
       if (existing.afterImagePath) {
         await deleteFileIfLocal(existing.afterImagePath);
       }
@@ -514,9 +525,11 @@ export const updateIdea = async (req: Request, res: Response) => {
         unsetFields.afterImage = 1;
       } catch (e) {
         console.error('Failed to save afterImage on update:', e);
+        delete updateData.afterImage;
       }
-    } else if (existing.afterImage) {
-      unsetFields.afterImage = 1;
+    } else {
+      // URL string or unexpected value → giữ nguyên ảnh hiện tại
+      delete updateData.afterImage;
     }
 
     const updateQuery: any = { ...updateData };

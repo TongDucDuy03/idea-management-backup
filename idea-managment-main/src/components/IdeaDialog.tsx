@@ -416,18 +416,35 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
         submitData.expectedCompletionDate = null;
       }
       
-      // Handle images - always include them (null or base64)
-      if (submitData.beforeImage === '') {
-        submitData.beforeImage = null;
+      // Handle images:
+      // - null or '' → tell backend to clear the image
+      // - base64 data URL → new upload, send to backend
+      // - http/https URL → unchanged existing image loaded from server, DO NOT send back
+      //   (sending a URL back would cause backend to $unset the image path)
+      const isBase64 = (val: any) => typeof val === 'string' && val.startsWith('data:image');
+      
+      if (submitData.beforeImage === '' || submitData.beforeImage === null) {
+        submitData.beforeImage = null; // Signal to backend: clear the image
+      } else if (isBase64(submitData.beforeImage)) {
+        // New upload - keep as-is for backend to process
+      } else {
+        // It's a URL from the server - don't send it back, let backend keep existing path
+        delete submitData.beforeImage;
       }
-      if (submitData.afterImage === '') {
-        submitData.afterImage = null;
+      
+      if (submitData.afterImage === '' || submitData.afterImage === null) {
+        submitData.afterImage = null; // Signal to backend: clear the image
+      } else if (isBase64(submitData.afterImage)) {
+        // New upload - keep as-is for backend to process
+      } else {
+        // It's a URL from the server - don't send it back
+        delete submitData.afterImage;
       }
       
       console.log('Submitting dialog data:', {
         rewardApprovalDate: submitData.rewardApprovalDate,
-        hasBeforeImage: !!submitData.beforeImage,
-        hasAfterImage: !!submitData.afterImage
+        hasBeforeImage: submitData.beforeImage !== undefined ? !!submitData.beforeImage : '(unchanged)',
+        hasAfterImage: submitData.afterImage !== undefined ? !!submitData.afterImage : '(unchanged)',
       });
       
       await onSave(submitData);
