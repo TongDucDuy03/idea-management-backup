@@ -13,6 +13,7 @@ const router = Router();
 // đăng nhập. Bù lại phải giới hạn tần suất, vì mỗi lượt gọi tốn credit LLM
 // thật — trước đây bot có thể spam làm cạn tài khoản.
 const aiRateLimit = rateLimit({
+  scope: 'public-ai',
   windowMs: 60 * 1000,
   max: Number(process.env.AI_RATE_LIMIT_PER_MINUTE || 10),
   message: 'Bạn đang dùng trợ lý AI quá nhanh. Vui lòng chờ một chút rồi thử lại.',

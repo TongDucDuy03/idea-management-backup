@@ -1,3 +1,4 @@
+import { escapeHtml } from '../utils/safeHtml';
 import React, { useState } from 'react';
 import {
   Box,
@@ -187,7 +188,7 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({
         <div style="margin-bottom: 20px; font-size: 12px;">
           <p><strong>Ngày tạo báo cáo:</strong> ${new Date().toLocaleDateString('vi-VN')}</p>
           <p><strong>Khoảng thời gian:</strong> ${getTimeRangeLabel(timeRange)}</p>
-          <p><strong>Phòng ban:</strong> ${departmentFilter === 'all' ? 'Tất cả' : departmentFilter}</p>
+          <p><strong>Phòng ban:</strong> ${escapeHtml(departmentFilter === 'all' ? 'Tất cả' : departmentFilter)}</p>
         </div>
 
         <div style="margin-bottom: 25px;">
@@ -215,7 +216,7 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({
           <h2 style="font-size: 16px; font-weight: bold; color: #2c5aa0; margin-bottom: 10px;">THỐNG KÊ THEO PHÒNG BAN</h2>
           <div style="font-size: 12px;">
             ${topDepartments.map(([dept, count], index) => 
-              `<p>${index + 1}. ${dept}: <strong>${count} ý tưởng</strong></p>`
+              `<p>${index + 1}. ${escapeHtml(dept)}: <strong>${count} ý tưởng</strong></p>`
             ).join('')}
           </div>
         </div>
@@ -227,7 +228,7 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({
           <div style="font-size: 11px;">
             ${Object.entries(departmentImplementationStats).map(([dept, stats]) => `
               <div style="margin-bottom: 12px; padding: 8px; background-color: #f8f9fa; border-left: 3px solid #2c5aa0;">
-                <p style="font-weight: bold; margin: 0;">${dept}:</p>
+                <p style="font-weight: bold; margin: 0;">${escapeHtml(dept)}:</p>
                 <p style="margin: 2px 0;">• Tổng: ${stats.total} | Triển khai: ${stats.implemented} | Thành công: ${stats.successful}</p>
                 <p style="margin: 2px 0;">• Tỷ lệ thành công: ${stats.successRate.toFixed(1)}%</p>
                 <p style="margin: 2px 0;">• Giá trị làm lợi: ${(stats.benefitValue / 1000000).toFixed(1)}M VNĐ</p>
@@ -243,7 +244,7 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({
           <h2 style="font-size: 16px; font-weight: bold; color: #2c5aa0; margin-bottom: 10px;">TOP PHÒNG BAN CÓ GIÁ TRỊ LÀM LỢI CAO NHẤT</h2>
           <div style="font-size: 12px;">
             ${topDeptByBenefit.map(([dept, stats], index) => 
-              `<p>${index + 1}. ${dept}: <strong>${(stats.benefitValue / 1000000).toFixed(1)}M VNĐ</strong></p>`
+              `<p>${index + 1}. ${escapeHtml(dept)}: <strong>${(stats.benefitValue / 1000000).toFixed(1)}M VNĐ</strong></p>`
             ).join('')}
           </div>
         </div>
@@ -254,7 +255,7 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({
           <h2 style="font-size: 16px; font-weight: bold; color: #2c5aa0; margin-bottom: 10px;">TOP PHÒNG BAN CÓ TIỀN THƯỞNG CAO NHẤT</h2>
           <div style="font-size: 12px;">
             ${topDeptByReward.map(([dept, stats], index) => 
-              `<p>${index + 1}. ${dept}: <strong>${(stats.rewardAmount / 1000000).toFixed(1)}M VNĐ</strong></p>`
+              `<p>${index + 1}. ${escapeHtml(dept)}: <strong>${(stats.rewardAmount / 1000000).toFixed(1)}M VNĐ</strong></p>`
             ).join('')}
           </div>
         </div>
@@ -266,7 +267,7 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({
           <div style="font-size: 12px;">
             ${topUsersByReward.map((user, index) => `
               <div style="margin-bottom: 10px; padding: 8px; background-color: #f0f7ff; border-radius: 4px;">
-                <p style="margin: 0; font-weight: bold;">${index + 1}. ${user.name} (${user.department}): ${(user.totalReward / 1000000).toFixed(1)}M VNĐ</p>
+                <p style="margin: 0; font-weight: bold;">${index + 1}. ${escapeHtml(user.name)} (${escapeHtml(user.department)}): ${(user.totalReward / 1000000).toFixed(1)}M VNĐ</p>
                 <p style="margin: 2px 0; font-size: 10px;">Số ý tưởng: ${user.ideaCount} | Giá trị làm lợi: ${(user.totalBenefit / 1000000).toFixed(1)}M VNĐ</p>
               </div>
             `).join('')}
@@ -280,16 +281,16 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({
           <div style="font-size: 10px;">
             ${filteredIdeas.map((idea, index) => `
               <div style="margin-bottom: 15px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background-color: #fafafa;">
-                <p style="margin: 0; font-weight: bold;">${index + 1}. Mã: ${idea.ideaCode}</p>
-                <p style="margin: 2px 0;"><strong>Tên:</strong> ${idea.fullName}</p>
-                <p style="margin: 2px 0;"><strong>Phòng ban:</strong> ${idea.department}</p>
-                <p style="margin: 2px 0;"><strong>Quyết định phê duyệt:</strong> ${idea.status}</p>
-                <p style="margin: 2px 0;"><strong>Trạng thái triển khai:</strong> ${(idea as any).implementationStatus || 'Đề xuất mới'}</p>
-                <p style="margin: 2px 0;"><strong>Phòng ban triển khai:</strong> ${(idea as any).implementationDepartment || 'Chưa xác định'}</p>
+                <p style="margin: 0; font-weight: bold;">${index + 1}. Mã: ${escapeHtml(idea.ideaCode)}</p>
+                <p style="margin: 2px 0;"><strong>Tên:</strong> ${escapeHtml(idea.fullName)}</p>
+                <p style="margin: 2px 0;"><strong>Phòng ban:</strong> ${escapeHtml(idea.department)}</p>
+                <p style="margin: 2px 0;"><strong>Quyết định phê duyệt:</strong> ${escapeHtml(idea.status)}</p>
+                <p style="margin: 2px 0;"><strong>Trạng thái triển khai:</strong> ${escapeHtml((idea as any).implementationStatus || 'Đề xuất mới')}</p>
+                <p style="margin: 2px 0;"><strong>Phòng ban triển khai:</strong> ${escapeHtml((idea as any).implementationDepartment || 'Chưa xác định')}</p>
                 <p style="margin: 2px 0;"><strong>Giá trị làm lợi:</strong> ${((idea as any).benefitValue || 0).toLocaleString('vi-VN')} VNĐ</p>
                 <p style="margin: 2px 0;"><strong>Tiền thưởng:</strong> ${((idea as any).rewardAmount || 0).toLocaleString('vi-VN')} VNĐ</p>
                 <p style="margin: 2px 0;"><strong>Ngày gửi:</strong> ${new Date(idea.submissionDate).toLocaleDateString('vi-VN')}</p>
-                <p style="margin: 2px 0;"><strong>Ý tưởng:</strong> ${idea.idea.substring(0, 150)}${idea.idea.length > 150 ? '...' : ''}</p>
+                <p style="margin: 2px 0;"><strong>Ý tưởng:</strong> ${escapeHtml(idea.idea.substring(0, 150))}${idea.idea.length > 150 ? '...' : ''}</p>
               </div>
             `).join('')}
           </div>

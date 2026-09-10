@@ -1,13 +1,13 @@
 import express from 'express';
 import multer from 'multer';
 import * as importController from '../controllers/importController';
-import { auth } from '../middleware/auth';
+import { auth, requireRole } from '../middleware/auth';
 
 const router = express.Router();
 
 // Toàn bộ luồng import chỉ dành cho quản trị viên: các endpoint này ghi đè dữ
 // liệu hàng loạt, trước đây hoàn toàn công khai.
-router.use(auth);
+router.use(auth, requireRole('admin'));
 
 // Cấu hình multer để xử lý file upload
 const upload = multer({

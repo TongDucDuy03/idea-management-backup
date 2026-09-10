@@ -45,7 +45,7 @@ const A3ReportTab: React.FC = () => {
     setShowForm(false);
 
     try {
-      const { data } = await api.get(`/ideas/code/${encodeURIComponent(trimmedCode)}`);
+      const { data } = await api.get(`/ideas/detail/code/${encodeURIComponent(trimmedCode)}`);
       
       if (!data) {
         setError('Không tìm thấy ý tưởng với mã: ' + trimmedCode);

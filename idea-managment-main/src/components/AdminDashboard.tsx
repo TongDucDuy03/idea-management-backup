@@ -66,7 +66,7 @@ import ExportReportDialog from './ExportReportDialog';
 import ImageLightbox from './ImageLightbox';
 import RewardStatusDialog from './RewardStatusDialog';
 import ImportDialog from './ImportDialog';
-import api from '../api/config';
+import api, { clearSession, logout } from '../api/config';
 
 interface AdminDashboardProps {
   // Chế độ chỉ xem (dùng cho /admin-view từ statistics-view)
@@ -323,40 +323,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
 
   const fetchIdeas = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
-
-      // Nếu đã đăng nhập (có token) -> tải dữ liệu qua endpoint /ideas
-      if (token) {
-        const response = await api.get('/ideas');
-        const rawData = response.data;
-        const ideaList = Array.isArray(rawData) ? rawData : (rawData.ideas || rawData.data || []);
-        setIdeas(ideaList);
-        setLoading(false);
-        return;
-      }
-
-      // Nếu ở chế độ chỉ xem (public view) -> tải dữ liệu qua /ideas/public
-      if (isViewOnly) {
-        const response = await api.get('/ideas/public');
-        const rawData = response.data;
-        const ideaList = Array.isArray(rawData) ? rawData : (rawData.ideas || rawData.data || []);
-        setIdeas(ideaList);
-        setLoading(false);
-        return;
-      }
-
-      // Chưa đăng nhập và không phải chế độ chỉ xem
-      navigate('/login');
+      const response = await api.get('/ideas');
+      const raw = response.data;
+      setIdeas(Array.isArray(raw) ? raw : (raw.ideas || raw.data || []));
     } catch (error: any) {
-      if (!isViewOnly && error.response?.status === 401) {
-        localStorage.removeItem('token');
-        navigate('/login');
-      } else {
-        setError('Không thể tải danh sách ý tưởng');
-      }
-      setLoading(false);
-    }
-  }, [navigate, isViewOnly]);
+      if (error.response?.status === 401) navigate('/login');
+      else setError('Không thể tải dữ liệu ý tưởng');
+    } finally { setLoading(false); }
+  }, [navigate]);
 
   useEffect(() => {
     fetchIdeas();
@@ -463,11 +437,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     if (isViewOnly) return; // Không cho sửa ở chế độ chỉ xem
 
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        navigate('/login');
-        return;
-      }
 
       await api.put(
         `/ideas/${id}`,
@@ -479,7 +448,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     } catch (error: any) {
       console.error('Error updating reward calculation method:', error);
       if (error.response?.status === 401) {
-        localStorage.removeItem('token');
+        clearSession();
         navigate('/login');
       } else {
         setError('Không thể cập nhật phương thức tính thưởng');
@@ -601,11 +570,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
 
   const updateStatus = async (id: string, status: IdeaStatus, rewardStatuses?: RewardStatus[]) => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        navigate('/login');
-        return;
-      }
 
       const updateData: any = { status };
       if (rewardStatuses !== undefined) {
@@ -616,7 +580,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       fetchIdeas();
     } catch (error: any) {
       if (error.response?.status === 401) {
-        localStorage.removeItem('token');
+        clearSession();
         navigate('/login');
       } else {
         setError('Không thể cập nhật trạng thái');
@@ -658,11 +622,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
   const handleRewardStatusesChange = async (id: string, rewardStatuses: RewardStatus[]) => {
     if (isViewOnly) return; // Không cho sửa ở chế độ chỉ xem
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        navigate('/login');
-        return;
-      }
 
       // Áp dụng quy tắc: không được tồn tại đồng thời CHO và DA của cùng một loại
       let validStatuses = [...rewardStatuses];
@@ -685,7 +644,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       fetchIdeas();
     } catch (error: any) {
       if (error.response?.status === 401) {
-        localStorage.removeItem('token');
+        clearSession();
         navigate('/login');
       } else {
         setError('Không thể cập nhật tình trạng khen thưởng');
@@ -699,11 +658,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
   ) => {
     if (isViewOnly) return; // Không cho sửa ở chế độ chỉ xem
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        navigate('/login');
-        return;
-      }
 
       // Note: implementationStatus is not in the Idea type but may exist in database
       await api.put(`/ideas/${id}`, {
@@ -712,7 +666,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       fetchIdeas();
     } catch (error: any) {
       if (error.response?.status === 401) {
-        localStorage.removeItem('token');
+        clearSession();
         navigate('/login');
       } else {
         setError('Không thể cập nhật trạng thái triển khai');
@@ -725,17 +679,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     if (isViewOnly) return; // Không cho xóa ở chế độ chỉ xem
     if (window.confirm('Bạn có chắc chắn muốn xóa ý tưởng này?')) {
       try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          navigate('/login');
-          return;
-        }
 
         await api.delete(`/ideas/${id}`);
         fetchIdeas();
       } catch (error: any) {
         if (error.response?.status === 401) {
-          localStorage.removeItem('token');
+          clearSession();
           navigate('/login');
         } else {
           setError('Không thể xóa ý tưởng');
@@ -761,32 +710,28 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
   const handleSave = async (ideaData: Partial<Idea>) => {
     if (isViewOnly) return; // Không lưu ở chế độ chỉ xem
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        navigate('/login');
-        return;
-      }
 
       if (isEditMode && selectedIdea) {
         await api.put(`/ideas/${selectedIdea._id}`, ideaData);
       } else {
-        await api.post('/ideas', ideaData);
+        await api.post('/ideas/admin', ideaData);
       }
       fetchIdeas();
       setIsDialogOpen(false);
     } catch (error: any) {
       if (error.response?.status === 401) {
-        localStorage.removeItem('token');
+        clearSession();
         navigate('/login');
       } else {
         setError('Không thể lưu ý tưởng');
       }
+      throw error; // Keep the editor open with the user's unsaved input.
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    navigate('/login');
+  const handleLogout = async () => {
+    try { await logout(); navigate('/login'); }
+    catch { setError('Đăng xuất chưa thành công. Vui lòng thử lại.'); }
   };
 
   const handleGoToStatistics = () => {
@@ -2688,6 +2633,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
                     {/* Quản lý cột chỉ dùng cho admin đầy đủ, không dùng trong chế độ chỉ xem */}
                     {!isViewOnly && (
                       <>
+                        <Button variant="contained" startIcon={<AddIcon />} onClick={handleAdd}
+                          sx={{ display: { xs: 'none', md: 'inline-flex' }, whiteSpace: 'nowrap' }}>
+                          Thêm ý tưởng
+                        </Button>
                         <Button
                           variant="outlined"
                           color="primary"
@@ -3373,7 +3322,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
               {!isViewOnly && (
                 <Fab
                   color="primary"
-                  aria-label="add"
+                  aria-label="Thêm ý tưởng"
                   onClick={handleAdd}
                   sx={{
                     position: 'fixed',
@@ -3734,7 +3683,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
         onClose={() => setIsImportDialogOpen(false)}
         onSuccess={() => {
           fetchIdeas();
-          setIsImportDialogOpen(false);
         }}
       />
     </Box>

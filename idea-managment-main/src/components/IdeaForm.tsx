@@ -290,49 +290,60 @@ const IdeaForm: React.FC = () => {
 
   // Image optimization
   const optimizeImage = (file: File, maxWidth: number = 800, maxHeight: number = 600, quality: number = 0.6): Promise<string> => {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       const img = new Image();
-
-      img.onload = () => {
-        let { width, height } = img;
-
-        if (width > height) {
-          if (width > maxWidth) {
-            height = (height * maxWidth) / width;
-            width = maxWidth;
-          }
-        } else {
-          if (height > maxHeight) {
-            width = (width * maxHeight) / height;
-            height = maxHeight;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        ctx?.drawImage(img, 0, 0, width, height);
-
-        let optimizedDataUrl = canvas.toDataURL('image/jpeg', quality);
-
-        if (optimizedDataUrl.length > 500000) {
-          optimizedDataUrl = canvas.toDataURL('image/jpeg', 0.4);
-        }
-
-        if (optimizedDataUrl.length > 300000) {
-          const smallerCanvas = document.createElement('canvas');
-          const smallerCtx = smallerCanvas.getContext('2d');
-          smallerCanvas.width = width * 0.8;
-          smallerCanvas.height = height * 0.8;
-          smallerCtx?.drawImage(canvas, 0, 0, smallerCanvas.width, smallerCanvas.height);
-          optimizedDataUrl = smallerCanvas.toDataURL('image/jpeg', 0.3);
-        }
-
-        resolve(optimizedDataUrl);
+      const objectUrl = URL.createObjectURL(file);
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error('Không thể đọc hình ảnh'));
       };
 
-      img.src = URL.createObjectURL(file);
+      img.onload = () => {
+        try {
+          let { width, height } = img;
+
+          if (width > height) {
+            if (width > maxWidth) {
+              height = (height * maxWidth) / width;
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = (width * maxHeight) / height;
+              height = maxHeight;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          ctx?.drawImage(img, 0, 0, width, height);
+
+          let optimizedDataUrl = canvas.toDataURL('image/jpeg', quality);
+
+          if (optimizedDataUrl.length > 500000) {
+            optimizedDataUrl = canvas.toDataURL('image/jpeg', 0.4);
+          }
+
+          if (optimizedDataUrl.length > 300000) {
+            const smallerCanvas = document.createElement('canvas');
+            const smallerCtx = smallerCanvas.getContext('2d');
+            smallerCanvas.width = width * 0.8;
+            smallerCanvas.height = height * 0.8;
+            smallerCtx?.drawImage(canvas, 0, 0, smallerCanvas.width, smallerCanvas.height);
+            optimizedDataUrl = smallerCanvas.toDataURL('image/jpeg', 0.3);
+          }
+
+          resolve(optimizedDataUrl);
+        } catch (error) {
+          reject(error);
+        } finally {
+          URL.revokeObjectURL(objectUrl);
+        }
+      };
+
+      img.src = objectUrl;
     });
   };
 

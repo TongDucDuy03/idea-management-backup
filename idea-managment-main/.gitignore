@@ -1,5 +1,7 @@
 # Dependencies
 node_modules
+test-results/
+playwright-report/
 
 # Secrets — KHÔNG BAO GIỜ commit
 .env

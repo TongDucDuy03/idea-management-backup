@@ -45,6 +45,7 @@ const ImportDialog: React.FC<ImportDialogProps> = ({ open, onClose, onSuccess })
   const [filterStatus, setFilterStatus] = useState<'all' | 'ok' | 'warn' | 'error'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [showDiff, setShowDiff] = useState(false);
+  const [commitSummary, setCommitSummary] = useState<{ success: number; error: number } | null>(null);
   const [importMode, setImportMode] = useState<'patch' | 'overwrite'>('patch');
   const [rewardStatusesMode, setRewardStatusesMode] = useState<'replace' | 'merge'>('replace');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -53,7 +54,7 @@ const ImportDialog: React.FC<ImportDialogProps> = ({ open, onClose, onSuccess })
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+    if (!/\.xlsx?$/i.test(file.name)) {
       setError('Chỉ chấp nhận file Excel (.xlsx, .xls)');
       return;
     }
@@ -114,12 +115,15 @@ const ImportDialog: React.FC<ImportDialogProps> = ({ open, onClose, onSuccess })
     setError('');
 
     try {
-      await api.post(`/imports/${importSession._id}/commit`, {
+      const response = await api.post(`/imports/${importSession._id}/commit`, {
         selectedRowIndices,
         mode: importMode,
         rewardStatusesMode
       });
-      setActiveStep(2);
+      const summary = response.data.summary;
+      setCommitSummary(summary);
+      if (summary.error > 0) setError((response.data.errors || ['Có dòng import thất bại']).join('; '));
+      if (summary.success > 0) setActiveStep(2);
       onSuccess();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Lỗi khi commit import');
@@ -149,7 +153,7 @@ const ImportDialog: React.FC<ImportDialogProps> = ({ open, onClose, onSuccess })
     );
   };
 
-  const filteredRows = importSession?.rows.filter((row, index) => {
+  const filteredRows = importSession?.rows.map((row, index) => ({ ...row, id: index, index })).filter((row) => {
     if (filterStatus !== 'all') {
       const statusMap: Record<string, ImportRowStatus> = {
         'ok': ImportRowStatus.OK,
@@ -332,6 +336,7 @@ const ImportDialog: React.FC<ImportDialogProps> = ({ open, onClose, onSuccess })
   const handleClose = () => {
     setActiveStep(0);
     setImportSession(null);
+    setCommitSummary(null);
     setSelectedRowIndices([]);
     setError('');
     setSearchTerm('');
@@ -487,7 +492,7 @@ const ImportDialog: React.FC<ImportDialogProps> = ({ open, onClose, onSuccess })
                     </Box>
                     <Box sx={{ height: 400, width: '100%' }}>
                       <DataGrid
-                        rows={filteredRows.map((row, index) => ({ ...row, id: index, index }))}
+                        rows={filteredRows}
                         columns={columns}
                         pageSizeOptions={[10, 25, 50]}
                         disableRowSelectionOnClick
@@ -505,10 +510,10 @@ const ImportDialog: React.FC<ImportDialogProps> = ({ open, onClose, onSuccess })
             <Card>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
-                  Import thành công!
+                  {commitSummary?.error ? 'Import hoàn tất với lỗi' : 'Import thành công!'}
                 </Typography>
                 <Typography variant="body2">
-                  Đã import {selectedRowIndices.length} dòng thành công.
+                  Đã import {commitSummary?.success || 0} dòng thành công; {commitSummary?.error || 0} dòng thất bại.
                 </Typography>
               </CardContent>
             </Card>

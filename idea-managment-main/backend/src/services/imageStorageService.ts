@@ -28,9 +28,17 @@ export function parseDataUrl(dataUrl: string): ParsedDataUrl | null {
   const match = dataUrl.match(/^data:(image\/[^;]+);base64,(.+)$/);
   if (!match) return null;
   const mime = match[1].toLowerCase();
-  const ext = MIME_TO_EXT[mime] || '.jpg';
+  const ext = MIME_TO_EXT[mime];
+  if (!ext || !/^[a-z0-9+/=]+$/i.test(match[2])) return null;
   try {
     const buffer = Buffer.from(match[2], 'base64');
+    if (!buffer.length || buffer.length > 10 * 1024 * 1024) return null;
+    const header = buffer.subarray(0, 12);
+    const valid = ((mime === 'image/jpeg' || mime === 'image/jpg') && header.subarray(0, 3).toString('hex') === 'ffd8ff')
+      || (mime === 'image/png' && header.subarray(0, 8).toString('hex') === '89504e470d0a1a0a')
+      || (mime === 'image/gif' && ['GIF87a', 'GIF89a'].includes(header.subarray(0, 6).toString()))
+      || (mime === 'image/webp' && header.subarray(0, 4).toString() === 'RIFF' && header.subarray(8, 12).toString() === 'WEBP');
+    if (!valid) return null;
     return { mime, ext, buffer };
   } catch {
     return null;

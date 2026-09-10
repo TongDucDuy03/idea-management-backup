@@ -47,7 +47,7 @@ import {
   BarChart as BarChartIcon,
   Assessment as AssessmentIcon
 } from '@mui/icons-material';
-import api from '../api/config';
+import api, { logout } from '../api/config';
 import { Idea, IdeaStatus, IdeaStatusLabels, RewardStatus } from '../types';
 import AdvancedStatistics from './AdvancedStatistics';
 import ReportGenerator from './ReportGenerator';
@@ -104,39 +104,14 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
 
   const fetchIdeas = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
-
-      // Nếu có token -> tải dữ liệu đầy đủ qua /ideas
-      if (token) {
-        const response = await api.get('/ideas');
-        const rawData = response.data;
-        const ideaList = Array.isArray(rawData) ? rawData : (rawData.ideas || rawData.data || []);
-        setIdeas(ideaList);
-        setLoading(false);
-        return;
-      }
-
-      // Nếu ở chế độ chỉ xem (public view) -> tải dữ liệu qua /ideas/public
-      if (isViewOnly) {
-        const response = await api.get('/ideas/public');
-        const rawData = response.data;
-        const ideaList = Array.isArray(rawData) ? rawData : (rawData.ideas || rawData.data || []);
-        setIdeas(ideaList);
-        setLoading(false);
-        return;
-      }
-
-      navigate('/login');
+      const response = await api.get('/ideas');
+      const raw = response.data;
+      setIdeas(Array.isArray(raw) ? raw : (raw.ideas || raw.data || []));
     } catch (error: any) {
-      if (!isViewOnly && error.response?.status === 401) {
-        localStorage.removeItem('token');
-        navigate('/login');
-      } else {
-        setError('Không thể tải dữ liệu thống kê');
-      }
-      setLoading(false);
-    }
-  }, [navigate, isViewOnly]);
+      if (error.response?.status === 401) navigate('/login');
+      else setError('Không thể tải dữ liệu ý tưởng');
+    } finally { setLoading(false); }
+  }, [navigate]);
 
   useEffect(() => {
     fetchIdeas();
@@ -183,9 +158,9 @@ const StatisticsDashboard: React.FC<StatisticsDashboardProps> = ({ isViewOnly = 
     }
   }, [timeRange, dateFrom, dateTo]); // Chạy khi timeRange, dateFrom hoặc dateTo thay đổi
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    navigate('/login');
+  const handleLogout = async () => {
+    try { await logout(); navigate('/login'); }
+    catch { setError('Đăng xuất chưa thành công. Vui lòng thử lại.'); }
   };
 
   const handleBackToAdmin = () => {

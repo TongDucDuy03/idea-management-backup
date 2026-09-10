@@ -40,9 +40,11 @@ function App() {
         <Route
           path="/admin-view"
           element={
-            <MainLayout isViewOnly={true}>
-              <AdminDashboard isViewOnly={true} />
-            </MainLayout>
+            <PrivateRoute allowViewer>
+              <MainLayout isViewOnly={true}>
+                <AdminDashboard isViewOnly={true} />
+              </MainLayout>
+            </PrivateRoute>
           }
         />
         <Route
@@ -58,9 +60,11 @@ function App() {
         <Route
           path="/statistics-view"
           element={
-            <MainLayout isViewOnly={true}>
-              <StatisticsDashboard isViewOnly={true} />
-            </MainLayout>
+            <PrivateRoute allowViewer>
+              <MainLayout isViewOnly={true}>
+                <StatisticsDashboard isViewOnly={true} />
+              </MainLayout>
+            </PrivateRoute>
           }
         />
       </Routes>

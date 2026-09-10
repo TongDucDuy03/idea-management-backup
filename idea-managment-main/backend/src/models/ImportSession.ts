@@ -35,7 +35,8 @@ export interface IImportSession extends Document {
 
 const ImportRowSchema = new Schema<IImportRow>({
   rowIndex: { type: Number, required: true },
-  ideaCode: { type: String, required: true },
+  // Invalid source rows must still be stored so users can review/export errors.
+  ideaCode: { type: String, default: '' },
   payload: { type: Schema.Types.Mixed, required: true },
   diff: {
     current: { type: Schema.Types.Mixed },

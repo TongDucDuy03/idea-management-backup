@@ -1,4 +1,5 @@
 import React from 'react';
+import '@fontsource-variable/inter';
 import ReactDOM from 'react-dom';
 import { ThemeProvider } from '@mui/material';
 import CssBaseline from '@mui/material/CssBaseline';

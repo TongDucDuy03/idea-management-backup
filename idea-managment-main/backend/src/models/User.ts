@@ -4,12 +4,18 @@ import bcrypt from 'bcryptjs';
 export interface IUser extends Document {
   username: string;
   password: string;
+  role: 'admin' | 'viewer';
+  isActive: boolean;
+  sessionVersion: number;
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
 const UserSchema: Schema = new Schema({
   username: { type: String, required: true, unique: true },
-  password: { type: String, required: true }
+  password: { type: String, required: true },
+  role: { type: String, enum: ['admin', 'viewer'], default: 'viewer' },
+  isActive: { type: Boolean, default: true },
+  sessionVersion: { type: Number, default: 0 },
 });
 
 // Hash password before saving
@@ -19,6 +25,7 @@ UserSchema.pre('save', async function(next) {
   try {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
+    if (!this.isNew) this.sessionVersion = Number(this.sessionVersion || 0) + 1;
     next();
   } catch (error) {
     next(error as Error);
@@ -30,4 +37,4 @@ UserSchema.methods.comparePassword = async function(candidatePassword: string): 
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-export default mongoose.model<IUser>('User', UserSchema); 
+export default mongoose.model<IUser>('User', UserSchema);

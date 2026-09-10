@@ -8,7 +8,7 @@ import {
   deleteA3Report,
   getA3ReportByIdeaCode
 } from '../controllers/a3ReportController';
-import { auth } from '../middleware/auth';
+import { auth, requireRole } from '../middleware/auth';
 
 const router = express.Router();
 
@@ -18,7 +18,7 @@ const router = express.Router();
 router.use(auth);
 
 // Tạo báo cáo A3 mới
-router.post('/', createA3Report);
+router.post('/', requireRole('admin'), createA3Report);
 
 // Lấy tất cả báo cáo A3
 router.get('/', getAllA3Reports);
@@ -33,9 +33,9 @@ router.get('/idea/:ideaId', getA3ReportByIdeaId);
 router.get('/code/:ideaCode', getA3ReportByIdeaCode);
 
 // Cập nhật báo cáo A3
-router.put('/:id', updateA3Report);
+router.put('/:id', requireRole('admin'), updateA3Report);
 
 // Xóa báo cáo A3
-router.delete('/:id', deleteA3Report);
+router.delete('/:id', requireRole('admin'), deleteA3Report);
 
 export default router;

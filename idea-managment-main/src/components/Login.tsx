@@ -17,7 +17,7 @@ import {
   PersonOutline,
 } from '@mui/icons-material';
 import { COLORS } from '../theme/theme';
-import api from '../api/config';
+import api, { setSession } from '../api/config';
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -36,8 +36,8 @@ const Login: React.FC = () => {
         username,
         password,
       });
-      localStorage.setItem('token', response.data.token);
-      navigate('/admin');
+      setSession(response.data);
+      navigate(response.data.user.role === 'admin' ? '/admin' : '/admin-view');
     } catch (error: any) {
       setError(error.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
     } finally {

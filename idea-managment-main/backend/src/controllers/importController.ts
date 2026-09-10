@@ -1,3 +1,4 @@
+import { parseExcel } from '../services/excelParser';
 import { Request, Response } from 'express';
 import * as XLSX from 'xlsx';
 import ImportSession, { ImportRowStatus, IImportRow } from '../models/ImportSession';
@@ -63,75 +64,32 @@ const DEFAULT_COLUMN_MAPPING: Record<string, string> = {
 // Hàm parse date từ Excel (hỗ trợ cả string và serial number)
 // Xử lý đúng timezone cho Việt Nam (GMT+7)
 function parseExcelDate(value: any): Date | null {
-  if (value === null || value === undefined || value === '') {
-    return null;
-  }
-
-  // Nếu là số, có thể là serial number của Excel
+  if (value == null || value === '') return null;
   if (typeof value === 'number') {
-    // Excel serial date: 1 = Jan 1, 1900
-    // Cần điều chỉnh vì Excel có bug (coi 1900 là năm nhuận)
-    const excelEpoch = new Date(Date.UTC(1899, 11, 30, 0, 0, 0));
-    const days = value;
-    const result = new Date(excelEpoch.getTime() + days * 24 * 60 * 60 * 1000);
-    return result;
+    if (!Number.isFinite(value) || value < 1 || value > 2958465) return null;
+    return new Date(Date.UTC(1899, 11, 30) + value * 86400000);
   }
-
-  // Nếu là string, thử parse theo định dạng dd/MM/yyyy hoặc d/M/yyyy
-  const strValue = value.toString().trim();
-  if (strValue === '') {
-    return null;
-  }
-
-  // Thử parse theo định dạng Việt Nam: d/M/yyyy hoặc dd/MM/yyyy
-  const parts = strValue.split(/[\/\-\.]/);
-  if (parts.length >= 2) {
-    let day: number, month: number, year: number;
-
-    if (parts.length === 2) {
-      // d/M (giả định là năm hiện tại)
-      day = parseInt(parts[0], 10);
-      month = parseInt(parts[1], 10) - 1; // Month trong JS bắt đầu từ 0
-      year = new Date().getFullYear();
-    } else {
-      // d/M/yyyy hoặc dd/MM/yyyy
-      day = parseInt(parts[0], 10);
-      month = parseInt(parts[1], 10) - 1;
-      year = parseInt(parts[2], 10);
-      // Nếu năm chỉ có 2 chữ số
-      if (year < 100) {
-        year += year > 50 ? 1900 : 2000;
-      }
-    }
-
-    if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-      // Tạo date theo giờ Việt Nam (UTC+7)
-      // Sử dụng UTC để tránh bị ảnh hưởng bởi timezone server
-      const date = new Date(Date.UTC(year, month, day, 0, 0, 0));
-      if (!isNaN(date.getTime())) {
-        return date;
-      }
-    }
-  }
-
-  // Fallback: thử parse bình thường
-  const date = new Date(strValue);
-  if (!isNaN(date.getTime())) {
-    return date;
-  }
-
-  return null;
+  const text = String(value).trim();
+  const iso = /^(\d{4})-(\d{2})-(\d{2})(?:T.*)?$/.exec(text);
+  const local = /^(\d{1,2})[\/.-](\d{1,2})(?:[\/.-](\d{2}|\d{4}))?$/.exec(text);
+  if (!iso && !local) return null;
+  const day = Number(iso ? iso[3] : local![1]);
+  const month = Number(iso ? iso[2] : local![2]);
+  let year = Number(iso ? iso[1] : local![3] || new Date().getFullYear());
+  if (year < 100) year += year > 50 ? 1900 : 2000;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+  return date;
 }
 
-// Validate và parse một row
 async function validateAndParseRow(
   row: Record<string, any>,
   rowIndex: number,
   columnMapping: Record<string, string>
 ): Promise<IImportRow> {
-  const ideaCode = row[columnMapping['ideaCode']] || 
-                    row['Mã ý tưởng'] || row['Idea Code'] || 
-                    row['ideaCode'] || '';
+  const ideaCode = row[columnMapping['ideaCode']] ??
+                    row['Mã ý tưởng'] ?? row['Idea Code'] ??
+                    row['ideaCode'] ?? '';
   
   const messages: string[] = [];
   let status: ImportRowStatus = ImportRowStatus.OK;
@@ -174,7 +132,7 @@ async function validateAndParseRow(
   // 2. Parse các field khác
   // Status
   if (row[columnMapping['status']] !== undefined || row['Trạng thái'] !== undefined || row['Status'] !== undefined || row['Quyết định phê duyệt'] !== undefined) {
-    const statusValue = row[columnMapping['status']] || row['Trạng thái'] || row['Status'] || row['Quyết định phê duyệt'];
+    const statusValue = row[columnMapping['status']] ?? row['Trạng thái'] ?? row['Status'] ?? row['Quyết định phê duyệt'];
     if (statusValue !== null && statusValue !== undefined && statusValue !== '') {
       const normalizedStatus = normalizeStatus(statusValue.toString());
       if (normalizedStatus) {
@@ -198,7 +156,7 @@ async function validateAndParseRow(
 
   // RewardStatuses - Sửa logic kiểm tra cột
   if (row['Tình trạng khen thưởng'] !== undefined || row['Reward Statuses'] !== undefined || row['rewardStatuses'] !== undefined) {
-    const rewardValue = row['Tình trạng khen thưởng'] || row['Reward Statuses'] || row['rewardStatuses'];
+    const rewardValue = row['Tình trạng khen thưởng'] ?? row['Reward Statuses'] ?? row['rewardStatuses'];
     const currentRewards = (idea.rewardStatuses || []) as RewardStatus[];
 
     // LUÔN thêm vào diff (để hiển thị trong preview)
@@ -223,7 +181,7 @@ async function validateAndParseRow(
         const hasConflict = checkRewardConflict(rewardStatuses);
         if (hasConflict) {
           messages.push('Có xung đột trong tình trạng khen thưởng (vừa CHỜ vừa ĐÃ cùng loại)');
-          status = ImportRowStatus.WARNING;
+          status = ImportRowStatus.ERROR;
         }
 
         // So sánh sau khi sort để phát hiện thay đổi
@@ -236,14 +194,14 @@ async function validateAndParseRow(
       } else {
         // Parse không thành công
         messages.push(`Tình trạng khen thưởng không hợp lệ: ${rewardValue}`);
-        status = ImportRowStatus.WARNING;
+        status = ImportRowStatus.ERROR;
       }
     }
   }
 
   // Note
   if (row[columnMapping['note']] !== undefined || row['Ghi chú'] !== undefined || row['Note'] !== undefined || row['Lý do không duy trì'] !== undefined) {
-    const noteValue = row[columnMapping['note']] || row['Ghi chú'] || row['Note'] || row['Lý do không duy trì'];
+    const noteValue = row[columnMapping['note']] ?? row['Ghi chú'] ?? row['Note'] ?? row['Lý do không duy trì'];
     // Xử lý cả trường hợp để trống (xóa data)
     if (noteValue !== null && noteValue !== undefined) {
       const trimmedValue = noteValue.toString().trim();
@@ -265,7 +223,7 @@ async function validateAndParseRow(
 
   // Implementation Department
   if (row[columnMapping['implementationDepartment']] !== undefined || row['Phòng ban triển khai'] !== undefined || row['Implementation Department'] !== undefined) {
-    const deptValue = row[columnMapping['implementationDepartment']] || row['Phòng ban triển khai'] || row['Implementation Department'];
+    const deptValue = row[columnMapping['implementationDepartment']] ?? row['Phòng ban triển khai'] ?? row['Implementation Department'];
     if (deptValue !== null && deptValue !== undefined) {
       const trimmedValue = deptValue.toString().trim();
       const currentImplDept = (idea as any).implementationDepartment || '';
@@ -282,7 +240,7 @@ async function validateAndParseRow(
 
   // Full Name
   if (row[columnMapping['fullName']] !== undefined || row['Họ và tên'] !== undefined || row['Full Name'] !== undefined) {
-    const fullNameValue = row[columnMapping['fullName']] || row['Họ và tên'] || row['Full Name'];
+    const fullNameValue = row[columnMapping['fullName']] ?? row['Họ và tên'] ?? row['Full Name'];
     if (fullNameValue !== null && fullNameValue !== undefined) {
       const trimmedValue = fullNameValue.toString().trim();
       const currentFullName = idea.fullName || '';
@@ -299,7 +257,7 @@ async function validateAndParseRow(
 
   // Department
   if (row[columnMapping['department']] !== undefined || row['Đơn vị'] !== undefined || row['Department'] !== undefined) {
-    const deptValue = row[columnMapping['department']] || row['Đơn vị'] || row['Department'];
+    const deptValue = row[columnMapping['department']] ?? row['Đơn vị'] ?? row['Department'];
     if (deptValue !== null && deptValue !== undefined) {
       const trimmedValue = deptValue.toString().trim();
       const currentDept = idea.department || '';
@@ -316,7 +274,7 @@ async function validateAndParseRow(
 
   // Idea
   if (row[columnMapping['idea']] !== undefined || row['Ý tưởng'] !== undefined || row['Idea'] !== undefined) {
-    const ideaValue = row[columnMapping['idea']] || row['Ý tưởng'] || row['Idea'];
+    const ideaValue = row[columnMapping['idea']] ?? row['Ý tưởng'] ?? row['Idea'];
     if (ideaValue !== null && ideaValue !== undefined) {
       const trimmedValue = ideaValue.toString().trim();
       const currentIdea = idea.idea || '';
@@ -333,7 +291,7 @@ async function validateAndParseRow(
 
   // Solution
   if (row[columnMapping['solution']] !== undefined || row['Thực trạng'] !== undefined || row['Solution'] !== undefined) {
-    const solutionValue = row[columnMapping['solution']] || row['Thực trạng'] || row['Solution'];
+    const solutionValue = row[columnMapping['solution']] ?? row['Thực trạng'] ?? row['Solution'];
     if (solutionValue !== null && solutionValue !== undefined) {
       const trimmedValue = solutionValue.toString().trim();
       const currentSolution = idea.solution || '';
@@ -350,7 +308,7 @@ async function validateAndParseRow(
 
   // Benefit
   if (row[columnMapping['benefit']] !== undefined || row['Giải pháp'] !== undefined || row['Benefit'] !== undefined) {
-    const benefitValue = row[columnMapping['benefit']] || row['Giải pháp'] || row['Benefit'];
+    const benefitValue = row[columnMapping['benefit']] ?? row['Giải pháp'] ?? row['Benefit'];
     if (benefitValue !== null && benefitValue !== undefined) {
       const trimmedValue = benefitValue.toString().trim();
       const currentBenefit = idea.benefit || '';
@@ -367,7 +325,7 @@ async function validateAndParseRow(
 
   // Benefit Outcome
   if (row[columnMapping['benefitOutcome']] !== undefined || row['Lợi ích mang lại'] !== undefined || row['Benefit Outcome'] !== undefined) {
-    const benefitOutcomeValue = row[columnMapping['benefitOutcome']] || row['Lợi ích mang lại'] || row['Benefit Outcome'];
+    const benefitOutcomeValue = row[columnMapping['benefitOutcome']] ?? row['Lợi ích mang lại'] ?? row['Benefit Outcome'];
     if (benefitOutcomeValue !== null && benefitOutcomeValue !== undefined) {
       const trimmedValue = benefitOutcomeValue.toString().trim();
       const currentBenefitOutcome = (idea as any).benefitOutcome || '';
@@ -384,7 +342,7 @@ async function validateAndParseRow(
 
   // Resources Used
   if (row[columnMapping['resourcesUsed']] !== undefined || row['Nguồn lực sử dụng'] !== undefined || row['Resources Used'] !== undefined) {
-    const resourcesValue = row[columnMapping['resourcesUsed']] || row['Nguồn lực sử dụng'] || row['Resources Used'];
+    const resourcesValue = row[columnMapping['resourcesUsed']] ?? row['Nguồn lực sử dụng'] ?? row['Resources Used'];
     if (resourcesValue !== null && resourcesValue !== undefined) {
       const trimmedValue = resourcesValue.toString().trim();
       const currentResourcesUsed = (idea as any).resourcesUsed || '';
@@ -401,7 +359,7 @@ async function validateAndParseRow(
 
   // Calculation Description
   if (row[columnMapping['calculationDescription']] !== undefined || row['Mô tả cách tính'] !== undefined || row['Calculation Description'] !== undefined) {
-    const calcValue = row[columnMapping['calculationDescription']] || row['Mô tả cách tính'] || row['Calculation Description'];
+    const calcValue = row[columnMapping['calculationDescription']] ?? row['Mô tả cách tính'] ?? row['Calculation Description'];
     if (calcValue !== null && calcValue !== undefined) {
       const trimmedValue = calcValue.toString().trim();
       const currentCalc = (idea as any).calculationDescription || '';
@@ -418,7 +376,7 @@ async function validateAndParseRow(
 
   // Scaling Opportunity
   if (row[columnMapping['scalingOpportunity']] !== undefined || row['Cơ hội nhân rộng phát triển'] !== undefined || row['Scaling Opportunity'] !== undefined) {
-    const scalingValue = row[columnMapping['scalingOpportunity']] || row['Cơ hội nhân rộng phát triển'] || row['Scaling Opportunity'];
+    const scalingValue = row[columnMapping['scalingOpportunity']] ?? row['Cơ hội nhân rộng phát triển'] ?? row['Scaling Opportunity'];
     if (scalingValue !== null && scalingValue !== undefined) {
       const trimmedValue = scalingValue.toString().trim();
       const currentScaling = (idea as any).scalingOpportunity || '';
@@ -433,50 +391,12 @@ async function validateAndParseRow(
     }
   }
 
-  // Benefit Value
-  if (row[columnMapping['benefitValue']] !== undefined || row['Giá trị làm lợi (VND)'] !== undefined || row['Benefit Value'] !== undefined) {
-    const benefitValueStr = row[columnMapping['benefitValue']] || row['Giá trị làm lợi (VND)'] || row['Benefit Value'];
-    if (benefitValueStr !== null && benefitValueStr !== undefined && benefitValueStr.toString().trim() !== '') {
-      const benefitValueNum = parseFloat(benefitValueStr.toString().replace(/,/g, ''));
-      if (!isNaN(benefitValueNum)) {
-        const currentBenefitValue = idea.benefitValue || 0;
-        if (benefitValueNum !== currentBenefitValue) {
-          payload.benefitValue = benefitValueNum;
-          diff.current.benefitValue = currentBenefitValue;
-          diff.new.benefitValue = benefitValueNum;
-          if (status === ImportRowStatus.OK) {
-            status = ImportRowStatus.WARNING;
-          }
-        }
-      }
-    }
-  }
-
-  // Reward Amount
-  if (row[columnMapping['rewardAmount']] !== undefined || row['Tiền thưởng (VND)'] !== undefined || row['Reward Amount'] !== undefined) {
-    const rewardAmountStr = row[columnMapping['rewardAmount']] || row['Tiền thưởng (VND)'] || row['Reward Amount'];
-    if (rewardAmountStr !== null && rewardAmountStr !== undefined && rewardAmountStr.toString().trim() !== '') {
-      const rewardAmountNum = parseFloat(rewardAmountStr.toString().replace(/,/g, ''));
-      if (!isNaN(rewardAmountNum)) {
-        const currentRewardAmount = idea.rewardAmount || 0;
-        if (rewardAmountNum !== currentRewardAmount) {
-          payload.rewardAmount = rewardAmountNum;
-          diff.current.rewardAmount = currentRewardAmount;
-          diff.new.rewardAmount = rewardAmountNum;
-          if (status === ImportRowStatus.OK) {
-            status = ImportRowStatus.WARNING;
-          }
-        }
-      }
-    }
-  }
-
   // Reward Approval Date
   if (row[columnMapping['rewardApprovalDate']] !== undefined || row['Ngày duyệt khen thưởng'] !== undefined || row['Reward Approval Date'] !== undefined) {
-    const dateValue = row[columnMapping['rewardApprovalDate']] || row['Ngày duyệt khen thưởng'] || row['Reward Approval Date'];
+    const dateValue = row[columnMapping['rewardApprovalDate']] ?? row['Ngày duyệt khen thưởng'] ?? row['Reward Approval Date'];
     if (dateValue !== null && dateValue !== undefined && dateValue.toString().trim() !== '') {
-      const date = new Date(dateValue);
-      if (!isNaN(date.getTime())) {
+      const date = parseExcelDate(dateValue);
+      if (date) {
         const currentDate = idea.rewardApprovalDate ? new Date(idea.rewardApprovalDate).getTime() : null;
         const newDate = date.getTime();
         if (currentDate !== newDate) {
@@ -499,7 +419,7 @@ async function validateAndParseRow(
   const hasImplStatusColEN = row['Implementation Status'] !== undefined;
 
   if (hasImplStatusCol || hasImplStatusColVN || hasImplStatusColEN) {
-    const statusValue = row[implStatusCol] || row['Trạng thái triển khai'] || row['Implementation Status'];
+    const statusValue = row[implStatusCol] ?? row['Trạng thái triển khai'] ?? row['Implementation Status'];
     // Nếu giá trị là empty/null/undefined trong Excel → xóa data
     if (statusValue === null || statusValue === undefined || statusValue.toString().trim() === '') {
       const currentValue = (idea as any).implementationStatus || '';
@@ -532,7 +452,7 @@ async function validateAndParseRow(
   const hasExpectedDateColEN = row['Expected Completion Date'] !== undefined;
 
   if (hasExpectedDateCol || hasExpectedDateColVN || hasExpectedDateColEN) {
-    const dateValue = row[expectedDateCol] || row['Hạn dự kiến hoàn thành'] || row['Expected Completion Date'];
+    const dateValue = row[expectedDateCol] ?? row['Hạn dự kiến hoàn thành'] ?? row['Expected Completion Date'];
     const date = parseExcelDate(dateValue);
     const currentDate = (idea as any).expectedCompletionDate ? new Date((idea as any).expectedCompletionDate).getTime() : null;
 
@@ -565,7 +485,7 @@ async function validateAndParseRow(
   const hasNetReserveColVN =  row['Trạng thái duy trì/mở rộng'] !== undefined;
 
   if (hasNetReserveCol || hasNetReserveColVN) {
-    const statusValue = row[netReserveCol]  || row['Trạng thái duy trì/mở rộng'];
+    const statusValue = row[netReserveCol]  ?? row['Trạng thái duy trì/mở rộng'];
     // Nếu giá trị là empty/null/undefined trong Excel → xóa data
     if (statusValue === null || statusValue === undefined || statusValue.toString().trim() === '') {
       const currentValue = (idea as any).netReserveStatus || '';
@@ -598,7 +518,7 @@ async function validateAndParseRow(
   const hasReasonNoteColEN = row['Reason Note'] !== undefined;
 
   if (hasReasonNoteCol || hasReasonNoteColVN || hasReasonNoteColEN) {
-    const noteValue = row[reasonNoteCol] || row['Ghi chú lý do (Dừng/Hủy)'] || row['Reason Note'];
+    const noteValue = row[reasonNoteCol] ?? row['Ghi chú lý do (Dừng/Hủy)'] ?? row['Reason Note'];
     // Nếu giá trị là empty/null/undefined trong Excel → xóa data
     if (noteValue === null || noteValue === undefined || noteValue.toString().trim() === '') {
       const currentValue = (idea as any).reasonNote || '';
@@ -621,6 +541,63 @@ async function validateAndParseRow(
           status = ImportRowStatus.WARNING;
         }
       }
+    }
+  }
+
+  // Never silently truncate malformed money (for example, "123abc" to 123).
+  for (const field of ['benefitValue', 'rewardAmount']) {
+    const column = columnMapping[field];
+    if (!column || row[column] === undefined) continue;
+    const raw = String(row[column] ?? '').trim();
+    const numeric = raw.replace(/,/g, '');
+    if (raw === '') {
+      payload[field] = null;
+    } else if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(numeric) || !Number.isFinite(Number(numeric))) {
+      status = ImportRowStatus.ERROR;
+      messages.push(`Số tiền không hợp lệ ở cột ${column}`);
+      continue;
+    } else {
+      payload[field] = Number(numeric);
+    }
+    diff.current[field] = (idea as any)[field] ?? null;
+    diff.new[field] = payload[field];
+    if (payload[field] !== diff.current[field] && status === ImportRowStatus.OK) status = ImportRowStatus.WARNING;
+  }
+
+  const methodColumn = columnMapping.rewardCalculationMethod;
+  if (methodColumn && row[methodColumn] !== undefined) {
+    const raw = String(row[methodColumn] ?? '').trim();
+    const labels: Record<string, RewardCalculationMethod> = {
+      'Tính được 20%': RewardCalculationMethod.PERCENT_20,
+      'Tính bằng công cụ': RewardCalculationMethod.TOOL_BASED,
+    };
+    const method = labels[raw] || raw;
+    if (raw && !Object.values(RewardCalculationMethod).includes(method as RewardCalculationMethod)) {
+      status = ImportRowStatus.ERROR;
+      messages.push('Phương thức tính thưởng không hợp lệ');
+    } else {
+      payload.rewardCalculationMethod = method || null;
+      diff.current.rewardCalculationMethod = idea.rewardCalculationMethod || null;
+      diff.new.rewardCalculationMethod = payload.rewardCalculationMethod;
+      if (diff.current.rewardCalculationMethod !== diff.new.rewardCalculationMethod && status === ImportRowStatus.OK) status = ImportRowStatus.WARNING;
+    }
+  }
+
+  // Validate all supplied date columns consistently, including numeric Excel dates.
+  for (const field of ['submissionDate', 'rewardApprovalDate', 'expectedCompletionDate']) {
+    const column = Object.keys(DEFAULT_COLUMN_MAPPING).find(key => DEFAULT_COLUMN_MAPPING[key] === field && Object.prototype.hasOwnProperty.call(row, key));
+    if (!column) continue;
+    const raw = row[column];
+    const blank = raw == null || String(raw).trim() === '';
+    const parsed = blank ? null : parseExcelDate(raw);
+    if ((!blank && !parsed) || (blank && field === 'submissionDate')) {
+      status = ImportRowStatus.ERROR;
+      messages.push(`Ngày không hợp lệ ở cột ${column}`);
+    } else {
+      payload[field] = parsed;
+      diff.current[field] = (idea as any)[field] || null;
+      diff.new[field] = parsed;
+      if (status === ImportRowStatus.OK) status = ImportRowStatus.WARNING;
     }
   }
 
@@ -742,6 +719,8 @@ function parseRewardStatuses(value: string): RewardStatus[] {
     }
   });
 
+  // A partially recognized list must not discard the unrecognized items.
+  if (statuses.length !== parts.filter(Boolean).length) return [];
   return statuses;
 }
 
@@ -762,11 +741,9 @@ export const previewImport = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Không có file được upload' });
     }
 
-    // Parse Excel file
-    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    const rows: any[] = XLSX.utils.sheet_to_json(worksheet);
+    let rows: any[];
+    try { rows = await parseExcel(req.file.buffer); }
+    catch (error) { return res.status(400).json({ message: error instanceof Error ? error.message : 'Tệp Excel không hợp lệ' }); }
 
     if (rows.length === 0) {
       return res.status(400).json({ message: 'File Excel không có dữ liệu' });
@@ -774,13 +751,13 @@ export const previewImport = async (req: Request, res: Response) => {
 
     // Detect column mapping từ header
     const firstRow = rows[0];
-    const columnMapping: Record<string, string> = { ...DEFAULT_COLUMN_MAPPING };
+    const columnMapping: Record<string, string> = {};
     
     // Auto-detect mapping từ header
     Object.keys(firstRow).forEach(excelCol => {
       const normalized = excelCol.trim();
       if (DEFAULT_COLUMN_MAPPING[normalized]) {
-        columnMapping[normalized] = DEFAULT_COLUMN_MAPPING[normalized];
+        columnMapping[DEFAULT_COLUMN_MAPPING[normalized]] = excelCol;
       }
     });
 
@@ -803,7 +780,7 @@ export const previewImport = async (req: Request, res: Response) => {
     // Lưu vào ImportSession
     const importSession = new ImportSession({
       fileName: req.file.originalname,
-      uploadedBy: (req as any).user?.id || 'anonymous',
+      uploadedBy: (req as any).user.userId,
       mappingConfig: columnMapping,
       summary,
       rows: importRows
@@ -887,10 +864,10 @@ export const commitImport = async (req: Request, res: Response) => {
         const updateData: any = {};
         
         if (mode === 'patch') {
-          // Update tất cả các field có trong payload (bao gồm cả empty string để xóa data)
-          // Chỉ bỏ qua nếu key không có trong payload
+          // Patch preserves blank cells, including an empty reward selection; zero is a value.
           Object.keys(row.payload).forEach(key => {
-            if (row.payload.hasOwnProperty(key)) {
+            const value = row.payload[key];
+            if (value !== '' && value !== null && value !== undefined && !(Array.isArray(value) && value.length === 0)) {
               updateData[key] = row.payload[key];
             }
           });
@@ -905,12 +882,13 @@ export const commitImport = async (req: Request, res: Response) => {
             const current = (idea.rewardStatuses || []) as RewardStatus[];
             const newStatuses = updateData.rewardStatuses as RewardStatus[];
             const merged = [...new Set([...current, ...newStatuses])];
+            if (checkRewardConflict(merged)) throw new Error('Tình trạng khen thưởng sau khi gộp bị mâu thuẫn');
             updateData.rewardStatuses = merged;
           }
           // Nếu không phải merge thì replace (mặc định)
         }
 
-        await Idea.findByIdAndUpdate(idea._id, updateData);
+        await Idea.findByIdAndUpdate(idea._id, updateData, { runValidators: true });
         successCount++;
       } catch (error: any) {
         errorCount++;

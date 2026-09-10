@@ -1,3 +1,5 @@
+import { assetBaseUrl as configuredAssetBaseUrl } from '../config/security';
+import { AuthRequest } from '../middleware/auth';
 import { Request, Response } from 'express';
 import crypto from 'crypto';
 import fs from 'fs/promises';
@@ -7,6 +9,7 @@ import { sendIdeaSubmittedEmail } from '../services/emailService';
 import { resolveUploadDir } from '../utils/uploadDir';
 import {
   isBase64DataUrl,
+  parseDataUrl,
   saveBase64ToFile,
 } from '../services/imageStorageService';
 
@@ -72,7 +75,7 @@ function escapeRegExp(value: string): string {
  */
 function generateIdeaCode(): string {
   const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const randomPart = crypto.randomBytes(6).toString('hex').toUpperCase();
+  const randomPart = crypto.randomBytes(16).toString('hex').toUpperCase();
   return `${datePart}-${randomPart}`;
 }
 
@@ -116,8 +119,31 @@ function transformIdeaWithImageUrls(idea: any, baseUrl: string): any {
   return result;
 }
 
-export const createIdea = async (req: Request, res: Response) => {
+export const createIdea = async (req: AuthRequest, res: Response) => {
   try {
+    if (!req.user) {
+      const body = req.body || {};
+      const publicFields = ['fullName', 'department', 'idea', 'solution', 'benefit', 'beforeImage', 'afterImage'];
+      const safe: Record<string, any> = {};
+      for (const field of publicFields) {
+        const value = body[field];
+        const maxLength = field.endsWith('Image') ? 12 * 1024 * 1024 : (field === 'fullName' || field === 'department' ? 200 : 20000);
+        if (value != null && (typeof value !== 'string' || value.length > maxLength)) {
+          return res.status(400).json({ message: 'Dữ liệu gửi ý tưởng không hợp lệ' });
+        }
+        safe[field] = value;
+      }
+      if (!safe.department?.trim() || !safe.idea?.trim()) {
+        return res.status(400).json({ message: 'Vui lòng nhập phòng ban và nội dung ý tưởng' });
+      }
+      req.body = safe;
+    }
+    for (const field of ['beforeImage', 'afterImage']) {
+      const image = req.body[field];
+      if (image && ((!req.user && !isBase64DataUrl(image)) || (isBase64DataUrl(image) && !parseDataUrl(image)))) {
+        return res.status(400).json({ message: 'Ảnh phải là PNG, JPEG, GIF hoặc WebP hợp lệ, tối đa 10MB' });
+      }
+    }
     const {
       fullName,
       department,
@@ -164,6 +190,7 @@ export const createIdea = async (req: Request, res: Response) => {
     }
 
     const newIdea = new Idea({
+      ...(req.user ? pickUpdatableFields(req.body) : {}),
       fullName,
       department,
       idea,
@@ -197,12 +224,12 @@ export const createIdea = async (req: Request, res: Response) => {
     });
 
     // Transform response với image URLs
-    const requestBaseUrl = `${req.protocol}://${req.get('host') || req.get('x-forwarded-host') || 'localhost:' + (process.env.PORT || 5000)}`;
-    const assetBaseUrl = process.env.PUBLIC_ASSET_BASE_URL || process.env.PUBLIC_BASE_URL || requestBaseUrl;
+    const assetBaseUrl = configuredAssetBaseUrl();
     const transformed = transformIdeaWithImageUrls(savedIdea, assetBaseUrl);
 
-    res.status(201).json(transformed);
-  } catch (error) {
+    res.status(201).json(req.user ? transformed : { ideaCode: savedIdea.ideaCode, status: savedIdea.status, submissionDate: savedIdea.submissionDate });
+  } catch (error: any) {
+    if (error?.name === 'ValidationError' || error?.name === 'CastError') return res.status(400).json({ message: 'Dữ liệu không hợp lệ' });
     console.error('[IDEA] Error creating idea:', error);
     res.status(500).json({ message: 'Không thể tạo ý tưởng' });
   }
@@ -231,7 +258,8 @@ export const getIdeaStats = async (_req: Request, res: Response) => {
     ]);
 
     res.json({ total, approved, rewarded });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.name === 'ValidationError' || error?.name === 'CastError') return res.status(400).json({ message: 'Dữ liệu không hợp lệ' });
     console.error('[IDEA] Error fetching stats:', error);
     res.status(500).json({ message: 'Không thể tải số liệu thống kê' });
   }
@@ -371,8 +399,7 @@ export const getAllIdeas = async (req: Request, res: Response) => {
     const ideas = await queryBuilder.lean();
 
     // Build base URL cho image URLs
-    const requestBaseUrl = `${req.protocol}://${req.get('host') || req.get('x-forwarded-host') || 'localhost:' + (process.env.PORT || 5000)}`;
-    const assetBaseUrl = process.env.PUBLIC_ASSET_BASE_URL || process.env.PUBLIC_BASE_URL || requestBaseUrl;
+    const assetBaseUrl = configuredAssetBaseUrl();
 
     const transformedIdeas = ideas.map(idea => transformIdeaWithImageUrls(idea, assetBaseUrl));
 
@@ -388,7 +415,8 @@ export const getAllIdeas = async (req: Request, res: Response) => {
     }
 
     return res.json(transformedIdeas);
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.name === 'ValidationError' || error?.name === 'CastError') return res.status(400).json({ message: 'Dữ liệu không hợp lệ' });
     console.error('[IDEA] Error fetching ideas:', error);
     res.status(500).json({ message: 'Không thể tải danh sách ý tưởng' });
   }
@@ -414,13 +442,16 @@ export const updatePaymentStatus = async (req: Request, res: Response) => {
     }
 
     res.json(updatedIdea);
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.name === 'ValidationError' || error?.name === 'CastError') return res.status(400).json({ message: 'Dữ liệu không hợp lệ' });
     console.error('[IDEA] Error updating payment status:', error);
     res.status(500).json({ message: 'Không thể cập nhật trạng thái thanh toán' });
   }
 };
 
 export const updateIdea = async (req: Request, res: Response) => {
+  const createdFiles: string[] = [];
+  let persisted = false;
   try {
     const existing = await Idea.findById(req.params.id);
     if (!existing) {
@@ -459,6 +490,14 @@ export const updateIdea = async (req: Request, res: Response) => {
       updateData.expectedCompletionDate = null;
     }
 
+    // Validate before changing any files; a rejected edit must preserve old media.
+    await new Idea({ ...existing.toObject<IIdea>(), ...updateData }).validate();
+    for (const field of ['beforeImage', 'afterImage']) {
+      if (isBase64DataUrl(updateData[field]) && !parseDataUrl(updateData[field])) {
+        return res.status(400).json({ message: 'Ảnh không hợp lệ' });
+      }
+    }
+    const filesToDelete = new Set<string>();
     const unsetFields: Record<string, 1> = {};
 
     // Xử lý beforeImage & beforeImagePath
@@ -471,7 +510,7 @@ export const updateIdea = async (req: Request, res: Response) => {
       delete updateData.beforeImage;
     } else if (updateData.beforeImage === null || updateData.beforeImage === '') {
       if (existing.beforeImagePath) {
-        await deleteFileIfLocal(existing.beforeImagePath);
+        filesToDelete.add(existing.beforeImagePath);
       }
       delete updateData.beforeImage;
       delete updateData.beforeImagePath;
@@ -485,14 +524,14 @@ export const updateIdea = async (req: Request, res: Response) => {
           'before'
         );
         if (existing.beforeImagePath && existing.beforeImagePath !== newPath) {
-          await deleteFileIfLocal(existing.beforeImagePath);
+          filesToDelete.add(existing.beforeImagePath);
         }
+        createdFiles.push(newPath);
         updateData.beforeImagePath = newPath;
         delete updateData.beforeImage;
         unsetFields.beforeImage = 1;
       } catch (e) {
-        console.error('Failed to save beforeImage on update:', e);
-        delete updateData.beforeImage;
+        throw e;
       }
     } else {
       // URL string or unexpected value → giữ nguyên ảnh hiện tại
@@ -504,7 +543,7 @@ export const updateIdea = async (req: Request, res: Response) => {
       delete updateData.afterImage;
     } else if (updateData.afterImage === null || updateData.afterImage === '') {
       if (existing.afterImagePath) {
-        await deleteFileIfLocal(existing.afterImagePath);
+        filesToDelete.add(existing.afterImagePath);
       }
       delete updateData.afterImage;
       delete updateData.afterImagePath;
@@ -518,14 +557,14 @@ export const updateIdea = async (req: Request, res: Response) => {
           'after'
         );
         if (existing.afterImagePath && existing.afterImagePath !== newPath) {
-          await deleteFileIfLocal(existing.afterImagePath);
+          filesToDelete.add(existing.afterImagePath);
         }
+        createdFiles.push(newPath);
         updateData.afterImagePath = newPath;
         delete updateData.afterImage;
         unsetFields.afterImage = 1;
       } catch (e) {
-        console.error('Failed to save afterImage on update:', e);
-        delete updateData.afterImage;
+        throw e;
       }
     } else {
       // URL string or unexpected value → giữ nguyên ảnh hiện tại
@@ -540,19 +579,27 @@ export const updateIdea = async (req: Request, res: Response) => {
     const idea = await Idea.findByIdAndUpdate(
       req.params.id,
       updateQuery,
-      { new: true }
+      { new: true, runValidators: true }
     );
     if (!idea) {
       return res.status(404).json({ message: 'Không tìm thấy ý tưởng' });
     }
 
+    persisted = true;
+    await Promise.all([...filesToDelete].map(deleteFileIfLocal));
+
     // Transform response với image URLs
-    const requestBaseUrl = `${req.protocol}://${req.get('host') || req.get('x-forwarded-host') || 'localhost:' + (process.env.PORT || 5000)}`;
-    const assetBaseUrl = process.env.PUBLIC_ASSET_BASE_URL || process.env.PUBLIC_BASE_URL || requestBaseUrl;
+    const assetBaseUrl = configuredAssetBaseUrl();
     const transformed = transformIdeaWithImageUrls(idea, assetBaseUrl);
 
     res.json(transformed);
-  } catch (error) {
+  } catch (error: any) {
+    if (!persisted) {
+      await Promise.all(createdFiles.map(file => fs.unlink(path.join(resolveUploadDir(), path.basename(file))).catch(() => undefined)));
+    }
+    if (error?.name === 'ValidationError' || error?.name === 'CastError') {
+      return res.status(400).json({ message: 'Dữ liệu cập nhật không hợp lệ. Vui lòng kiểm tra kiểu dữ liệu, ngày và trạng thái.' });
+    }
     console.error('Error updating idea:', error);
     res.status(500).json({ message: 'Lỗi server' });
   }
@@ -587,8 +634,9 @@ export const deleteIdea = async (req: Request, res: Response) => {
 
     await Idea.findByIdAndDelete(req.params.id);
     res.json({ message: 'Đã xóa ý tưởng thành công' });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.name === 'ValidationError' || error?.name === 'CastError') return res.status(400).json({ message: 'Dữ liệu không hợp lệ' });
     console.error('[IDEA] Error deleting idea:', error);
     res.status(500).json({ message: 'Lỗi server' });
   }
-}; 
+};

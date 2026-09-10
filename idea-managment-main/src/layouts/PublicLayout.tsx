@@ -62,7 +62,7 @@ const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
   }, []);
 
   const navItems = [
-    { label: 'Thống kê công khai', path: '/statistics-view', icon: <AssessmentIcon /> },
+    { label: 'Thống kê', path: '/statistics-view', icon: <AssessmentIcon /> },
     { label: 'Admin', path: '/login', icon: <AdminIcon /> },
   ];
 

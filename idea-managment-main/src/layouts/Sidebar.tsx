@@ -1,3 +1,4 @@
+import { logout } from '../api/config';
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -57,9 +58,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isViewOnly = false }) => {
 
   const isActive = (path: string) => location.pathname === path;
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    navigate('/login');
+  const handleLogout = async () => {
+    try { await logout(); navigate('/login'); }
+    catch { window.alert('Đăng xuất chưa thành công. Vui lòng thử lại.'); }
   };
 
   const sidebarContent = (
@@ -343,7 +344,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isViewOnly = false }) => {
                 variant="body2"
                 sx={{ color: '#fff', fontWeight: 600, fontSize: '0.8rem', lineHeight: 1.2 }}
               >
-                {isViewOnly ? 'Xem công khai' : 'Admin'}
+                {isViewOnly ? 'Chỉ xem' : 'Admin'}
               </Typography>
               <Typography
                 variant="caption"

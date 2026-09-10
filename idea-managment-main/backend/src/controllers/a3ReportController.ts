@@ -1,3 +1,4 @@
+const escapeRegex = (value: string) => value.slice(0, 200).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 import { Request, Response } from 'express';
 import A3Report from '../models/A3Report';
 import Idea from '../models/Idea';
@@ -84,6 +85,7 @@ export const createA3Report = async (req: Request, res: Response) => {
     await a3Report.save();
     res.status(201).json(a3Report);
   } catch (error: any) {
+    if (error?.name === 'ValidationError' || error?.name === 'CastError') return res.status(400).json({ message: 'Dữ liệu báo cáo không hợp lệ' });
     console.error('Error creating A3 report:', error);
     res.status(500).json({ message: 'Lỗi server khi tạo báo cáo A3' });
   }
@@ -94,25 +96,28 @@ export const getAllA3Reports = async (req: Request, res: Response) => {
   try {
     const { page = 1, limit = 10, status, ideaCode, department } = req.query;
     
+    const pageNumber = Math.max(1, Number.parseInt(String(page), 10) || 1);
+    const pageSize = Math.min(100, Math.max(1, Number.parseInt(String(limit), 10) || 10));
     const filter: any = {};
-    if (status) filter.status = status;
-    if (ideaCode) filter.ideaCode = { $regex: ideaCode, $options: 'i' };
-    if (department) filter.department = { $regex: department, $options: 'i' };
+    if (typeof status === 'string') filter.status = status;
+    if (typeof ideaCode === 'string') filter.ideaCode = { $regex: escapeRegex(ideaCode), $options: 'i' };
+    if (typeof department === 'string') filter.department = { $regex: escapeRegex(department), $options: 'i' };
 
     const a3Reports = await A3Report.find(filter)
       .sort({ createdAt: -1 })
-      .limit(Number(limit) * 1)
-      .skip((Number(page) - 1) * Number(limit));
+      .limit(pageSize)
+      .skip((pageNumber - 1) * pageSize);
 
     const total = await A3Report.countDocuments(filter);
 
     res.json({
       a3Reports,
-      totalPages: Math.ceil(total / Number(limit)),
-      currentPage: Number(page),
+      totalPages: Math.ceil(total / pageSize),
+      currentPage: pageNumber,
       total
     });
   } catch (error: any) {
+    if (error?.name === 'ValidationError' || error?.name === 'CastError') return res.status(400).json({ message: 'Dữ liệu báo cáo không hợp lệ' });
     console.error('Error getting A3 reports:', error);
     res.status(500).json({ message: 'Lỗi server khi lấy danh sách báo cáo A3' });
   }
@@ -130,6 +135,7 @@ export const getA3ReportById = async (req: Request, res: Response) => {
 
     res.json(a3Report);
   } catch (error: any) {
+    if (error?.name === 'ValidationError' || error?.name === 'CastError') return res.status(400).json({ message: 'Dữ liệu báo cáo không hợp lệ' });
     console.error('Error getting A3 report:', error);
     res.status(500).json({ message: 'Lỗi server khi lấy báo cáo A3' });
   }
@@ -147,6 +153,7 @@ export const getA3ReportByIdeaId = async (req: Request, res: Response) => {
 
     res.json(a3Report);
   } catch (error: any) {
+    if (error?.name === 'ValidationError' || error?.name === 'CastError') return res.status(400).json({ message: 'Dữ liệu báo cáo không hợp lệ' });
     console.error('Error getting A3 report by idea ID:', error);
     res.status(500).json({ message: 'Lỗi server khi lấy báo cáo A3' });
   }
@@ -170,6 +177,7 @@ export const updateA3Report = async (req: Request, res: Response) => {
 
     res.json(a3Report);
   } catch (error: any) {
+    if (error?.name === 'ValidationError' || error?.name === 'CastError') return res.status(400).json({ message: 'Dữ liệu báo cáo không hợp lệ' });
     console.error('Error updating A3 report:', error);
     res.status(500).json({ message: 'Lỗi server khi cập nhật báo cáo A3' });
   }
@@ -187,6 +195,7 @@ export const deleteA3Report = async (req: Request, res: Response) => {
 
     res.json({ message: 'Xóa báo cáo A3 thành công' });
   } catch (error: any) {
+    if (error?.name === 'ValidationError' || error?.name === 'CastError') return res.status(400).json({ message: 'Dữ liệu báo cáo không hợp lệ' });
     console.error('Error deleting A3 report:', error);
     res.status(500).json({ message: 'Lỗi server khi xóa báo cáo A3' });
   }
@@ -204,6 +213,7 @@ export const getA3ReportByIdeaCode = async (req: Request, res: Response) => {
 
     res.json(a3Report);
   } catch (error: any) {
+    if (error?.name === 'ValidationError' || error?.name === 'CastError') return res.status(400).json({ message: 'Dữ liệu báo cáo không hợp lệ' });
     console.error('Error getting A3 report by idea code:', error);
     res.status(500).json({ message: 'Lỗi server khi lấy báo cáo A3' });
   }

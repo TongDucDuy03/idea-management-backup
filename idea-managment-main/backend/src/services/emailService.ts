@@ -1,3 +1,4 @@
+import { escapeHtml } from '../utils/escapeHtml';
 import nodemailer from 'nodemailer';
 import { IIdea } from '../models/Idea';
 
@@ -41,9 +42,9 @@ export const sendIdeaSubmittedEmail = async (idea: IIdea) => {
   const html = `
     <div style="font-family: Arial, sans-serif; line-height: 1.6;">
       <h2>Ý tưởng mới được gửi</h2>
-      <p><strong>Mã ý tưởng:</strong> ${idea.ideaCode}</p>
-      ${idea.fullName ? `<p><strong>Họ và tên:</strong> ${idea.fullName}</p>` : ''}
-      <p><strong>Phòng ban:</strong> ${idea.department}</p>
+      <p><strong>Mã ý tưởng:</strong> ${escapeHtml(idea.ideaCode)}</p>
+      ${idea.fullName ? `<p><strong>Họ và tên:</strong> ${escapeHtml(idea.fullName)}</p>` : ''}
+      <p><strong>Phòng ban:</strong> ${escapeHtml(idea.department)}</p>
       ${idea.idea ? `<p><strong>Nội dung ý tưởng:</strong><br/>${escapeHtml(idea.idea)}</p>` : ''}
       <p><strong>Thời gian gửi:</strong> ${submittedAt.toLocaleString()}</p>
     </div>
@@ -64,12 +65,3 @@ ${idea.idea ? `- Nội dung ý tưởng: ${idea.idea}\n` : ''}- Thời gian gử
     html
   });
 };
-
-const escapeHtml = (unsafe: string): string => {
-  return unsafe
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}; 

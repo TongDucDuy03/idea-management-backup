@@ -1,3 +1,4 @@
+import { escapeHtml, safeImageSource } from '../utils/safeHtml';
 import React, { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -145,28 +146,14 @@ const ExportReportDialog: React.FC<ExportReportDialogProps> = ({
     return result;
   };
 
-  const normalizeImageSource = (source: unknown) => {
-    if (typeof source !== 'string' || !source.trim()) return '';
-    const value = source.trim();
-    if (value.startsWith('data:image/') || value.startsWith('blob:')) return value;
-
-    try {
-      const parsed = new URL(value, window.location.origin);
-      if (parsed.pathname === '/uploads' || parsed.pathname.startsWith('/uploads/')) {
-        return `${window.location.origin}${parsed.pathname}${parsed.search}${parsed.hash}`;
-      }
-      return parsed.href;
-    } catch {
-      return value;
-    }
-  };
+  const normalizeImageSource = safeImageSource;
 
   const resolveImage = (ideaItem: any, key: 'beforeImage' | 'afterImage') => {
     const raw = ideaItem[key];
     const urlKey = key === 'beforeImage' ? 'beforeImageUrl' : 'afterImageUrl';
     const pathKey = key === 'beforeImage' ? 'beforeImagePath' : 'afterImagePath';
 
-    if (typeof raw === 'string' && raw.startsWith('data:image/')) return raw;
+    if (typeof raw === 'string' && raw.startsWith('data:image/')) return safeImageSource(raw);
     return normalizeImageSource(ideaItem[pathKey])
       || normalizeImageSource(ideaItem[urlKey])
       || normalizeImageSource(raw);
@@ -373,22 +360,22 @@ const ExportReportDialog: React.FC<ExportReportDialogProps> = ({
   <div class="a3-container">
     <div class="header">
       <div class="logo-box">
-        <img src="${logoDataUrl || '/vico-logo.png'}" alt="VICO" style="max-width: 92px; max-height: 72px; object-fit: contain;" />
+        <img src="${escapeHtml(logoDataUrl || '/vico-logo.png')}" alt="VICO" style="max-width: 92px; max-height: 72px; object-fit: contain;" />
       </div>
       <div class="title-box">
         <div>
           <div style="font-weight: 900; font-size: 18px;">CÔNG TY TNHH THẮNG LỢI</div>
           <div style="font-weight: 900; font-size: 22px; color: #1d4ed8; margin: 2px 0;">BÁO CÁO CẢI TIẾN A3</div>
           <div style="font-weight: 700; font-size: 12px; margin-top: 4px; max-height: 34px; overflow: hidden; color: #334155;">
-            ${reportTitle}
+            ${escapeHtml(reportTitle)}
           </div>
         </div>
       </div>
       <div class="meta-box">
-        <div class="meta-row"><b>Mã:</b>&nbsp;${idea.ideaCode || 'N/A'}</div>
-        <div class="meta-row"><b>Người lập:</b>&nbsp;${idea.fullName || 'N/A'}</div>
+        <div class="meta-row"><b>Mã:</b>&nbsp;${escapeHtml(idea.ideaCode || 'N/A')}</div>
+        <div class="meta-row"><b>Người lập:</b>&nbsp;${escapeHtml(idea.fullName || 'N/A')}</div>
         <div class="meta-row"><b>Ngày lập:</b>&nbsp;${new Date().toLocaleDateString('vi-VN')}</div>
-        <div class="meta-row"><b>Đơn vị:</b>&nbsp;${idea.department || 'N/A'}</div>
+        <div class="meta-row"><b>Đơn vị:</b>&nbsp;${escapeHtml(idea.department || 'N/A')}</div>
       </div>
     </div>
 
@@ -405,11 +392,11 @@ const ExportReportDialog: React.FC<ExportReportDialogProps> = ({
         <div class="grid-row-1">
           <div class="section-card">
             <div class="section-header">THỰC TRẠNG</div>
-            <div class="section-body">${currentSituation}</div>
+            <div class="section-body">${escapeHtml(currentSituation)}</div>
           </div>
           <div class="section-card">
             <div class="section-header">ĐỐI SÁCH</div>
-            <div class="section-body">${countermeasure}</div>
+            <div class="section-body">${escapeHtml(countermeasure)}</div>
           </div>
         </div>
 
@@ -418,13 +405,13 @@ const ExportReportDialog: React.FC<ExportReportDialogProps> = ({
           <div class="section-card">
             <div class="section-header">HÌNH ẢNH TRƯỚC</div>
             <div class="section-body image-body">
-              ${beforeImg ? `<img src="${beforeImg}" crossOrigin="anonymous" alt="Hình ảnh trước" />` : `<span class="image-placeholder">Chưa có hình ảnh</span>`}
+              ${beforeImg ? `<img src="${escapeHtml(beforeImg)}" crossOrigin="anonymous" alt="Hình ảnh trước" />` : `<span class="image-placeholder">Chưa có hình ảnh</span>`}
             </div>
           </div>
           <div class="section-card">
             <div class="section-header">HÌNH ẢNH SAU</div>
             <div class="section-body image-body">
-              ${afterImg ? `<img src="${afterImg}" crossOrigin="anonymous" alt="Hình ảnh sau" />` : `<span class="image-placeholder">Chưa có hình ảnh</span>`}
+              ${afterImg ? `<img src="${escapeHtml(afterImg)}" crossOrigin="anonymous" alt="Hình ảnh sau" />` : `<span class="image-placeholder">Chưa có hình ảnh</span>`}
             </div>
           </div>
         </div>
@@ -433,19 +420,19 @@ const ExportReportDialog: React.FC<ExportReportDialogProps> = ({
         <div class="grid-row-3">
           <div class="section-card">
             <div class="section-header">LỢI ÍCH</div>
-            <div class="section-body">${benefitText}</div>
+            <div class="section-body">${escapeHtml(benefitText)}</div>
           </div>
           <div class="section-card">
             <div class="section-header">ĐÁNH GIÁ</div>
-            <div class="section-body">${evaluationText}</div>
+            <div class="section-body">${escapeHtml(evaluationText)}</div>
           </div>
           <div class="section-card">
             <div class="section-header">CHI PHÍ</div>
-            <div class="section-body">${costText}</div>
+            <div class="section-body">${escapeHtml(costText)}</div>
           </div>
           <div class="section-card">
             <div class="section-header">KHEN THƯỞNG</div>
-            <div class="section-body">${rewardText}</div>
+            <div class="section-body">${escapeHtml(rewardText)}</div>
           </div>
         </div>
       </div>

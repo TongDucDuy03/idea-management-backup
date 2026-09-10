@@ -1,68 +1,47 @@
-import axios from "axios";
-
-// Luôn ưu tiên URL cấu hình; mặc định dùng đường dẫn tương đối.
-// Development: React dev server chuyển /api tới backend qua "proxy" trong package.json.
-// Production: Nginx chuyển /api tới backend theo cấu hình triển khai.
-// Nhờ đó máy khác trong LAN không gọi nhầm localhost:5000 trên chính máy của họ.
+import axios from 'axios';
 const BASE_URL = process.env.REACT_APP_API_URL || '/api';
 
-export const TOKEN_STORAGE_KEY = 'token';
-
-export function getToken(): string | null {
-  try {
-    return localStorage.getItem(TOKEN_STORAGE_KEY);
-  } catch {
-    // Trình duyệt có thể chặn localStorage (chế độ riêng tư)
-    return null;
-  }
+export interface SessionInfo {
+  user: { userId: string; role: 'admin' | 'viewer' };
+  csrfToken: string;
 }
+let session: SessionInfo | null = null;
+let pendingSession: Promise<SessionInfo> | null = null;
+// Remove credentials left by the previous release; never read or send them.
+try { localStorage.removeItem('token'); } catch { /* storage may be disabled */ }
+export function clearSession(): void { session = null; }
+export function setSession(value: SessionInfo): void { session = value; }
 
-export function clearToken(): void {
-  try {
-    localStorage.removeItem(TOKEN_STORAGE_KEY);
-  } catch {
-    /* bỏ qua */
+const api = axios.create({ baseURL: BASE_URL, withCredentials: true });
+export async function loadSession(force = false): Promise<SessionInfo> {
+  if (session && !force) return session;
+  if (!pendingSession) {
+    pendingSession = api.get<SessionInfo>('/auth/session').then(({ data }) => {
+      session = data;
+      return data;
+    }).finally(() => { pendingSession = null; });
   }
+  return pendingSession;
 }
-
-// Khởi tạo instance axios
-const api = axios.create({
-  baseURL: BASE_URL,
-  withCredentials: true,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-
-/**
- * Tự động gắn token vào mọi request.
- *
- * Trước đây mỗi lời gọi API phải tự đọc localStorage rồi gắn header — lặp lại
- * ở 9 chỗ khác nhau, rất dễ quên một chỗ.
- */
-api.interceptors.request.use((config) => {
-  const token = getToken();
-  if (token && !config.headers?.Authorization) {
-    config.headers.Authorization = `Bearer ${token}`;
+api.interceptors.request.use(async config => {
+  const method = (config.method || 'get').toLowerCase();
+  const path = (config.url || '').split('?')[0].replace(/\/$/, '');
+  const isPublicWrite = method === 'post' && (path === '/auth/login' || path === '/ideas' || path.startsWith('/ai/'));
+  if (!['get', 'head', 'options'].includes(method) && !isPublicWrite) {
+    const current = await loadSession();
+    config.headers['X-CSRF-Token'] = current.csrfToken;
   }
   return config;
 });
-
-/**
- * Xử lý token hết hạn tập trung: xóa token khi server trả 401.
- *
- * Việc điều hướng vẫn để component tự quyết (dùng react-router), vì các trang
- * chỉ-xem công khai không cần đăng nhập nên không được đá người dùng ra ngoài.
- */
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      clearToken();
-    }
-    return Promise.reject(error);
-  }
-);
+api.interceptors.response.use(response => response, error => {
+  if (error.response?.status === 401) clearSession();
+  return Promise.reject(error);
+});
+export async function logout(): Promise<void> {
+  try { await api.post('/auth/logout'); }
+  catch (error: any) { if (error.response?.status !== 401) throw error; }
+  clearSession();
+}
 
 // Hàm GET có fallback
 export async function getWithFallback<T = any>(path: string) {

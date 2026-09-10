@@ -46,15 +46,6 @@ export function loadEnv(): void {
 export function assertRequiredEnv(): void {
   const missing: string[] = [];
 
-  if (!process.env.JWT_SECRET) {
-    missing.push('JWT_SECRET');
-  } else if (process.env.JWT_SECRET.length < 32) {
-    throw new Error(
-      '[ENV] JWT_SECRET quá ngắn (cần tối thiểu 32 ký tự). ' +
-        'Sinh khóa mới bằng: node -e "console.log(require(\'crypto\').randomBytes(48).toString(\'hex\'))"'
-    );
-  }
-
   if (!process.env.MONGODB_URI) {
     missing.push('MONGODB_URI');
   }

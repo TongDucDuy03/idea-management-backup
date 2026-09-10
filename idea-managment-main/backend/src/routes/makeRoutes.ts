@@ -1,3 +1,4 @@
+import { assetBaseUrl as configuredAssetBaseUrl } from '../config/security';
 import express from 'express';
 import { makeAuth, makeRateLimit } from '../middleware/makeAuth';
 import { fetchRealtimeData, RealtimeSource } from '../services/makeRealtimeService';
@@ -61,12 +62,7 @@ router.get('/realtime', makeAuth, makeRateLimit, async (req, res) => {
     const sourceValue: RealtimeSource =
       (typeof source === 'string' && (source as RealtimeSource)) || 'ideas';
 
-    const requestBaseUrl =
-      `${req.protocol}://${req.get('host') || req.get('x-forwarded-host') || 'localhost:' + (process.env.PORT || 5000)}`;
-    const assetBaseUrl =
-      process.env.PUBLIC_ASSET_BASE_URL ||
-      process.env.PUBLIC_BASE_URL ||
-      requestBaseUrl;
+    const assetBaseUrl = configuredAssetBaseUrl();
     const includeBase64 = req.query.includeBase64 === 'true';
 
     const result = await fetchRealtimeData({
