@@ -40,11 +40,9 @@ function App() {
         <Route
           path="/admin-view"
           element={
-            <PrivateRoute allowViewer>
-              <MainLayout isViewOnly={true}>
-                <AdminDashboard isViewOnly={true} />
-              </MainLayout>
-            </PrivateRoute>
+            <MainLayout isViewOnly={true}>
+              <AdminDashboard isViewOnly={true} />
+            </MainLayout>
           }
         />
         <Route

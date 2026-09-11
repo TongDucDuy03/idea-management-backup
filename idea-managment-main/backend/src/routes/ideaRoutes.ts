@@ -27,9 +27,11 @@ const lookup: express.RequestHandler = async (req, res, next) => {
 router.get('/code/:ideaCode', lookupLimit, lookup);
 router.get('/search', lookupLimit, lookup);
 
-router.use(auth);
-// Retained as an authenticated compatibility alias; no public list of personal data.
+// Read-only dashboard data is public. Write routes below remain protected.
 router.get('/public', getAllIdeas);
+router.get('/', getAllIdeas);
+
+router.use(auth);
 router.get('/detail/code/:ideaCode', async (req, res, next) => {
   try {
     const idea = await Idea.findOne({ ideaCode: req.params.ideaCode });
@@ -37,7 +39,6 @@ router.get('/detail/code/:ideaCode', async (req, res, next) => {
     res.json(idea);
   } catch (error) { next(error); }
 });
-router.get('/', getAllIdeas);
 router.post('/admin', requireRole('admin'), createIdea);
 router.put('/:id', requireRole('admin'), updateIdea);
 router.delete('/:id', requireRole('admin'), deleteIdea);
