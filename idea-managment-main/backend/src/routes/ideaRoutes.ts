@@ -7,7 +7,6 @@ import { rateLimit } from '../middleware/rateLimit';
 const router = express.Router();
 router.post('/', rateLimit({ scope: 'idea-submit', windowMs: 60 * 60 * 1000,
   max: Number(process.env.IDEA_SUBMIT_LIMIT_PER_HOUR || 20) }), createIdea);
-router.get('/stats', getIdeaStats);
 
 // Anonymous lookup exposes progress only, never the internal record or media.
 const lookupLimit = rateLimit({ scope: 'idea-lookup', windowMs: 60 * 1000, max: 30 });
@@ -27,11 +26,12 @@ const lookup: express.RequestHandler = async (req, res, next) => {
 router.get('/code/:ideaCode', lookupLimit, lookup);
 router.get('/search', lookupLimit, lookup);
 
-// Read-only dashboard data is public. Write routes below remain protected.
+// Toàn bộ danh sách/số liệu ý tưởng chứa dữ liệu nội bộ (họ tên, nội dung, thanh
+// toán) nên bắt buộc đăng nhập — không còn route công khai nào bên dưới.
+router.use(auth);
+router.get('/stats', getIdeaStats);
 router.get('/public', getAllIdeas);
 router.get('/', getAllIdeas);
-
-router.use(auth);
 router.get('/detail/code/:ideaCode', async (req, res, next) => {
   try {
     const idea = await Idea.findOne({ ideaCode: req.params.ideaCode });
