@@ -68,15 +68,23 @@ function escapeRegExp(value: string): string {
 }
 
 /**
- * Sinh mã ý tưởng không đoán được.
+ * Sinh mã ý tưởng ngắn (8 ký tự) nhưng vẫn khó đoán.
  *
  * Bản cũ dùng `${Date.now()}-${random 0..999}`: không gian tìm kiếm nhỏ nên có
  * thể dò ra mã của người khác, trong khi GET /ideas/code/:ideaCode là công khai.
+ * Alphabet 62 ký tự (chữ hoa/thường + số) x 8 ký tự cho ~2×10^14 khả năng,
+ * đủ chống dò dù không còn tiền tố ngày và độ dài đã giảm nhiều.
  */
+const IDEA_CODE_ALPHABET =
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+const IDEA_CODE_LENGTH = 8;
+
 function generateIdeaCode(): string {
-  const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const randomPart = crypto.randomBytes(16).toString('hex').toUpperCase();
-  return `${datePart}-${randomPart}`;
+  let code = '';
+  for (let i = 0; i < IDEA_CODE_LENGTH; i++) {
+    code += IDEA_CODE_ALPHABET[crypto.randomInt(IDEA_CODE_ALPHABET.length)];
+  }
+  return code;
 }
 
 function buildImageUrl(rawPath: string | undefined, baseUrl: string): string | null {
@@ -419,6 +427,19 @@ export const getAllIdeas = async (req: Request, res: Response) => {
     if (error?.name === 'ValidationError' || error?.name === 'CastError') return res.status(400).json({ message: 'Dữ liệu không hợp lệ' });
     console.error('[IDEA] Error fetching ideas:', error);
     res.status(500).json({ message: 'Không thể tải danh sách ý tưởng' });
+  }
+};
+
+export const getPublicIdeas = async (_req: Request, res: Response) => {
+  try {
+    const ideas = await Idea.find({})
+      .select('ideaCode fullName department idea status rewardStatuses submissionDate -_id')
+      .sort({ submissionDate: -1 }).limit(1000).lean();
+    res.setHeader('Cache-Control', 'no-store');
+    return res.json(ideas);
+  } catch (error) {
+    console.error('[IDEA] Error fetching public ideas:', error);
+    return res.status(500).json({ message: 'Không thể tải danh sách ý tưởng' });
   }
 };
 

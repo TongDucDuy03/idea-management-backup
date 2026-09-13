@@ -58,11 +58,9 @@ function App() {
         <Route
           path="/statistics-view"
           element={
-            <PrivateRoute allowViewer>
-              <MainLayout isViewOnly={true}>
-                <StatisticsDashboard isViewOnly={true} />
-              </MainLayout>
-            </PrivateRoute>
+            <MainLayout isViewOnly={true}>
+              <StatisticsDashboard isViewOnly={true} />
+            </MainLayout>
           }
         />
       </Routes>

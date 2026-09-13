@@ -1,5 +1,5 @@
 import express from 'express';
-import { getAllIdeas, createIdea, updateIdea, deleteIdea, updatePaymentStatus, getIdeaStats } from '../controllers/ideaController';
+import { getAllIdeas, getPublicIdeas, createIdea, updateIdea, deleteIdea, updatePaymentStatus, getIdeaStats } from '../controllers/ideaController';
 import Idea from '../models/Idea';
 import { auth, requireRole } from '../middleware/auth';
 import { rateLimit } from '../middleware/rateLimit';
@@ -26,12 +26,11 @@ const lookup: express.RequestHandler = async (req, res, next) => {
 router.get('/code/:ideaCode', lookupLimit, lookup);
 router.get('/search', lookupLimit, lookup);
 
-// Toàn bộ danh sách/số liệu ý tưởng chứa dữ liệu nội bộ (họ tên, nội dung, thanh
-// toán) nên bắt buộc đăng nhập — không còn route công khai nào bên dưới.
+router.get('/public', rateLimit({ scope: 'public-ideas', windowMs: 60 * 1000, max: 30 }), getPublicIdeas);
+
 router.use(auth);
 router.get('/stats', getIdeaStats);
-router.get('/public', getAllIdeas);
-router.get('/', getAllIdeas);
+router.get('/', requireRole('admin'), getAllIdeas);
 router.get('/detail/code/:ideaCode', async (req, res, next) => {
   try {
     const idea = await Idea.findOne({ ideaCode: req.params.ideaCode });

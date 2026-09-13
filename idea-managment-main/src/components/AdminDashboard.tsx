@@ -323,14 +323,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
 
   const fetchIdeas = useCallback(async () => {
     try {
-      const response = await api.get('/ideas');
+      const response = await api.get(isViewOnly ? '/ideas/public' : '/ideas');
       const raw = response.data;
       setIdeas(Array.isArray(raw) ? raw : (raw.ideas || raw.data || []));
     } catch (error: any) {
       if (error.response?.status === 401) navigate('/login');
       else setError('Không thể tải dữ liệu ý tưởng');
     } finally { setLoading(false); }
-  }, [navigate]);
+  }, [isViewOnly, navigate]);
 
   useEffect(() => {
     fetchIdeas();
