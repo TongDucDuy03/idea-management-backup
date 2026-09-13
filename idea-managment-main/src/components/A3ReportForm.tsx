@@ -687,26 +687,6 @@ const A3ReportForm: React.FC<A3ReportFormProps> = ({ idea, onClose }) => {
     }
   };
 
-  const handleExport = async () => {
-    if (!idea) return;
-    
-    setLoading(true);
-    setError('');
-    
-    try {
-      const htmlContent = generateHTMLReport(reportData as Idea);
-      const filename = `Bao_Cao_Cai_Tien_A3_${idea.ideaCode || idea._id}.pdf`;
-      await createPdfFromHtml(htmlContent, filename);
-      
-      setSuccess('File báo cáo A3 PDF đã được tải về thành công!');
-    } catch (error: any) {
-      console.error('Error exporting A3 report:', error);
-      setError('Không thể xuất file báo cáo A3. Vui lòng thử lại.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSaveAndExport = async () => {
     await handleSave();
     if (!error) {
@@ -964,17 +944,6 @@ const A3ReportForm: React.FC<A3ReportFormProps> = ({ idea, onClose }) => {
             </Button>
 
             <Button
-              variant="outlined"
-              color="success"
-              onClick={handleExport}
-              disabled={loading}
-              startIcon={loading ? <CircularProgress size={20} /> : <FileDownloadIcon />}
-              sx={{ minWidth: 150 }}
-            >
-              {loading ? 'Đang xuất...' : 'Xuất nhanh'}
-            </Button>
-            
-            <Button
               variant="contained"
               color="info"
               onClick={handleSaveAndExport}
@@ -982,7 +951,7 @@ const A3ReportForm: React.FC<A3ReportFormProps> = ({ idea, onClose }) => {
               startIcon={saving || loading ? <CircularProgress size={20} /> : <FileDownloadIcon />}
               sx={{ minWidth: 200 }}
             >
-              {saving || loading ? 'Đang xử lý...' : 'Lưu & căn chỉnh'}
+              {saving || loading ? 'Đang xử lý...' : 'Lưu và xuất PDF'}
             </Button>
           </Box>
         </CardContent>
@@ -991,7 +960,7 @@ const A3ReportForm: React.FC<A3ReportFormProps> = ({ idea, onClose }) => {
       <A3LayoutEditor
         open={layoutEditorOpen}
         idea={{ ...idea, ...reportData } as Idea}
-        filename={`Bao_Cao_Cai_Tien_A3_${idea.ideaCode || idea._id}.pdf`}
+        filename={undefined}
         onClose={() => setLayoutEditorOpen(false)}
       />
     </>

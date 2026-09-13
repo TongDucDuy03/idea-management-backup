@@ -650,22 +650,13 @@ const ExportReportDialog: React.FC<ExportReportDialogProps> = ({
         >
           Xem trước & căn chỉnh
         </Button>
-        <Button 
-          onClick={handleExport} 
-          variant="contained" 
-          color="primary"
-          disabled={selectedIdeas.length === 0 || loading}
-          startIcon={loading ? <CircularProgress size={20} /> : null}
-        >
-          {loading ? 'Đang export PDF A3...' : 'Export PDF A3'}
-        </Button>
       </DialogActions>
     </Dialog>
       {layoutEditorIdea && (
         <A3LayoutEditor
           open={Boolean(layoutEditorIdea)}
           idea={layoutEditorIdea}
-          filename={`Bao_Cao_Cai_Tien_A3_${layoutEditorIdea.ideaCode || layoutEditorIdea._id}.pdf`}
+          filename={undefined}
           onClose={() => setLayoutEditorIdea(null)}
         />
       )}

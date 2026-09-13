@@ -24,6 +24,7 @@ import {
 } from '@mui/icons-material';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import { reportFileName } from '../utils/reportFileName';
 import { Idea } from '../types';
 
 type SectionKey =
@@ -571,8 +572,8 @@ const A3LayoutEditor: React.FC<A3LayoutEditorProps> = ({
         undefined,
         'FAST'
       );
-      pdf.save((filename || `Bao_Cao_Cai_Tien_A3_${idea.ideaCode || idea._id}.pdf`).replace(/\s+/g, '_'));
-      setMessage('Đã xuất PDF đúng theo bố cục đang xem.');
+      pdf.save(filename || reportFileName(idea.fullName, idea.ideaCode || idea._id));
+      setMessage('Đã lưu và xuất PDF đúng theo bố cục đang xem.');
     } catch (exportError) {
       console.error('A3 layout export error:', exportError);
       const detail = exportError instanceof Error
@@ -741,7 +742,7 @@ const A3LayoutEditor: React.FC<A3LayoutEditorProps> = ({
             disabled={exporting}
             onClick={handleExport}
           >
-            {exporting ? 'Đang xuất...' : 'Xuất PDF'}
+            {exporting ? 'Đang xử lý...' : 'Lưu và xuất PDF'}
           </Button>
         </Box>
 
