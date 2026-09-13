@@ -433,7 +433,8 @@ export const getAllIdeas = async (req: Request, res: Response) => {
 export const getPublicIdeas = async (_req: Request, res: Response) => {
   try {
     const ideas = await Idea.find({})
-      .select('ideaCode fullName department idea status rewardStatuses submissionDate -_id')
+      // DataGrid needs a stable row id; this is only an opaque database id.
+      .select('ideaCode fullName department idea status rewardStatuses submissionDate')
       .sort({ submissionDate: -1 }).limit(1000).lean();
     res.setHeader('Cache-Control', 'no-store');
     return res.json(ideas);
