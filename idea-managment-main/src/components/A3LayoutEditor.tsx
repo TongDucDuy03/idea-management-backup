@@ -112,6 +112,7 @@ interface SectionStyle {
 export interface A3LayoutConfig {
   version: 1;
   columnSplit: number;
+  middleColumnSplit: number;
   bottomColumns: number[];
   rowHeights: number[];
   order: SectionKey[];
@@ -149,6 +150,7 @@ const createDefaultStyles = (): Record<SectionKey, SectionStyle> =>
 const DEFAULT_LAYOUT: A3LayoutConfig = {
   version: 1,
   columnSplit: 50,
+  middleColumnSplit: 50,
   bottomColumns: [25, 25, 25, 25],
   rowHeights: [30, 38, 32],
   order: [
@@ -260,15 +262,23 @@ const sanitizeCanvasColors = (root: HTMLElement) => {
   };
 };
 
-const isValidLayout = (value: any): value is A3LayoutConfig =>
-  value &&
-  value.version === 1 &&
-  Array.isArray(value.order) &&
-  value.order.length === 8 &&
-  Array.isArray(value.rowHeights) &&
-  value.rowHeights.length === 3 &&
-  Array.isArray(value.bottomColumns) &&
-  value.bottomColumns.length === 4;
+const isValidLayout = (value: any): value is A3LayoutConfig => {
+  if (
+    !value ||
+    value.version !== 1 ||
+    !Array.isArray(value.order) ||
+    value.order.length !== 8 ||
+    !Array.isArray(value.rowHeights) ||
+    value.rowHeights.length !== 3 ||
+    !Array.isArray(value.bottomColumns) ||
+    value.bottomColumns.length !== 4
+  ) return false;
+  // Migrate old layouts that don't have middleColumnSplit
+  if (typeof value.middleColumnSplit !== 'number') {
+    value.middleColumnSplit = value.columnSplit ?? 50;
+  }
+  return true;
+};
 
 const A3LayoutEditor: React.FC<A3LayoutEditorProps> = ({
   open,
@@ -279,6 +289,7 @@ const A3LayoutEditor: React.FC<A3LayoutEditorProps> = ({
   const canvasRef = useRef<HTMLDivElement>(null);
   const contentGridRef = useRef<HTMLDivElement>(null);
   const topRowRef = useRef<HTMLDivElement>(null);
+  const middleRowRef = useRef<HTMLDivElement>(null);
   const bottomRowRef = useRef<HTMLDivElement>(null);
   const [layout, setLayout] = useState<A3LayoutConfig>(() => cloneLayout(DEFAULT_LAYOUT));
   const [selectedSection, setSelectedSection] = useState<SectionKey>('currentSituation');
@@ -386,23 +397,30 @@ const A3LayoutEditor: React.FC<A3LayoutEditorProps> = ({
     setSelectedSection(source);
   };
 
-  const startColumnResize = (event: React.PointerEvent, row: 'two' | 'bottom', dividerIndex = 0) => {
+  const startColumnResize = (event: React.PointerEvent, row: 'top' | 'middle' | 'bottom', dividerIndex = 0) => {
     event.preventDefault();
     event.stopPropagation();
-    const rowElement = row === 'bottom' ? bottomRowRef.current : topRowRef.current;
+    const rowElement = row === 'bottom' ? bottomRowRef.current : row === 'middle' ? middleRowRef.current : topRowRef.current;
     if (!rowElement) return;
 
     const startX = event.clientX;
     const rowWidth = rowElement.getBoundingClientRect().width;
-    const startSplit = layout.columnSplit;
+    const startSplit = row === 'middle' ? layout.middleColumnSplit : layout.columnSplit;
     const startBottom = [...layout.bottomColumns];
 
     const handleMove = (moveEvent: PointerEvent) => {
       const deltaPercent = ((moveEvent.clientX - startX) / rowWidth) * 100;
-      if (row === 'two') {
+      if (row === 'top') {
         setLayout(previous => ({
           ...previous,
           columnSplit: clamp(startSplit + deltaPercent, 25, 75),
+        }));
+        return;
+      }
+      if (row === 'middle') {
+        setLayout(previous => ({
+          ...previous,
+          middleColumnSplit: clamp(startSplit + deltaPercent, 25, 75),
         }));
         return;
       }
@@ -457,6 +475,7 @@ const A3LayoutEditor: React.FC<A3LayoutEditorProps> = ({
     const topRight = lengthFor(layout.order[1]);
     const totalTop = topLeft + topRight || 1;
     const proposedSplit = clamp((topLeft / totalTop) * 100, 35, 65);
+    const proposedMiddleSplit = 50;
 
     const bottomLengths = layout.order.slice(4).map(key => Math.max(80, lengthFor(key)));
     const bottomColumns = normalizePercentages(bottomLengths).map(value => clamp(value, 15, 40));
@@ -471,6 +490,7 @@ const A3LayoutEditor: React.FC<A3LayoutEditorProps> = ({
     setLayout(previous => ({
       ...previous,
       columnSplit: proposedSplit,
+      middleColumnSplit: proposedMiddleSplit,
       bottomColumns: normalizePercentages(bottomColumns),
       rowHeights: normalizePercentages([topWeight, middleWeight, bottomWeight]),
     }));
@@ -674,31 +694,34 @@ const A3LayoutEditor: React.FC<A3LayoutEditorProps> = ({
     );
   };
 
-  const renderVerticalHandle = (row: 'two' | 'bottom', dividerIndex = 0, leftPercent?: number) => (
-    <Box
-      onPointerDown={event => startColumnResize(event, row, dividerIndex)}
-      sx={{
-        position: 'absolute',
-        zIndex: 12,
-        top: 0,
-        bottom: 0,
-        left: `${leftPercent ?? layout.columnSplit}%`,
-        width: 10,
-        transform: 'translateX(-50%)',
-        cursor: 'col-resize',
-        '&::after': {
-          content: '""',
+  const renderVerticalHandle = (row: 'top' | 'middle' | 'bottom', dividerIndex = 0, leftPercent?: number) => {
+    const splitValue = row === 'middle' ? layout.middleColumnSplit : layout.columnSplit;
+    return (
+      <Box
+        onPointerDown={event => startColumnResize(event, row, dividerIndex)}
+        sx={{
           position: 'absolute',
+          zIndex: 12,
           top: 0,
           bottom: 0,
-          left: 4,
-          width: 2,
-          backgroundColor: '#2563eb',
-          opacity: 0.65,
-        },
-      }}
-    />
-  );
+          left: `${leftPercent ?? splitValue}%`,
+          width: 10,
+          transform: 'translateX(-50%)',
+          cursor: 'col-resize',
+          '&::after': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            bottom: 0,
+            left: 4,
+            width: 2,
+            backgroundColor: '#2563eb',
+            opacity: 0.65,
+          },
+        }}
+      />
+    );
+  };
 
   return (
     <Dialog fullScreen open={open} onClose={onClose}>
@@ -821,12 +844,12 @@ const A3LayoutEditor: React.FC<A3LayoutEditorProps> = ({
                     <Box ref={topRowRef} sx={{ minHeight: 0, display: 'grid', gridTemplateColumns: `${layout.columnSplit}% ${100 - layout.columnSplit}%`, position: 'relative' }}>
                       {renderSection(layout.order[0])}
                       {renderSection(layout.order[1])}
-                      {!exporting && renderVerticalHandle('two')}
+                      {!exporting && renderVerticalHandle('top')}
                     </Box>
-                    <Box sx={{ minHeight: 0, display: 'grid', gridTemplateColumns: `${layout.columnSplit}% ${100 - layout.columnSplit}%`, position: 'relative' }}>
+                    <Box ref={middleRowRef} sx={{ minHeight: 0, display: 'grid', gridTemplateColumns: `${layout.middleColumnSplit}% ${100 - layout.middleColumnSplit}%`, position: 'relative' }}>
                       {renderSection(layout.order[2])}
                       {renderSection(layout.order[3])}
-                      {!exporting && renderVerticalHandle('two')}
+                      {!exporting && renderVerticalHandle('middle')}
                     </Box>
                     <Box
                       ref={bottomRowRef}
@@ -910,7 +933,10 @@ const A3LayoutEditor: React.FC<A3LayoutEditorProps> = ({
             <Divider sx={{ my: 2.5 }} />
             <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>Tỷ lệ hiện tại</Typography>
             <Typography variant="caption" sx={{ display: 'block' }}>
-              Hai cột trên: {layout.columnSplit.toFixed(0)}% / {(100 - layout.columnSplit).toFixed(0)}%
+              Dòng 1: {layout.columnSplit.toFixed(0)}% / {(100 - layout.columnSplit).toFixed(0)}%
+            </Typography>
+            <Typography variant="caption" sx={{ display: 'block', mt: 0.5 }}>
+              Dòng 2: {layout.middleColumnSplit.toFixed(0)}% / {(100 - layout.middleColumnSplit).toFixed(0)}%
             </Typography>
             <Typography variant="caption" sx={{ display: 'block', mt: 0.5 }}>
               Ba hàng: {layout.rowHeights.map(value => `${value.toFixed(0)}%`).join(' / ')}
