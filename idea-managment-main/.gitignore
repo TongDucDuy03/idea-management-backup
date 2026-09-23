@@ -8,6 +8,9 @@ playwright-report/
 .env.*
 !.env.example
 !*.example
+# Ngoại lệ: chỉ chứa cờ build công khai (GENERATE_SOURCEMAP), không có bí mật.
+# Phải commit thì cấu hình mới theo code lên server.
+!/.env.production
 
 # Build artifacts
 build
