@@ -25,6 +25,7 @@ import {
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { reportFileName } from '../utils/reportFileName';
+import { safeImageSource } from '../utils/safeHtml';
 import { Idea } from '../types';
 
 type SectionKey =
@@ -109,12 +110,19 @@ interface SectionStyle {
   imageFit: ImageFit;
 }
 
+/**
+ * Bố cục 3 cột dọc (ảnh | thực trạng+lợi ích | giải pháp+đánh giá+chi phí+khen
+ * thưởng), mỗi cột tự chia hàng riêng. `order` vẫn là mảng phẳng 8 phần tử —
+ * order[0..1] luôn thuộc cột ảnh, order[2..3] luôn thuộc cột giữa, order[4..7]
+ * luôn thuộc cột phải — nên cơ chế kéo-thả hoán đổi vị trí (swapSections) giữ
+ * nguyên logic cũ, chỉ đổi hình dạng lưới mà các vị trí đó ánh xạ tới.
+ */
 export interface A3LayoutConfig {
-  version: 1;
-  columnSplit: number;
-  middleColumnSplit: number;
-  bottomColumns: number[];
-  rowHeights: number[];
+  version: 2;
+  columnWidths: number[];
+  imageRowHeights: number[];
+  mainRowHeights: number[];
+  rightRowHeights: number[];
   order: SectionKey[];
   styles: Record<SectionKey, SectionStyle>;
 }
@@ -128,7 +136,7 @@ interface A3LayoutEditorProps {
 
 const SECTION_META: Record<SectionKey, { label: string; kind: 'text' | 'image' }> = {
   currentSituation: { label: 'THỰC TRẠNG', kind: 'text' },
-  countermeasure: { label: 'ĐỐI SÁCH', kind: 'text' },
+  countermeasure: { label: 'GIẢI PHÁP', kind: 'text' },
   beforeImage: { label: 'HÌNH ẢNH TRƯỚC', kind: 'image' },
   afterImage: { label: 'HÌNH ẢNH SAU', kind: 'image' },
   benefit: { label: 'LỢI ÍCH', kind: 'text' },
@@ -148,17 +156,17 @@ const createDefaultStyles = (): Record<SectionKey, SectionStyle> =>
   }, {} as Record<SectionKey, SectionStyle>);
 
 const DEFAULT_LAYOUT: A3LayoutConfig = {
-  version: 1,
-  columnSplit: 50,
-  middleColumnSplit: 50,
-  bottomColumns: [25, 25, 25, 25],
-  rowHeights: [30, 38, 32],
+  version: 2,
+  columnWidths: [18, 44, 38],
+  imageRowHeights: [50, 50],
+  mainRowHeights: [22, 78],
+  rightRowHeights: [25, 25, 25, 25],
   order: [
-    'currentSituation',
-    'countermeasure',
     'beforeImage',
     'afterImage',
+    'currentSituation',
     'benefit',
+    'countermeasure',
     'evaluation',
     'cost',
     'reward',
@@ -263,22 +271,23 @@ const sanitizeCanvasColors = (root: HTMLElement) => {
 };
 
 const isValidLayout = (value: any): value is A3LayoutConfig => {
-  if (
-    !value ||
-    value.version !== 1 ||
-    !Array.isArray(value.order) ||
-    value.order.length !== 8 ||
-    !Array.isArray(value.rowHeights) ||
-    value.rowHeights.length !== 3 ||
-    !Array.isArray(value.bottomColumns) ||
-    value.bottomColumns.length !== 4
-  ) return false;
-  // Migrate old layouts that don't have middleColumnSplit
-  if (typeof value.middleColumnSplit !== 'number') {
-    value.middleColumnSplit = value.columnSplit ?? 50;
-  }
-  return true;
+  // Layout kiểu cũ (version 1, hàng ngang) không tương thích cấu trúc cột mới
+  // — rơi về mặc định thay vì cố migrate, đơn giản và an toàn hơn.
+  return Boolean(
+    value &&
+    value.version === 2 &&
+    Array.isArray(value.order) && value.order.length === 8 &&
+    Array.isArray(value.columnWidths) && value.columnWidths.length === 3 &&
+    Array.isArray(value.imageRowHeights) && value.imageRowHeights.length === 2 &&
+    Array.isArray(value.mainRowHeights) && value.mainRowHeights.length === 2 &&
+    Array.isArray(value.rightRowHeights) && value.rightRowHeights.length === 4
+  );
 };
+
+/* ---- A3 Canvas (96 DPI landscape) ---- */
+const A3_CANVAS_WIDTH = 1588;
+const A3_CANVAS_HEIGHT = 1123;
+const A3_HEADER_HEIGHT = 168;
 
 const A3LayoutEditor: React.FC<A3LayoutEditorProps> = ({
   open,
@@ -288,15 +297,38 @@ const A3LayoutEditor: React.FC<A3LayoutEditorProps> = ({
 }) => {
   const canvasRef = useRef<HTMLDivElement>(null);
   const contentGridRef = useRef<HTMLDivElement>(null);
-  const topRowRef = useRef<HTMLDivElement>(null);
-  const middleRowRef = useRef<HTMLDivElement>(null);
-  const bottomRowRef = useRef<HTMLDivElement>(null);
+  const imageColumnRef = useRef<HTMLDivElement>(null);
+  const mainColumnRef = useRef<HTMLDivElement>(null);
+  const rightColumnRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
   const [layout, setLayout] = useState<A3LayoutConfig>(() => cloneLayout(DEFAULT_LAYOUT));
   const [selectedSection, setSelectedSection] = useState<SectionKey>('currentSituation');
   const [draggedSection, setDraggedSection] = useState<SectionKey | null>(null);
   const [exporting, setExporting] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [zoom, setZoom] = useState<number | 'fit'>('fit');
+  const [, setViewportTick] = useState(0);
+
+  /* Re-calculate fit-scale whenever the viewport resizes */
+  useEffect(() => {
+    const vp = viewportRef.current;
+    if (!vp || !open) return;
+    const observer = new ResizeObserver(() => setViewportTick(t => t + 1));
+    observer.observe(vp);
+    return () => observer.disconnect();
+  }, [open]);
+
+  /* Compute the display scale factor */
+  const computeFitScale = () => {
+    const vp = viewportRef.current;
+    if (!vp) return 0.65;
+    const padding = 48;
+    const availW = vp.clientWidth - padding;
+    const availH = vp.clientHeight - padding;
+    return Math.min(availW / A3_CANVAS_WIDTH, availH / A3_CANVAS_HEIGHT, 1);
+  };
+  const displayScale = zoom === 'fit' ? computeFitScale() : zoom / 100;
 
   const reportStorageKey = `a3_layout_${idea.ideaCode || idea._id}`;
   const defaultStorageKey = 'a3_layout_default';
@@ -366,10 +398,9 @@ const A3LayoutEditor: React.FC<A3LayoutEditorProps> = ({
     const urlKey = key === 'beforeImage' ? 'beforeImageUrl' : 'afterImageUrl';
     const pathKey = key === 'beforeImage' ? 'beforeImagePath' : 'afterImagePath';
 
-    if (typeof raw === 'string' && raw.startsWith('data:image/')) return raw;
-    return normalizeImageSource(row[pathKey])
-      || normalizeImageSource(row[urlKey])
-      || normalizeImageSource(raw);
+    return safeImageSource(raw)
+      || safeImageSource(row[pathKey])
+      || safeImageSource(row[urlKey]);
   };
 
   const updateSelectedStyle = (patch: Partial<SectionStyle>) => {
@@ -397,68 +428,41 @@ const A3LayoutEditor: React.FC<A3LayoutEditorProps> = ({
     setSelectedSection(source);
   };
 
-  const startColumnResize = (event: React.PointerEvent, row: 'top' | 'middle' | 'bottom', dividerIndex = 0) => {
+  /**
+   * Kéo 1 đường chia để đổi tỷ lệ giữa 2 phần tử liền kề trong một mảng %
+   * (chiều rộng 3 cột, hoặc chiều cao các ô con trong 1 cột). Dùng chung cho
+   * mọi tay kéo trong bố cục — chỉ khác trục (x = đổi cột, y = đổi hàng) và
+   * mảng/containers truyền vào.
+   */
+  const startAxisResize = (
+    event: React.PointerEvent,
+    containerRef: React.RefObject<HTMLDivElement>,
+    axis: 'x' | 'y',
+    values: number[],
+    dividerIndex: number,
+    onChange: (next: number[]) => void,
+    minPercent = 10,
+  ) => {
     event.preventDefault();
     event.stopPropagation();
-    const rowElement = row === 'bottom' ? bottomRowRef.current : row === 'middle' ? middleRowRef.current : topRowRef.current;
-    if (!rowElement) return;
+    const container = containerRef.current;
+    if (!container) return;
 
-    const startX = event.clientX;
-    const rowWidth = rowElement.getBoundingClientRect().width;
-    const startSplit = row === 'middle' ? layout.middleColumnSplit : layout.columnSplit;
-    const startBottom = [...layout.bottomColumns];
+    const start = axis === 'x' ? event.clientX : event.clientY;
+    const rect = container.getBoundingClientRect();
+    const size = axis === 'x' ? rect.width : rect.height;
+    const startValues = [...values];
 
     const handleMove = (moveEvent: PointerEvent) => {
-      const deltaPercent = ((moveEvent.clientX - startX) / rowWidth) * 100;
-      if (row === 'top') {
-        setLayout(previous => ({
-          ...previous,
-          columnSplit: clamp(startSplit + deltaPercent, 25, 75),
-        }));
-        return;
-      }
-      if (row === 'middle') {
-        setLayout(previous => ({
-          ...previous,
-          middleColumnSplit: clamp(startSplit + deltaPercent, 25, 75),
-        }));
-        return;
-      }
-
-      const next = [...startBottom];
-      const left = startBottom[dividerIndex] + deltaPercent;
-      const right = startBottom[dividerIndex + 1] - deltaPercent;
-      if (left < 12 || right < 12) return;
+      const current = axis === 'x' ? moveEvent.clientX : moveEvent.clientY;
+      const deltaPercent = ((current - start) / size) * 100;
+      const next = [...startValues];
+      const left = startValues[dividerIndex] + deltaPercent;
+      const right = startValues[dividerIndex + 1] - deltaPercent;
+      if (left < minPercent || right < minPercent) return;
       next[dividerIndex] = left;
       next[dividerIndex + 1] = right;
-      setLayout(previous => ({ ...previous, bottomColumns: normalizePercentages(next) }));
-    };
-
-    const handleUp = () => {
-      window.removeEventListener('pointermove', handleMove);
-      window.removeEventListener('pointerup', handleUp);
-    };
-    window.addEventListener('pointermove', handleMove);
-    window.addEventListener('pointerup', handleUp);
-  };
-
-  const startRowResize = (event: React.PointerEvent, dividerIndex: number) => {
-    event.preventDefault();
-    event.stopPropagation();
-    if (!contentGridRef.current) return;
-    const startY = event.clientY;
-    const gridHeight = contentGridRef.current.getBoundingClientRect().height;
-    const startRows = [...layout.rowHeights];
-
-    const handleMove = (moveEvent: PointerEvent) => {
-      const deltaPercent = ((moveEvent.clientY - startY) / gridHeight) * 100;
-      const next = [...startRows];
-      const upper = startRows[dividerIndex] + deltaPercent;
-      const lower = startRows[dividerIndex + 1] - deltaPercent;
-      if (upper < 16 || lower < 16) return;
-      next[dividerIndex] = upper;
-      next[dividerIndex + 1] = lower;
-      setLayout(previous => ({ ...previous, rowHeights: normalizePercentages(next) }));
+      onChange(normalizePercentages(next));
     };
 
     const handleUp = () => {
@@ -471,28 +475,22 @@ const A3LayoutEditor: React.FC<A3LayoutEditorProps> = ({
 
   const handleAutoBalance = () => {
     const lengthFor = (key: SectionKey) => sectionContent[key]?.length || 0;
-    const topLeft = lengthFor(layout.order[0]);
-    const topRight = lengthFor(layout.order[1]);
-    const totalTop = topLeft + topRight || 1;
-    const proposedSplit = clamp((topLeft / totalTop) * 100, 35, 65);
-    const proposedMiddleSplit = 50;
 
-    const bottomLengths = layout.order.slice(4).map(key => Math.max(80, lengthFor(key)));
-    const bottomColumns = normalizePercentages(bottomLengths).map(value => clamp(value, 15, 40));
+    // Cột giữa: Hiện trạng thường ngắn hơn nhiều so với Lợi ích — giữ Hiện
+    // trạng trong khoảng 15–45% để Lợi ích luôn là điểm nhấn của báo cáo.
+    const currentSituationLength = lengthFor(layout.order[2]);
+    const benefitLength = lengthFor(layout.order[3]);
+    const totalMain = currentSituationLength + benefitLength || 1;
+    const proposedMainSplit = clamp((currentSituationLength / totalMain) * 100, 15, 45);
 
-    const topWeight = Math.max(24, Math.min(40, 24 + Math.max(topLeft, topRight) / 90));
-    const middleWeight = 34;
-    const bottomWeight = Math.max(
-      24,
-      Math.min(42, 24 + Math.max(...bottomLengths) / 90)
-    );
+    // Cột phải: 4 ô chia theo độ dài nội dung tương đối.
+    const rightLengths = layout.order.slice(4).map(key => Math.max(80, lengthFor(key)));
+    const rightRowHeights = normalizePercentages(rightLengths).map(value => clamp(value, 15, 40));
 
     setLayout(previous => ({
       ...previous,
-      columnSplit: proposedSplit,
-      middleColumnSplit: proposedMiddleSplit,
-      bottomColumns: normalizePercentages(bottomColumns),
-      rowHeights: normalizePercentages([topWeight, middleWeight, bottomWeight]),
+      mainRowHeights: normalizePercentages([proposedMainSplit, 100 - proposedMainSplit]),
+      rightRowHeights: normalizePercentages(rightRowHeights),
     }));
     setMessage('Đã tự cân đối theo độ dài nội dung. Bạn có thể kéo chỉnh thêm.');
   };
@@ -640,7 +638,7 @@ const A3LayoutEditor: React.FC<A3LayoutEditorProps> = ({
       >
         <Box
           sx={{
-            minHeight: 27,
+            minHeight: 34,
             px: 1,
             py: 0.45,
             backgroundColor: '#dbeafe',
@@ -654,7 +652,7 @@ const A3LayoutEditor: React.FC<A3LayoutEditorProps> = ({
           {!exporting && (
             <DragIndicator sx={{ position: 'absolute', left: 4, fontSize: 17, color: '#64748b' }} />
           )}
-          <Typography sx={{ fontSize: 12, fontWeight: 800, color: '#0f172a', textAlign: 'center' }}>
+          <Typography sx={{ fontSize: 14, fontWeight: 800, color: '#0f172a', textAlign: 'center' }}>
             {meta.label}
           </Typography>
         </Box>
@@ -694,30 +692,39 @@ const A3LayoutEditor: React.FC<A3LayoutEditorProps> = ({
     );
   };
 
-  const renderVerticalHandle = (row: 'top' | 'middle' | 'bottom', dividerIndex = 0, leftPercent?: number) => {
-    const splitValue = row === 'middle' ? layout.middleColumnSplit : layout.columnSplit;
+  /** Tay kéo dọc để đổi bề rộng giữa 2 cột chính liền kề (cột 0..2). */
+  const renderColumnDivider = (dividerIndex: number) => {
+    const leftPercent = layout.columnWidths.slice(0, dividerIndex + 1).reduce((sum, value) => sum + value, 0);
     return (
       <Box
-        onPointerDown={event => startColumnResize(event, row, dividerIndex)}
+        onPointerDown={event => startAxisResize(
+          event, contentGridRef, 'x', layout.columnWidths, dividerIndex,
+          next => setLayout(previous => ({ ...previous, columnWidths: next })), 10,
+        )}
         sx={{
-          position: 'absolute',
-          zIndex: 12,
-          top: 0,
-          bottom: 0,
-          left: `${leftPercent ?? splitValue}%`,
-          width: 10,
-          transform: 'translateX(-50%)',
-          cursor: 'col-resize',
-          '&::after': {
-            content: '""',
-            position: 'absolute',
-            top: 0,
-            bottom: 0,
-            left: 4,
-            width: 2,
-            backgroundColor: '#2563eb',
-            opacity: 0.65,
-          },
+          position: 'absolute', zIndex: 12, top: 0, bottom: 0, left: `${leftPercent}%`,
+          width: 10, transform: 'translateX(-50%)', cursor: 'col-resize',
+          '&::after': { content: '""', position: 'absolute', top: 0, bottom: 0, left: 4, width: 2, backgroundColor: '#2563eb', opacity: 0.65 },
+        }}
+      />
+    );
+  };
+
+  /** Tay kéo ngang để đổi chiều cao giữa 2 ô liền kề bên trong một cột. */
+  const renderRowDivider = (
+    containerRef: React.RefObject<HTMLDivElement>,
+    values: number[],
+    dividerIndex: number,
+    onChange: (next: number[]) => void,
+  ) => {
+    const topPercent = values.slice(0, dividerIndex + 1).reduce((sum, value) => sum + value, 0);
+    return (
+      <Box
+        onPointerDown={event => startAxisResize(event, containerRef, 'y', values, dividerIndex, onChange, 10)}
+        sx={{
+          position: 'absolute', zIndex: 13, left: 0, right: 0, top: `${topPercent}%`,
+          height: 10, transform: 'translateY(-50%)', cursor: 'row-resize',
+          '&::after': { content: '""', position: 'absolute', left: 0, right: 0, top: 4, height: 2, backgroundColor: '#2563eb', opacity: 0.65 },
         }}
       />
     );
@@ -755,6 +762,21 @@ const A3LayoutEditor: React.FC<A3LayoutEditorProps> = ({
               Kéo đường xanh để đổi kích thước · Kéo tiêu đề ô để hoán đổi vị trí
             </Typography>
           </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mx: 1, minWidth: 180 }}>
+            <Typography variant="caption" sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>Thu phóng:</Typography>
+            <Slider
+              size="small"
+              min={30}
+              max={150}
+              step={5}
+              value={zoom === 'fit' ? Math.round(computeFitScale() * 100) : zoom}
+              onChange={(_, v) => setZoom(v as number)}
+              valueLabelDisplay="auto"
+              valueLabelFormat={v => `${v}%`}
+              sx={{ mx: 1 }}
+            />
+            <Button size="small" variant={zoom === 'fit' ? 'contained' : 'outlined'} onClick={() => setZoom('fit')} sx={{ minWidth: 42, px: 1 }}>Fit</Button>
+          </Box>
           <Button startIcon={<AutoFixHigh />} onClick={handleAutoBalance}>Tự cân đối</Button>
           <Button startIcon={<RestartAlt />} onClick={handleReset}>Khôi phục</Button>
           <Button startIcon={<Save />} onClick={() => handleSaveLayout(false)}>Lưu báo cáo này</Button>
@@ -770,13 +792,17 @@ const A3LayoutEditor: React.FC<A3LayoutEditorProps> = ({
         </Box>
 
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex' }}>
-          <Box sx={{ flex: 1, minWidth: 0, overflow: 'auto', p: 3 }}>
-            <Box sx={{ minWidth: 920, display: 'flex', justifyContent: 'center' }}>
+          <Box ref={viewportRef} sx={{ flex: 1, minWidth: 0, overflow: 'auto', p: 3, display: 'flex', alignItems: zoom === 'fit' ? 'center' : 'flex-start', justifyContent: 'center' }}>
+            <Box sx={{
+              width: A3_CANVAS_WIDTH * displayScale,
+              height: A3_CANVAS_HEIGHT * displayScale,
+              flexShrink: 0,
+            }}>
               <Box
                 ref={canvasRef}
                 sx={{
-                  width: 1120,
-                  height: 792,
+                  width: A3_CANVAS_WIDTH,
+                  height: A3_CANVAS_HEIGHT,
                   backgroundColor: '#fff',
                   border: '2px solid #111827',
                   boxShadow: exporting ? 'none' : '0 18px 50px rgba(15, 23, 42, 0.2)',
@@ -784,17 +810,19 @@ const A3LayoutEditor: React.FC<A3LayoutEditorProps> = ({
                   flexDirection: 'column',
                   color: '#111827',
                   fontFamily: 'Arial, sans-serif',
+                  transform: exporting ? 'none' : `scale(${displayScale})`,
+                  transformOrigin: 'top left',
                 }}
               >
-                <Box sx={{ height: 118, display: 'grid', gridTemplateColumns: '120px 1fr 300px', borderBottom: '2px solid #111827' }}>
-                  <Box sx={{ borderRight: '1px solid #111827', display: 'flex', alignItems: 'center', justifyContent: 'center', p: 1 }}>
-                    <Box component="img" src="/vico-logo.png" alt="VICO" sx={{ maxWidth: 92, maxHeight: 72, objectFit: 'contain' }} />
+                <Box sx={{ height: A3_HEADER_HEIGHT, display: 'grid', gridTemplateColumns: '160px 1fr 380px', borderBottom: '2px solid #111827' }}>
+                  <Box sx={{ borderRight: '1px solid #111827', display: 'flex', alignItems: 'center', justifyContent: 'center', p: 1.5 }}>
+                    <Box component="img" src="/vico-logo.png" alt="VICO" sx={{ maxWidth: 120, maxHeight: 100, objectFit: 'contain' }} />
                   </Box>
-                  <Box sx={{ borderRight: '1px solid #111827', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', px: 2 }}>
+                  <Box sx={{ borderRight: '1px solid #111827', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', px: 3 }}>
                     <Box>
-                      <Typography sx={{ fontWeight: 900, fontSize: 18 }}>CÔNG TY TNHH THẮNG LỢI</Typography>
-                      <Typography sx={{ fontWeight: 900, fontSize: 22, color: '#1d4ed8' }}>BÁO CÁO CẢI TIẾN A3</Typography>
-                      <Typography sx={{ fontWeight: 700, fontSize: 12, mt: 0.5, maxHeight: 34, overflow: 'hidden' }}>
+                      <Typography sx={{ fontWeight: 900, fontSize: 24 }}>CÔNG TY TNHH THẮNG LỢI</Typography>
+                      <Typography sx={{ fontWeight: 900, fontSize: 30, color: '#1d4ed8' }}>BÁO CÁO CẢI TIẾN A3</Typography>
+                      <Typography sx={{ fontWeight: 700, fontSize: 16, mt: 0.5, maxHeight: 48, overflow: 'hidden' }}>
                         {reportTitle}
                       </Typography>
                     </Box>
@@ -807,7 +835,7 @@ const A3LayoutEditor: React.FC<A3LayoutEditorProps> = ({
                   </Box>
                 </Box>
 
-                <Box sx={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '76px 1fr' }}>
+                <Box sx={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '100px 1fr' }}>
                   <Box sx={{ borderRight: '2px solid #111827', display: 'grid', gridTemplateRows: 'repeat(4, 1fr)' }}>
                     {['NGƯỜI LẬP', 'P. CẢI TIẾN', 'GĐ KT', 'GĐ ĐH'].map(label => (
                       <Box
@@ -836,42 +864,37 @@ const A3LayoutEditor: React.FC<A3LayoutEditorProps> = ({
                     sx={{
                       minHeight: 0,
                       display: 'grid',
-                      gridTemplateRows: layout.rowHeights.map(value => `${value}%`).join(' '),
+                      gridTemplateColumns: layout.columnWidths.map(value => `${value}%`).join(' '),
                       position: 'relative',
                       overflow: 'hidden',
                     }}
                   >
-                    <Box ref={topRowRef} sx={{ minHeight: 0, display: 'grid', gridTemplateColumns: `${layout.columnSplit}% ${100 - layout.columnSplit}%`, position: 'relative' }}>
+                    {/* Cột 1: Ảnh trước / Ảnh sau */}
+                    <Box ref={imageColumnRef} sx={{ minHeight: 0, display: 'grid', gridTemplateRows: layout.imageRowHeights.map(value => `${value}%`).join(' '), position: 'relative' }}>
                       {renderSection(layout.order[0])}
                       {renderSection(layout.order[1])}
-                      {!exporting && renderVerticalHandle('top')}
+                      {!exporting && renderRowDivider(imageColumnRef, layout.imageRowHeights, 0, next => setLayout(previous => ({ ...previous, imageRowHeights: next })))}
                     </Box>
-                    <Box ref={middleRowRef} sx={{ minHeight: 0, display: 'grid', gridTemplateColumns: `${layout.middleColumnSplit}% ${100 - layout.middleColumnSplit}%`, position: 'relative' }}>
+                    {/* Cột 2: Hiện trạng (nhỏ) / Lợi ích (lớn, trọng tâm báo cáo) */}
+                    <Box ref={mainColumnRef} sx={{ minHeight: 0, display: 'grid', gridTemplateRows: layout.mainRowHeights.map(value => `${value}%`).join(' '), position: 'relative' }}>
                       {renderSection(layout.order[2])}
                       {renderSection(layout.order[3])}
-                      {!exporting && renderVerticalHandle('middle')}
+                      {!exporting && renderRowDivider(mainColumnRef, layout.mainRowHeights, 0, next => setLayout(previous => ({ ...previous, mainRowHeights: next })))}
                     </Box>
-                    <Box
-                      ref={bottomRowRef}
-                      sx={{ minHeight: 0, display: 'grid', gridTemplateColumns: layout.bottomColumns.map(value => `${value}%`).join(' '), position: 'relative' }}
-                    >
+                    {/* Cột 3: Giải pháp / Đánh giá / Chi phí / Khen thưởng */}
+                    <Box ref={rightColumnRef} sx={{ minHeight: 0, display: 'grid', gridTemplateRows: layout.rightRowHeights.map(value => `${value}%`).join(' '), position: 'relative' }}>
                       {layout.order.slice(4).map(renderSection)}
-                      {!exporting && layout.bottomColumns.slice(0, 3).map((_, index) => {
-                        const left = layout.bottomColumns.slice(0, index + 1).reduce((sum, value) => sum + value, 0);
-                        return <React.Fragment key={index}>{renderVerticalHandle('bottom', index, left)}</React.Fragment>;
-                      })}
+                      {!exporting && layout.rightRowHeights.slice(0, 3).map((_, index) => (
+                        <React.Fragment key={index}>
+                          {renderRowDivider(rightColumnRef, layout.rightRowHeights, index, next => setLayout(previous => ({ ...previous, rightRowHeights: next })))}
+                        </React.Fragment>
+                      ))}
                     </Box>
 
                     {!exporting && (
                       <>
-                        <Box
-                          onPointerDown={event => startRowResize(event, 0)}
-                          sx={{ position: 'absolute', zIndex: 13, top: `${layout.rowHeights[0]}%`, left: 0, right: 0, height: 10, transform: 'translateY(-50%)', cursor: 'row-resize', '&::after': { content: '""', position: 'absolute', left: 0, right: 0, top: 4, height: 2, backgroundColor: '#2563eb', opacity: 0.65 } }}
-                        />
-                        <Box
-                          onPointerDown={event => startRowResize(event, 1)}
-                          sx={{ position: 'absolute', zIndex: 13, top: `${layout.rowHeights[0] + layout.rowHeights[1]}%`, left: 0, right: 0, height: 10, transform: 'translateY(-50%)', cursor: 'row-resize', '&::after': { content: '""', position: 'absolute', left: 0, right: 0, top: 4, height: 2, backgroundColor: '#2563eb', opacity: 0.65 } }}
-                        />
+                        {renderColumnDivider(0)}
+                        {renderColumnDivider(1)}
                       </>
                     )}
                   </Box>
@@ -933,18 +956,23 @@ const A3LayoutEditor: React.FC<A3LayoutEditorProps> = ({
             <Divider sx={{ my: 2.5 }} />
             <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>Tỷ lệ hiện tại</Typography>
             <Typography variant="caption" sx={{ display: 'block' }}>
-              Dòng 1: {layout.columnSplit.toFixed(0)}% / {(100 - layout.columnSplit).toFixed(0)}%
+              3 cột: {layout.columnWidths.map(value => `${value.toFixed(0)}%`).join(' / ')}
             </Typography>
             <Typography variant="caption" sx={{ display: 'block', mt: 0.5 }}>
-              Dòng 2: {layout.middleColumnSplit.toFixed(0)}% / {(100 - layout.middleColumnSplit).toFixed(0)}%
+              Cột ảnh: {layout.imageRowHeights.map(value => `${value.toFixed(0)}%`).join(' / ')}
             </Typography>
             <Typography variant="caption" sx={{ display: 'block', mt: 0.5 }}>
-              Ba hàng: {layout.rowHeights.map(value => `${value.toFixed(0)}%`).join(' / ')}
+              Cột giữa: {layout.mainRowHeights.map(value => `${value.toFixed(0)}%`).join(' / ')}
+            </Typography>
+            <Typography variant="caption" sx={{ display: 'block', mt: 0.5 }}>
+              Cột phải: {layout.rightRowHeights.map(value => `${value.toFixed(0)}%`).join(' / ')}
             </Typography>
 
             <Box sx={{ mt: 3, p: 1.5, borderRadius: 2, backgroundColor: '#eff6ff' }}>
               <Typography variant="caption" sx={{ color: '#1e40af', lineHeight: 1.5 }}>
-                Bố cục đang được lưu trên trình duyệt của thiết bị này. Bản PDF sẽ giống chính xác canvas bên trái.
+                📐 Canvas: {A3_CANVAS_WIDTH}×{A3_CANVAS_HEIGHT}px (A3 @ 96 DPI ngang)<br />
+                🔍 Đang xem: {Math.round(displayScale * 100)}%<br />
+                Bản PDF sẽ xuất từ canvas gốc toàn phân giải — sắc nét trên giấy A3.
               </Typography>
             </Box>
           </Box>

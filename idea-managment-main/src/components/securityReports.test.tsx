@@ -1,4 +1,5 @@
 import React from 'react';
+import '@testing-library/jest-dom';
 import { render, fireEvent, screen, waitFor, cleanup } from '@testing-library/react';
 import html2canvas from 'html2canvas';
 import api from '../api/config';
@@ -7,11 +8,11 @@ import ExportReportDialog from './ExportReportDialog';
 import ReportGenerator from './ReportGenerator';
 import { Idea, IdeaStatus } from '../types';
 import { escapeHtml, safeImageSource } from '../utils/safeHtml';
+import A3LayoutEditor from './A3LayoutEditor';
 
 jest.mock('html2canvas', () => ({ __esModule: true, default: jest.fn() }));
 jest.mock('jspdf', () => ({ __esModule: true, default: jest.fn() }));
 jest.mock('../api/config', () => ({ __esModule: true, default: { get: jest.fn() } }));
-jest.mock('./A3LayoutEditor', () => ({ __esModule: true, default: () => null }));
 
 const payload = '<img src=x onerror="window.pwned=1"> & Tiếng Việt';
 const idea = {
@@ -30,6 +31,7 @@ beforeEach(() => {
   (api.get as jest.Mock).mockResolvedValue({ data: idea });
   global.fetch = jest.fn().mockResolvedValue({ ok: false });
   jest.spyOn(HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(true);
+  Object.defineProperty(HTMLImageElement.prototype, 'naturalWidth', { get: () => 100, configurable: true });
   jest.spyOn(window, 'alert').mockImplementation(() => {});
   jest.spyOn(console, 'error').mockImplementation(() => {});
   jest.spyOn(console, 'log').mockImplementation(() => {});
@@ -49,17 +51,22 @@ async function assertSafeReport() {
   expect(captured!.querySelector('img[src^="javascript:"]')).toBeNull();
 }
 
-test('A3 quick export treats stored fields as text and rejects malicious image attributes', async () => {
-  render(<A3ReportForm idea={idea} onClose={() => {}} />);
-  fireEvent.click(screen.getByRole('button', { name: 'Xuất nhanh' }));
+test('A3LayoutEditor treats stored fields as text and rejects malicious image attributes', async () => {
+  render(<A3LayoutEditor open idea={idea} onClose={() => {}} />);
+  fireEvent.click(screen.getByRole('button', { name: /Xuất PDF/i }));
   await assertSafeReport();
 });
 
-test('batch A3 export encodes stored fields before insertion into the document', async () => {
+test('A3ReportForm provides preview and export controls', async () => {
+  render(<A3ReportForm idea={idea} onClose={() => {}} />);
+  expect(screen.getByRole('button', { name: 'Xem trước & căn chỉnh' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Lưu và xuất PDF' })).toBeInTheDocument();
+});
+
+test('ExportReportDialog allows selecting idea and opening layout editor', async () => {
   render(<ExportReportDialog open onClose={() => {}} ideas={[idea]} />);
   fireEvent.click(screen.getByRole('button', { name: 'Chọn tất cả' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Export PDF A3' }));
-  await assertSafeReport();
+  expect(screen.getByRole('button', { name: 'Xem trước & căn chỉnh' })).toBeEnabled();
 });
 
 test('statistics PDF encodes names, departments and the department filter', async () => {

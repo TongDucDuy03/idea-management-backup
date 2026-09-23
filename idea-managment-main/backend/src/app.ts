@@ -1,10 +1,11 @@
+import express, { NextFunction, Request, Response } from 'express';
 import helmet from 'helmet';
+import cors from 'cors';
+import mongoose from 'mongoose';
 import { auth } from './middleware/auth';
 import { makeAuth } from './middleware/makeAuth';
 import { allowedOrigins as getAllowedOrigins } from './config/security';
-import express, { NextFunction, Request, Response } from 'express';
-import mongoose from 'mongoose';
-import cors from 'cors';
+import { isOriginAllowed } from './middleware/origin';
 import { resolveUploadDir, ensureUploadDirExists } from './utils/uploadDir';
 import ideaRoutes from './routes/ideaRoutes';
 import authRoutes from './routes/authRoutes';
@@ -28,10 +29,10 @@ console.log('[UPLOAD] static dir =', uploadsDir);
 
 // Middleware - CORS configuration
 // Cho phép credentials và origin cụ thể (không được dùng wildcard * khi có credentials)
-const allowedOrigins = getAllowedOrigins();
-
 const corsOptions: cors.CorsOptions = {
-  origin: allowedOrigins,
+  origin: (origin, callback) => {
+    callback(null, !origin || isOriginAllowed(origin));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-API-KEY', 'X-CSRF-Token'],

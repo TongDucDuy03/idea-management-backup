@@ -1,8 +1,24 @@
 import { CookieOptions } from 'express';
 
 export function allowedOrigins(): string[] {
-  return (process.env.FRONTEND_URL || process.env.CORS_ORIGIN || 'http://localhost:3000')
+  const configured = (process.env.FRONTEND_URL || process.env.CORS_ORIGIN || 'http://localhost:3000')
     .split(',').map(value => value.trim()).filter(Boolean);
+
+  if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
+    const devDefaults = [
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      'http://localhost:3001',
+      'http://127.0.0.1:3001',
+    ];
+    for (const dev of devDefaults) {
+      if (!configured.includes(dev)) {
+        configured.push(dev);
+      }
+    }
+  }
+
+  return configured;
 }
 
 export function assetBaseUrl(): string {

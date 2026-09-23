@@ -1,4 +1,3 @@
-import { escapeHtml, safeImageSource } from '../utils/safeHtml';
 import React, { useState, useEffect } from 'react';
 import {
   Box,
@@ -20,8 +19,6 @@ import {
 } from '@mui/icons-material';
 import api from '../api/config';
 import { Idea } from '../types';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import A3LayoutEditor from './A3LayoutEditor';
 
 interface A3ReportFormProps {
@@ -30,12 +27,10 @@ interface A3ReportFormProps {
 }
 
 const A3ReportForm: React.FC<A3ReportFormProps> = ({ idea, onClose }) => {
-  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [layoutEditorOpen, setLayoutEditorOpen] = useState(false);
-  const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
   const [reportData, setReportData] = useState<Partial<Idea>>(idea || {});
 
   // Style cố định cho TextField để không bị thu nhỏ
@@ -77,24 +72,6 @@ const A3ReportForm: React.FC<A3ReportFormProps> = ({ idea, onClose }) => {
     }
   }, [idea]);
 
-  // Load logo from public folder
-  useEffect(() => {
-    let cancelled = false;
-    const loadLogo = async () => {
-      try {
-        const res = await fetch('/vico-logo.png', { cache: 'no-store' });
-        if (!res.ok) return;
-        const blob = await res.blob();
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          if (!cancelled) setLogoDataUrl(typeof reader.result === 'string' ? reader.result : null);
-        };
-        reader.readAsDataURL(blob);
-      } catch {}
-    };
-    loadLogo();
-    return () => { cancelled = true; };
-  }, []);
 
   const handleInputChange = (field: keyof Idea, value: string) => {
     setReportData(prev => ({
@@ -239,451 +216,6 @@ const A3ReportForm: React.FC<A3ReportFormProps> = ({ idea, onClose }) => {
       setError('Không thể lưu báo cáo A3. Vui lòng thử lại.');
     } finally {
       setSaving(false);
-    }
-  };
-
-  type ParsedIdeaKey =
-    | 'title'
-    | 'currentSituation'
-    | 'countermeasure'
-    | 'benefit'
-    | 'evaluation'
-    | 'cost'
-    | 'reward'
-    | 'metadata';
-
-  const IDEA_LABEL_GROUPS: Array<{ key: ParsedIdeaKey; aliases: string[] }> = [
-    { key: 'title', aliases: ['Tên ý tưởng', 'Tên đề tài'] },
-    { key: 'metadata', aliases: ['Mã ý tưởng', 'Người đề xuất', 'Người lập', 'Đơn vị'] },
-    { key: 'currentSituation', aliases: ['Hiện trạng và vấn đề', 'Vấn đề và hiện trạng', 'Thực trạng hiện tại', 'Hiện trạng', 'Thực trạng'] },
-    { key: 'countermeasure', aliases: ['Giải pháp đề xuất', 'Đối sách đề xuất', 'Đối sách', 'Giải pháp'] },
-    { key: 'benefit', aliases: ['Lợi ích mang lại', 'Kết quả đạt được', 'Lợi ích'] },
-    { key: 'evaluation', aliases: ['Cơ hội nhân rộng phát triển', 'Cơ hội nhân rộng', 'Đánh giá kết quả', 'Đánh giá'] },
-    { key: 'cost', aliases: ['Nguồn lực sử dụng', 'Chi phí thực hiện', 'Nguồn lực', 'Chi phí'] },
-    { key: 'reward', aliases: ['Mô tả cách tính', 'Đề xuất khen thưởng', 'Khen thưởng'] },
-  ];
-
-  const cleanExtractedText = (value: string) =>
-    value
-      .replace(/^[\s:：\-–—|]+/, '')
-      .replace(/[\s💡🔧⚠️✅📌💰🎯📊🧮🏆]+$/u, '')
-      .trim();
-
-  const parseStructuredIdeaText = (ideaText?: string) => {
-    const result: Partial<Record<Exclude<ParsedIdeaKey, 'metadata'>, string>> = {};
-    if (!ideaText?.trim()) return result;
-
-    const lowerText = ideaText.toLocaleLowerCase('vi-VN');
-    const markers: Array<{ key: ParsedIdeaKey; index: number; length: number }> = [];
-
-    IDEA_LABEL_GROUPS.forEach(group => {
-      const matches = group.aliases
-        .map(alias => ({
-          key: group.key,
-          index: lowerText.indexOf(alias.toLocaleLowerCase('vi-VN')),
-          length: alias.length,
-        }))
-        .filter(match => match.index >= 0)
-        .sort((a, b) => a.index - b.index || b.length - a.length);
-      if (matches[0]) markers.push(matches[0]);
-    });
-
-    markers.sort((a, b) => a.index - b.index);
-    markers.forEach((marker, index) => {
-      if (marker.key === 'metadata') return;
-      const nextMarker = markers[index + 1];
-      const end = nextMarker ? nextMarker.index : ideaText.length;
-      const value = cleanExtractedText(
-        ideaText.slice(marker.index + marker.length, end)
-      );
-      if (value) result[marker.key] = value;
-    });
-
-    return result;
-  };
-
-  const normalizeImageSource = safeImageSource;
-
-  const resolveImage = (ideaItem: any, key: 'beforeImage' | 'afterImage') => {
-    const raw = ideaItem[key];
-    const urlKey = key === 'beforeImage' ? 'beforeImageUrl' : 'afterImageUrl';
-    const pathKey = key === 'beforeImage' ? 'beforeImagePath' : 'afterImagePath';
-
-    if (typeof raw === 'string' && raw.startsWith('data:image/')) return safeImageSource(raw);
-    return normalizeImageSource(ideaItem[pathKey])
-      || normalizeImageSource(ideaItem[urlKey])
-      || normalizeImageSource(raw);
-  };
-
-  const generateHTMLReport = (idea: Idea): string => {
-    const structuredIdea = parseStructuredIdeaText(idea.idea);
-    const hasStructuredSections = Object.keys(structuredIdea).length > 0;
-    const reportTitle = structuredIdea.title || (idea.idea ? idea.idea.split('\n')[0] : 'Chưa có tên ý tưởng');
-
-    const currentSituation =
-      idea.solution ||
-      structuredIdea.currentSituation ||
-      (!hasStructuredSections ? idea.idea : '') ||
-      'Chưa có nội dung thực trạng';
-
-    const countermeasure =
-      idea.benefit ||
-      structuredIdea.countermeasure ||
-      'Chưa có nội dung đối sách';
-
-    const benefitText =
-      idea.benefitOutcome ||
-      structuredIdea.benefit ||
-      'Chưa có nội dung lợi ích';
-
-    const evaluationText =
-      idea.scalingOpportunity ||
-      structuredIdea.evaluation ||
-      'Chưa có nội dung đánh giá';
-
-    const costText =
-      idea.resourcesUsed ||
-      structuredIdea.cost ||
-      'Chưa có nội dung chi phí';
-
-    const rewardText =
-      idea.calculationDescription ||
-      structuredIdea.reward ||
-      'Chưa có nội dung khen thưởng';
-
-    const beforeImg = resolveImage(idea, 'beforeImage');
-    const afterImg = resolveImage(idea, 'afterImage');
-
-    return `<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="UTF-8">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: Arial, sans-serif; background: #fff; color: #111827; }
-    .a3-container {
-      width: 1120px;
-      height: 792px;
-      background: #ffffff;
-      border: 2px solid #111827;
-      display: flex;
-      flex-direction: column;
-      color: #111827;
-      font-family: Arial, sans-serif;
-      overflow: hidden;
-      box-sizing: border-box;
-    }
-    .header {
-      height: 118px;
-      display: grid;
-      grid-template-columns: 120px 1fr 300px;
-      border-bottom: 2px solid #111827;
-      flex-shrink: 0;
-    }
-    .logo-box {
-      border-right: 1px solid #111827;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 8px;
-    }
-    .title-box {
-      border-right: 1px solid #111827;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding: 0 16px;
-    }
-    .meta-box {
-      display: grid;
-      grid-template-rows: repeat(4, 1fr);
-      font-size: 11px;
-    }
-    .meta-row {
-      padding: 0 8px;
-      display: flex;
-      align-items: center;
-      border-bottom: 1px solid #111827;
-    }
-    .meta-row:last-child { border-bottom: none; }
-    .main-body {
-      flex: 1;
-      min-height: 0;
-      display: grid;
-      grid-template-columns: 76px 1fr;
-    }
-    .approval-sidebar {
-      border-right: 2px solid #111827;
-      display: grid;
-      grid-template-rows: repeat(4, 1fr);
-    }
-    .approval-cell {
-      border-bottom: 1px solid #111827;
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      flex-direction: column;
-      padding-bottom: 6px;
-      padding-left: 4px;
-      padding-right: 4px;
-      font-size: 10px;
-      font-weight: 800;
-      text-align: center;
-      line-height: 1.2;
-      box-sizing: border-box;
-    }
-    .approval-cell:last-child { border-bottom: none; }
-    .content-grid {
-      min-height: 0;
-      display: grid;
-      grid-template-rows: 30% 38% 32%;
-      overflow: hidden;
-    }
-    .grid-row-1 {
-      min-height: 0;
-      display: grid;
-      grid-template-columns: 50% 50%;
-    }
-    .grid-row-2 {
-      min-height: 0;
-      display: grid;
-      grid-template-columns: 50% 50%;
-    }
-    .grid-row-3 {
-      min-height: 0;
-      display: grid;
-      grid-template-columns: 25% 25% 25% 25%;
-    }
-    .section-card {
-      height: 100%;
-      min-width: 0;
-      border: 1px solid #111827;
-      display: flex;
-      flex-direction: column;
-      background-color: #fff;
-      overflow: hidden;
-      box-sizing: border-box;
-    }
-    .section-header {
-      min-height: 27px;
-      padding: 3px 8px;
-      background-color: #dbeafe;
-      border-bottom: 1px solid #111827;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      font-weight: 800;
-      color: #0f172a;
-      text-align: center;
-      flex-shrink: 0;
-    }
-    .section-body {
-      flex: 1;
-      min-height: 0;
-      padding: 7px;
-      font-size: 13px;
-      line-height: 1.4;
-      white-space: pre-line;
-      text-align: justify;
-      overflow: hidden;
-      word-break: break-word;
-      color: #111827;
-    }
-    .image-body {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-      overflow: hidden;
-      padding: 4px;
-    }
-    .image-body img {
-      max-width: 100%;
-      max-height: 100%;
-      object-fit: contain;
-      display: block;
-    }
-    .image-placeholder {
-      color: #94a3b8;
-      font-style: italic;
-      font-size: 12px;
-    }
-  </style>
-</head>
-<body>
-  <div class="a3-container">
-    <div class="header">
-      <div class="logo-box">
-        <img src="${escapeHtml(logoDataUrl || '/vico-logo.png')}" alt="VICO" style="max-width: 92px; max-height: 72px; object-fit: contain;" />
-      </div>
-      <div class="title-box">
-        <div>
-          <div style="font-weight: 900; font-size: 18px;">CÔNG TY TNHH THẮNG LỢI</div>
-          <div style="font-weight: 900; font-size: 22px; color: #1d4ed8; margin: 2px 0;">BÁO CÁO CẢI TIẾN A3</div>
-          <div style="font-weight: 700; font-size: 12px; margin-top: 4px; max-height: 34px; overflow: hidden; color: #334155;">
-            ${escapeHtml(reportTitle)}
-          </div>
-        </div>
-      </div>
-      <div class="meta-box">
-        <div class="meta-row"><b>Mã:</b>&nbsp;${escapeHtml(idea.ideaCode || 'N/A')}</div>
-        <div class="meta-row"><b>Người lập:</b>&nbsp;${escapeHtml(idea.fullName || 'N/A')}</div>
-        <div class="meta-row"><b>Ngày lập:</b>&nbsp;${new Date().toLocaleDateString('vi-VN')}</div>
-        <div class="meta-row"><b>Đơn vị:</b>&nbsp;${escapeHtml(idea.department || 'N/A')}</div>
-      </div>
-    </div>
-
-    <div class="main-body">
-      <div class="approval-sidebar">
-        <div class="approval-cell">NGƯỜI LẬP</div>
-        <div class="approval-cell">P. CẢI TIẾN</div>
-        <div class="approval-cell">GĐ KT</div>
-        <div class="approval-cell">GĐ ĐH</div>
-      </div>
-
-      <div class="content-grid">
-        <!-- Row 1: Thực trạng & Đối sách -->
-        <div class="grid-row-1">
-          <div class="section-card">
-            <div class="section-header">THỰC TRẠNG</div>
-            <div class="section-body">${escapeHtml(currentSituation)}</div>
-          </div>
-          <div class="section-card">
-            <div class="section-header">ĐỐI SÁCH</div>
-            <div class="section-body">${escapeHtml(countermeasure)}</div>
-          </div>
-        </div>
-
-        <!-- Row 2: Hình ảnh trước & Hình ảnh sau -->
-        <div class="grid-row-2">
-          <div class="section-card">
-            <div class="section-header">HÌNH ẢNH TRƯỚC</div>
-            <div class="section-body image-body">
-              ${beforeImg ? `<img src="${escapeHtml(beforeImg)}" crossOrigin="anonymous" alt="Hình ảnh trước" />` : `<span class="image-placeholder">Chưa có hình ảnh</span>`}
-            </div>
-          </div>
-          <div class="section-card">
-            <div class="section-header">HÌNH ẢNH SAU</div>
-            <div class="section-body image-body">
-              ${afterImg ? `<img src="${escapeHtml(afterImg)}" crossOrigin="anonymous" alt="Hình ảnh sau" />` : `<span class="image-placeholder">Chưa có hình ảnh</span>`}
-            </div>
-          </div>
-        </div>
-
-        <!-- Row 3: Lợi ích, Đánh giá, Chi phí, Khen thưởng -->
-        <div class="grid-row-3">
-          <div class="section-card">
-            <div class="section-header">LỢI ÍCH</div>
-            <div class="section-body">${escapeHtml(benefitText)}</div>
-          </div>
-          <div class="section-card">
-            <div class="section-header">ĐÁNH GIÁ</div>
-            <div class="section-body">${escapeHtml(evaluationText)}</div>
-          </div>
-          <div class="section-card">
-            <div class="section-header">CHI PHÍ</div>
-            <div class="section-body">${escapeHtml(costText)}</div>
-          </div>
-          <div class="section-card">
-            <div class="section-header">KHEN THƯỞNG</div>
-            <div class="section-body">${escapeHtml(rewardText)}</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</body>
-</html>`;
-  };
-
-  const createPdfFromHtml = async (htmlContent: string, filename: string) => {
-    const container = document.createElement('div');
-    container.style.position = 'fixed';
-    container.style.left = '-10000px';
-    container.style.top = '0';
-    container.style.width = '1120px';
-    container.style.height = '792px';
-    container.style.background = '#ffffff';
-    container.innerHTML = htmlContent;
-    document.body.appendChild(container);
-
-    try {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      if (document.fonts?.ready) await document.fonts.ready;
-
-      const mainContainer = container.querySelector('.a3-container') as HTMLElement;
-      if (!mainContainer) throw new Error('Không tìm thấy container A3');
-
-      // Chờ các hình ảnh load xong
-      const images = Array.from(mainContainer.querySelectorAll('img'));
-      await Promise.all(images.map(img => {
-        if (img.complete) {
-          return img.decode ? img.decode().catch(() => undefined) : Promise.resolve();
-        }
-        return new Promise<void>(resolve => {
-          img.onload = () => resolve();
-          img.onerror = () => resolve();
-        });
-      }));
-
-      const canvas = await html2canvas(mainContainer, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: false,
-        backgroundColor: '#ffffff',
-        logging: false,
-        onclone: (clonedDoc) => {
-          // Sanitize all style tags inside cloned iframe
-          clonedDoc.querySelectorAll('style').forEach(styleTag => {
-            if (styleTag.textContent) {
-              styleTag.textContent = styleTag.textContent.replace(
-                /\b(?:oklch|oklab|lab|lch|color)\s*\([^)]*\)/gi,
-                '#000000'
-              );
-            }
-          });
-
-          // Sanitize elements
-          clonedDoc.querySelectorAll<HTMLElement>('*').forEach(el => {
-            const styleAttr = el.getAttribute('style');
-            if (styleAttr && /\b(?:oklch|oklab|lab|lch|color)\s*\(/i.test(styleAttr)) {
-              el.setAttribute('style', styleAttr.replace(/\b(?:oklch|oklab|lab|lch|color)\s*\([^)]*\)/gi, '#000000'));
-            }
-          });
-        }
-      });
-
-      const pdf = new jsPDF('l', 'mm', 'a3');
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 4;
-      const availableWidth = pageWidth - margin * 2;
-      const availableHeight = pageHeight - margin * 2;
-      const scale = Math.min(availableWidth / canvas.width, availableHeight / canvas.height);
-      const width = canvas.width * scale;
-      const height = canvas.height * scale;
-
-      pdf.addImage(
-        canvas.toDataURL('image/jpeg', 0.96),
-        'JPEG',
-        (pageWidth - width) / 2,
-        (pageHeight - height) / 2,
-        width,
-        height,
-        undefined,
-        'FAST'
-      );
-
-      pdf.save(filename.replace(/\s+/g, '_'));
-    } catch (error) {
-      console.error('Error creating PDF:', error);
-      throw error;
-    } finally {
-      if (container.parentNode) {
-        document.body.removeChild(container);
-      }
     }
   };
 
@@ -936,7 +468,7 @@ const A3ReportForm: React.FC<A3ReportFormProps> = ({ idea, onClose }) => {
               variant="contained"
               color="success"
               onClick={() => setLayoutEditorOpen(true)}
-              disabled={loading || saving}
+              disabled={saving}
               startIcon={<TuneIcon />}
               sx={{ minWidth: 200 }}
             >
@@ -947,11 +479,11 @@ const A3ReportForm: React.FC<A3ReportFormProps> = ({ idea, onClose }) => {
               variant="contained"
               color="info"
               onClick={handleSaveAndExport}
-              disabled={saving || loading}
-              startIcon={saving || loading ? <CircularProgress size={20} /> : <FileDownloadIcon />}
+              disabled={saving}
+              startIcon={saving ? <CircularProgress size={20} /> : <FileDownloadIcon />}
               sx={{ minWidth: 200 }}
             >
-              {saving || loading ? 'Đang xử lý...' : 'Lưu và xuất PDF'}
+              {saving ? 'Đang xử lý...' : 'Lưu và xuất PDF'}
             </Button>
           </Box>
         </CardContent>

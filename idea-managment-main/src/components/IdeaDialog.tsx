@@ -97,27 +97,6 @@ const IdeaDialog: React.FC<IdeaDialogProps> = ({
     }
   };
 
-  // Style cho Select/FormControl
-  const selectStyle = {
-    borderRadius: '12px !important',
-    '& .MuiOutlinedInput-root': {
-      borderRadius: '12px !important',
-      transition: 'all 0.3s ease',
-      '&:hover': {
-        '& .MuiOutlinedInput-notchedOutline': {
-          borderColor: '#1976d2 !important',
-          borderWidth: '2px !important',
-        }
-      },
-      '&.Mui-focused': {
-        boxShadow: '0 4px 12px rgba(25, 118, 210, 0.15)',
-        '& .MuiOutlinedInput-notchedOutline': {
-          borderWidth: '2px !important',
-        }
-      }
-    }
-  };
-
   // Style cho Paper (card hình ảnh)
   const cardStyle = {
     borderRadius: '16px !important',
