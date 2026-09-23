@@ -59,7 +59,6 @@ import {
   Upload as UploadIcon,
   Add as AddIcon
 } from '@mui/icons-material';
-import * as XLSX from 'xlsx';
 import { Idea, IdeaStatus, IdeaStatusLabels, RewardStatus, RewardStatusLabels, RewardCalculationMethod, RewardCalculationMethodLabels } from '../types';
 import IdeaDialog from './IdeaDialog';
 import ExportReportDialog from './ExportReportDialog';
@@ -744,7 +743,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
     }
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     // Map field names to display names
     const fieldDisplayNames: Record<string, string> = {
       'ideaCode': 'Mã ý tưởng',
@@ -856,13 +855,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       return row;
     });
 
+    // Thư viện xlsx nặng ~1MB nhưng chỉ cần khi thực sự bấm xuất Excel.
+    const XLSX = await import('xlsx');
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Ý tưởng cải tiến');
     XLSX.writeFile(wb, 'danh_sach_y_tuong.xlsx');
   };
 
-  const handleExportExcelViewOnly = () => {
+  const handleExportExcelViewOnly = async () => {
     // Map field names to display names for viewOnly mode
     const fieldDisplayNames: Record<string, string> = {
       'ideaCode': 'Mã ý tưởng',
@@ -929,6 +930,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ isViewOnly = false }) =
       return row;
     });
 
+    // Thư viện xlsx nặng ~1MB nhưng chỉ cần khi thực sự bấm xuất Excel.
+    const XLSX = await import('xlsx');
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Ý tưởng cải tiến');

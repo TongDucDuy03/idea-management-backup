@@ -19,8 +19,6 @@ import {
   Chip
 } from '@mui/material';
 import { FileDownload as FileDownloadIcon, PictureAsPdf as PdfIcon } from '@mui/icons-material';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import { Idea } from '../types';
 
 interface ReportGeneratorProps {
@@ -304,6 +302,11 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({
   const generatePDF = async () => {
     setGenerating(true);
     try {
+      // html2canvas + jspdf rất nặng, chỉ nạp khi người dùng thực sự tạo PDF.
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ]);
       console.log('Bắt đầu tạo PDF...', { totalIdeas, reportType });
       
       // Create temporary div with isolated styling
@@ -426,6 +429,7 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({
   // Fallback method using direct jsPDF without html2canvas
   const generatePDFFallback = async () => {
     try {
+      const { default: jsPDF } = await import('jspdf');
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();

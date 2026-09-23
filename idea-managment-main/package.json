@@ -32,7 +32,8 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build",
+    "build": "cross-env GENERATE_SOURCEMAP=false react-scripts build",
+    "build:sourcemap": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "test:e2e": "npm run build && npm --prefix backend run build && playwright test"
@@ -58,6 +59,7 @@
   "devDependencies": {
     "@playwright/test": "1.63.0",
     "@types/chart.js": "^2.9.41",
+    "cross-env": "^7.0.3",
     "http-proxy-middleware": "3.0.5"
   }
 }

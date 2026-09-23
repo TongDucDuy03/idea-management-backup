@@ -26,7 +26,6 @@ import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { Upload as UploadIcon, CheckCircle, Warning, Error as ErrorIcon, Download, Visibility, VisibilityOff } from '@mui/icons-material';
 import api from '../api/config';
 import { ImportSession, ImportRow, ImportRowStatus, IdeaStatus, IdeaStatusLabels, RewardStatus, RewardStatusLabels } from '../types';
-import * as XLSX from 'xlsx';
 
 interface ImportDialogProps {
   open: boolean;

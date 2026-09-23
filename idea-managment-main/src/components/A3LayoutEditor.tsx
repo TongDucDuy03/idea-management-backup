@@ -22,8 +22,6 @@ import {
   RestartAlt,
   Save,
 } from '@mui/icons-material';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
 import { reportFileName } from '../utils/reportFileName';
 import { safeImageSource } from '../utils/safeHtml';
 import { Idea } from '../types';
@@ -185,25 +183,6 @@ const normalizePercentages = (values: number[]) => {
   return values.map(value => (value / total) * 100);
 };
 
-/**
- * Keep uploaded images on the frontend origin. An image loaded directly from
- * the backend can render in an img tag but still taint the export canvas.
- */
-const normalizeImageSource = (source: unknown) => {
-  if (typeof source !== 'string' || !source.trim()) return '';
-  const value = source.trim();
-  if (value.startsWith('data:image/') || value.startsWith('blob:')) return value;
-
-  try {
-    const parsed = new URL(value, window.location.origin);
-    if (parsed.pathname === '/uploads' || parsed.pathname.startsWith('/uploads/')) {
-      return `${window.location.origin}${parsed.pathname}${parsed.search}${parsed.hash}`;
-    }
-    return parsed.href;
-  } catch {
-    return value;
-  }
-};
 
 const UNSUPPORTED_CANVAS_COLOR = /\b(?:oklch|oklab|lab|lch|color)\s*\(/i;
 const CANVAS_COLOR_PROPERTIES = [
@@ -520,6 +499,11 @@ const A3LayoutEditor: React.FC<A3LayoutEditorProps> = ({
     setMessage('');
     let restoreCanvasColors: () => void = () => undefined;
     try {
+      // html2canvas + jspdf rất nặng, chỉ nạp khi người dùng thực sự xuất PDF.
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ]);
       await new Promise(resolve => window.setTimeout(resolve, 100));
       if (document.fonts?.ready) await document.fonts.ready;
       const images = Array.from(canvasRef.current.querySelectorAll('img'));
